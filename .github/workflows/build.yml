@@ -1,0 +1,125 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: Capture simulator screenshots
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_APP: /Applications/Xcode_26.6.app
+  XCODEGEN_VERSION: 2.46.0
+
+jobs:
+  build:
+    name: Build iOS + macOS
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Generate Xcode project
+        run: |
+          curl -sSL -o /tmp/xcodegen.zip "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
+          /tmp/xcodegen/xcodegen/bin/xcodegen generate
+
+      - name: Build macOS app
+        id: mac
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild -project Theo.xcodeproj -scheme TheoMac -configuration Debug \
+            -destination 'generic/platform=macOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee mac-build.log | xcbeautify --renderer github-actions
+
+      - name: Build iOS app (simulator)
+        id: ios
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild -project Theo.xcodeproj -scheme Theo -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ios-build.log | xcbeautify --renderer github-actions
+
+      - name: Collect compiler errors
+        if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
+        run: |
+          grep -h -E "error:|warning: .*will be an error" mac-build.log ios-build.log | sort -u | head -200 > errors.txt || true
+          cat errors.txt
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            mac-build.log
+            ios-build.log
+            errors.txt
+          if-no-files-found: ignore
+
+      - name: Fail if a build failed
+        if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
+        run: exit 1
+
+      - name: Simulator screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+        run: |
+          set -x
+          APP=build/Build/Products/Debug-iphonesimulator/Theo.app
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']))")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          shoot() {
+            local name=$1; shift
+            xcrun simctl terminate "$UDID" com.erblinkastrati.theo 2>/dev/null || true
+            xcrun simctl launch "$UDID" com.erblinkastrati.theo -TheoDemo "$@"
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+          }
+          xcrun simctl ui "$UDID" appearance light
+          shoot today-light -TheoScreen today
+          shoot sidebar-light -TheoScreen sidebar
+          shoot upcoming-light -TheoScreen upcoming
+          shoot history-light -TheoScreen history
+          xcrun simctl ui "$UDID" appearance dark
+          shoot today-dark -TheoScreen today
+          shoot priority-dark -TheoScreen priority
+          xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Theo"' --style compact > shots/ios-log.txt 2>&1 || true
+
+      - name: macOS screenshot
+        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+        continue-on-error: true
+        run: |
+          APP=build/Build/Products/Debug/Theo.app
+          open "$APP" --args -TheoDemo -TheoScreen today
+          sleep 8
+          screencapture -x shots/mac-today.png || true
+          osascript -e 'tell application "System Events" to set frontmost of first process whose name is "Theo" to true' || true
+          sleep 1
+          screencapture -x shots/mac-today-2.png || true
+
+      - name: Upload screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots

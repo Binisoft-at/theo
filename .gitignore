@@ -1,0 +1,19 @@
+# Xcode
+Theo.xcodeproj/
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.ipa
+*.pkg
+*.xcarchive
+
+# Secrets
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+.env
+
+# macOS
+.DS_Store

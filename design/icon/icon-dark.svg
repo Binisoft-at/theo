@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+
+  <defs>
+    <linearGradient id="bg" x1="0.2" y1="0" x2="0.65" y2="1">
+      <stop offset="0" stop-color="#2A2A2E"/>
+      <stop offset="0.55" stop-color="#18181B"/>
+      <stop offset="1" stop-color="#0B0B0D"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.28" cy="0.08" r="0.8">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#24385F"/>
+      <stop offset="1" stop-color="#0C1428"/>
+    </linearGradient>
+    <linearGradient id="amberGlyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD45E"/>
+      <stop offset="1" stop-color="#F28A00"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <circle cx="512" cy="282" r="172" fill="none" stroke="#FDB52A" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="300 60 120 60 400 141" transform="rotate(-120 512 282)" opacity="0.75"/>
+  <g filter="url(#shadow)">
+    <!-- head -->
+    <circle cx="512" cy="282" r="122" fill="url(#amberGlyph)"/>
+    <!-- tuxedo shoulders -->
+    <path d="M 176 1060 L 176 690 C 176 580 262 492 372 492 L 652 492 C 762 492 848 580 848 690 L 848 1060 Z" fill="url(#amberGlyph)"/>
+  </g>
+  <!-- shirt front = check mark -->
+  <path d="M 352 744 L 466 856 L 704 612" fill="none" stroke="#16213D" stroke-width="98"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- bow tie -->
+  <g fill="#16213D" stroke="#16213D" stroke-width="22" stroke-linejoin="round">
+    <path d="M 512 566 L 424 524 L 424 608 Z"/>
+    <path d="M 512 566 L 600 524 L 600 608 Z"/>
+  </g>
+  <rect x="487" y="539" width="50" height="54" rx="17" fill="#16213D"/>
+  <rect x="497" y="549" width="30" height="34" rx="10" fill="#000000" opacity="0.12"/>
+
+</svg>

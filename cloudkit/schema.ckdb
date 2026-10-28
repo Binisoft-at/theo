@@ -1,0 +1,67 @@
+DEFINE SCHEMA
+
+    RECORD TYPE CD_TaskGroup (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        CD_colorName    STRING,
+        CD_createdAt    TIMESTAMP,
+        CD_deletedAt    TIMESTAMP,
+        CD_dueDate      TIMESTAMP,
+        CD_entityName   STRING,
+        CD_isCollapsed  INT64,
+        CD_isProject    INT64,
+        CD_modifiedAt   TIMESTAMP,
+        CD_name         STRING,
+        CD_notes        STRING,
+        CD_sortOrder    DOUBLE,
+        CD_symbol       STRING,
+        CD_uuid         STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_TaskItem (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        CD_completedAt  TIMESTAMP,
+        CD_createdAt    TIMESTAMP,
+        CD_deferredUntil TIMESTAMP,
+        CD_deletedAt    TIMESTAMP,
+        CD_dueDate      TIMESTAMP,
+        CD_dueHasTime   INT64,
+        CD_entityName   STRING,
+        CD_group        STRING,
+        CD_indent       INT64,
+        CD_isDone       INT64,
+        CD_modifiedAt   TIMESTAMP,
+        CD_notes        STRING,
+        CD_priorityRaw  INT64,
+        CD_sortOrder    DOUBLE,
+        CD_tagsRaw      STRING,
+        CD_title        STRING,
+        CD_uuid         STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE Users (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        roles           LIST<INT64>,
+        GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );

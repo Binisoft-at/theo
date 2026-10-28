@@ -1,0 +1,47 @@
+name: CloudKit schema
+
+# Imports cloudkit/schema.ckdb into the container's Development environment. Afterwards,
+# open CloudKit Console > Schema > "Deploy Schema Changes…" once to push it to Production,
+# which TestFlight and App Store builds use.
+
+on:
+  workflow_dispatch:
+
+env:
+  CONTAINER_ID: iCloud.com.erblinkastrati.theo
+
+jobs:
+  import:
+    runs-on: macos-26
+    timeout-minutes: 15
+    env:
+      CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        run: |
+          [ -n "$CLOUDKIT_MANAGEMENT_TOKEN" ] || { echo "::error::Add the CLOUDKIT_MANAGEMENT_TOKEN secret"; exit 1; }
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Add the APPLE_TEAM_ID secret"; exit 1; }
+      - name: Save token
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcrun cktool save-token --help || true
+          xcrun cktool save-token --type management "$CLOUDKIT_MANAGEMENT_TOKEN" \
+            || printf '%s\n' "$CLOUDKIT_MANAGEMENT_TOKEN" | xcrun cktool save-token --type management
+      - name: Validate and import schema (Development)
+        run: |
+          xcrun cktool validate-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment development --file cloudkit/schema.ckdb || true
+          xcrun cktool import-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment development --file cloudkit/schema.ckdb
+      - name: Export current schemas
+        run: |
+          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" --environment development --output-file development.ckdb
+          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" --environment production --output-file production.ckdb || true
+          echo "--- development"; cat development.ckdb
+          echo "--- production"; cat production.ckdb || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudkit-schema
+          path: "*.ckdb"
