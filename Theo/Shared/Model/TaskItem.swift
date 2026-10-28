@@ -55,8 +55,6 @@ extension TaskItem {
         set { tagsRaw = Tags.normalize(newValue).joined(separator: ",") }
     }
 
-    var isDeleted: Bool { deletedAt != nil }
-
     var groupID: UUID? {
         guard let group, group.deletedAt == nil else { return nil }
         return group.uuid

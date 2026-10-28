@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import CoreData
+import Observation
 
 enum Persistence {
     static let schema = Schema([TaskItem.self, TaskGroup.self])
