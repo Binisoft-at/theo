@@ -48,7 +48,7 @@ struct TheoApp: App {
                 .environment(app)
                 .modelContainer(app.container)
         } label: {
-            Image(systemName: "checkmark.circle")
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
         #endif
