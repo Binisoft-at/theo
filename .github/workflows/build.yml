@@ -106,7 +106,7 @@ jobs:
             local name=$1; shift
             xcrun simctl terminate "$UDID" com.erblinkastrati.theo 2>/dev/null || true
             xcrun simctl launch "$UDID" com.erblinkastrati.theo -TheoDemo "$@"
-            sleep 6
+            sleep 9
             xcrun simctl io "$UDID" screenshot "shots/$name.png"
           }
           xcrun simctl ui "$UDID" appearance light
@@ -125,10 +125,12 @@ jobs:
         run: |
           APP=build/Build/Products/Debug/Theo.app
           open "$APP" --args -TheoDemo -TheoScreen today
-          sleep 8
+          sleep 15
           screencapture -x shots/mac-today.png || true
+          osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           osascript -e 'tell application "System Events" to set frontmost of first process whose name is "Theo" to true' || true
-          sleep 1
+          osascript -e 'tell application "Theo" to activate' || true
+          sleep 3
           screencapture -x shots/mac-today-2.png || true
 
       - name: Publish screenshots to ci-output branch

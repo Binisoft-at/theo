@@ -3,6 +3,9 @@ import SwiftData
 
 /// The list of pages — like the folder list in Notes.
 struct SidebarView: View {
+    /// Split view (iPad/Mac) drives the detail through selection; the iPhone stack pushes links.
+    var usesSelection = true
+
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
     private var openTasks: [TaskItem]
@@ -22,7 +25,7 @@ struct SidebarView: View {
         let quickCount = openTasks.filter { $0.groupID == nil }.count
         let tags = Sections.tags(in: openTasks)
 
-        List(selection: $app.selection) {
+        sidebarList(selection: usesSelection ? $app.selection : nil) {
             Section {
                 NavigationLink(value: SidebarItem.today) {
                     SidebarRow(title: "Today", symbol: "sun.max.fill", color: .orange, count: todayCount)
@@ -138,6 +141,17 @@ struct SidebarView: View {
                 app.store.deleteGroup(group, keepTasks: true)
             }
             Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+extension SidebarView {
+    @ViewBuilder
+    func sidebarList<Content: View>(selection: Binding<SidebarItem?>?, @ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection, content: content)
+        } else {
+            List(content: content)
         }
     }
 }

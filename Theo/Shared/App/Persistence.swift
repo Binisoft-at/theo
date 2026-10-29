@@ -59,13 +59,15 @@ final class SyncMonitor {
     var lastSuccess: Date?
     var lastError: String?
     var activeEvents = 0
-    var hasICloudAccount: Bool = FileManager.default.ubiquityIdentityToken != nil
+    /// Updated off the main thread: `ubiquityIdentityToken` can block for seconds.
+    var hasICloudAccount = true
     var eventCount = 0
 
     @ObservationIgnored private var observer: NSObjectProtocol?
 
     init() {
         lastError = SyncMonitor.startupError
+        refreshAccount()
         observer = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
@@ -81,9 +83,16 @@ final class SyncMonitor {
         }
     }
 
+    func refreshAccount() {
+        guard Persistence.syncEnabled, !Persistence.isDemo else { return }
+        Task.detached(priority: .utility) { [weak self] in
+            let signedIn = FileManager.default.ubiquityIdentityToken != nil
+            await MainActor.run { self?.hasICloudAccount = signedIn }
+        }
+    }
+
     private func handle(ended: Date?, succeeded: Bool, error: String?) {
         eventCount += 1
-        hasICloudAccount = FileManager.default.ubiquityIdentityToken != nil
         if let ended {
             activeEvents = max(0, activeEvents - 1)
             if succeeded {

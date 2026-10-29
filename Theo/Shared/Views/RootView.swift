@@ -5,6 +5,9 @@ import Combine
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.scenePhase) private var scenePhase
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
     @AppStorage(Prefs.appearance) private var appearanceRaw = AppearanceChoice.system.rawValue
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
 
@@ -13,10 +16,34 @@ struct RootView: View {
     private var appearance: AppearanceChoice { AppearanceChoice(rawValue: appearanceRaw) ?? .system }
     private var accent: AccentChoice { AccentChoice(rawValue: accentRaw) ?? .notes }
 
-    var body: some View {
+    /// iPhone gets a single Notes-style stack (lists → page); iPad and Mac get a split view.
+    @ViewBuilder
+    private var navigation: some View {
         @Bindable var app = app
-        NavigationSplitView(preferredCompactColumn: $app.compactColumn) {
-            SidebarView()
+        #if os(iOS)
+        if sizeClass == .compact {
+            NavigationStack(path: $app.phonePath) {
+                SidebarView(usesSelection: false)
+                    .navigationDestination(for: SidebarItem.self) { item in
+                        DetailRouter(selection: item, dayStart: app.dayStart)
+                            .onAppear { app.selection = item }
+                    }
+                    .navigationDestination(for: DayRef.self) { day in
+                        DayPageView(day: day)
+                    }
+            }
+        } else {
+            splitView
+        }
+        #else
+        splitView
+        #endif
+    }
+
+    private var splitView: some View {
+        @Bindable var app = app
+        return NavigationSplitView(preferredCompactColumn: $app.compactColumn) {
+            SidebarView(usesSelection: true)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         } detail: {
             NavigationStack(path: $app.detailPath) {
@@ -26,6 +53,11 @@ struct RootView: View {
                     }
             }
         }
+    }
+
+    var body: some View {
+        @Bindable var app = app
+        navigation
         .tint(accent.color)
         .preferredColorScheme(appearance.colorScheme)
         .overlay(alignment: .bottom) {

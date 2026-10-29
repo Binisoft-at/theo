@@ -49,6 +49,8 @@ final class AppModel {
     var selection: SidebarItem? = .today
     var compactColumn: NavigationSplitViewColumn = .detail
     var detailPath = NavigationPath()
+    /// iPhone: a single Notes-style stack (lists → page → day).
+    var phonePath = NavigationPath()
 
     var detailTask: TaskItem?
     var moveBatch: TaskBatch?
@@ -77,6 +79,7 @@ final class AppModel {
         self.sync = SyncMonitor()
         self.dayStart = DayBoundary().start(of: Date())
         applyLaunchArguments()
+        if let selection { phonePath = NavigationPath([selection]) }
         AppModel.shared = self
     }
 
@@ -91,12 +94,13 @@ final class AppModel {
         detailPath = NavigationPath()
         selection = item
         compactColumn = .detail
+        phonePath = NavigationPath([item])
     }
 
     func requestQuickEntry() {
         switch selection {
         case .history, .trash, .upcoming, .priority, .tag, .none: go(.today)
-        default: break
+        default: if phonePath.isEmpty { go(selection ?? .today) }
         }
         detailPath = NavigationPath()
         compactColumn = .detail
