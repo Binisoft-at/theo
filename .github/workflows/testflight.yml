@@ -75,7 +75,7 @@ jobs:
             --bundle-id "$BUNDLE_ID" \
             --keychain "$RUNNER_TEMP/theo-signing.keychain-db" \
             --keychain-password "$KEYCHAIN_PASSWORD" \
-            --workdir "$RUNNER_TEMP/signing"
+            --workdir "$RUNNER_TEMP/signing" 2> >(tee signing.log >&2)
 
       - name: Store encrypted signing key
         if: env.SIGNING_KEY_CREATED == 'true'
@@ -167,16 +167,22 @@ jobs:
       - name: TestFlight group
         continue-on-error: true
         run: |
-          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py beta-setup --bundle-id "$BUNDLE_ID"
-          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py status --bundle-id "$BUNDLE_ID"
+          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py beta-setup --bundle-id "$BUNDLE_ID" 2>&1 | tee beta.log
+          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py status --bundle-id "$BUNDLE_ID" 2>&1 | tee -a beta.log
 
-      - name: Logs
+      - name: Publish logs to ci-testflight branch
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: testflight-logs
-          path: "*.log"
-          if-no-files-found: ignore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          for f in *.log; do
+            [ -f "$f" ] || continue
+            grep -E "error|Error|ERROR|warning: .*(sign|profile|entitlement)|Upload|upload|succeeded|failed|FAILED|EXPORT|ARCHIVE" "$f" | tail -300 > "$RUNNER_TEMP/out/${f%.log}-summary.txt" || true
+            tail -200 "$f" > "$RUNNER_TEMP/out/${f%.log}-tail.txt" || true
+          done
+          echo "${{ job.status }}" > "$RUNNER_TEMP/out/status.txt"
+          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "testflight ${{ github.run_id }}" ci-testflight
 
       - name: Clean up keychain
         if: always()

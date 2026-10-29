@@ -15,6 +15,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 env:
   XCODE_APP: /Applications/Xcode_26.6.app
   XCODEGEN_VERSION: 2.46.0
@@ -73,6 +76,17 @@ jobs:
             errors.txt
           if-no-files-found: ignore
 
+      - name: Publish build errors to ci-output branch
+        if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          cp errors.txt "$RUNNER_TEMP/out/" 2>/dev/null || true
+          gzip -c mac-build.log > "$RUNNER_TEMP/out/mac-build.log.gz" || true
+          gzip -c ios-build.log > "$RUNNER_TEMP/out/ios-build.log.gz" || true
+          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "build ${{ github.run_id }} (failed)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Fail if a build failed
         if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
         run: exit 1
@@ -117,9 +131,11 @@ jobs:
           sleep 1
           screencapture -x shots/mac-today-2.png || true
 
-      - name: Upload screenshots
-        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: shots
+      - name: Publish screenshots to ci-output branch
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.screenshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          cp -R shots "$RUNNER_TEMP/out/" 2>/dev/null || true
+          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "screenshots ${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
