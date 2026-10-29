@@ -25,6 +25,10 @@ struct TheoApp: App {
                 .modelContainer(app.container)
         }
         .defaultSize(width: 1100, height: 760)
+        #if os(macOS)
+        // Apps with a menu bar extra otherwise start without their main window.
+        .defaultLaunchBehavior(.presented)
+        #endif
         .commands {
             TheoCommands(app: app)
         }
