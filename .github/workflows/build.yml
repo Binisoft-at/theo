@@ -130,7 +130,7 @@ jobs:
         run: |
           mkdir -p shots
           APP=build/Build/Products/Debug/Theo.app
-          "$APP/Contents/MacOS/Theo" -TheoDemo -TheoScreen today > shots/mac-stdout.txt 2>&1 &
+          open --stdout "$PWD/shots/mac-stdout.txt" --stderr "$PWD/shots/mac-stdout.txt" "$APP" --args -TheoDemo -TheoScreen today
           sleep 15
           screencapture -x shots/mac-today.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
