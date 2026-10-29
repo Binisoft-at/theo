@@ -5,6 +5,8 @@ import SwiftData
 struct TheoApp: App {
     #if os(iOS)
     @UIApplicationDelegateAdaptor(TheoAppDelegate.self) private var appDelegate
+    #else
+    @NSApplicationDelegateAdaptor(TheoMacAppDelegate.self) private var macDelegate
     #endif
 
     @State private var app: AppModel
