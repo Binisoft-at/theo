@@ -323,10 +323,17 @@ def cmd_prepare_signing(args):
     mac_name = f"Theo CI macOS App Store"
     ios_uuid, ios_content = create_profile(api, ios_name, "IOS_APP_STORE", bundle["id"], dist_id)
     mac_uuid, mac_content = create_profile(api, mac_name, "MAC_APP_STORE", bundle["id"], dist_id)
+    cloudkit_ready = True
     for label, content in [("iOS", ios_content), ("macOS", mac_content)]:
         ents = profile_entitlements(content).get("Entitlements", {})
         log(f"{label} profile entitlements: " + json.dumps({k: v for k, v in ents.items()
                                                            if "icloud" in k or "aps" in k}, default=str))
+        containers = ents.get("com.apple.developer.icloud-container-identifiers") or []
+        if args.container not in containers:
+            cloudkit_ready = False
+    if not cloudkit_ready:
+        log(f"warning: {args.container} is not attached to the App ID yet; building without iCloud sync. "
+            "Attach it at developer.apple.com > Identifiers > App ID > iCloud > Edit.")
 
     os.makedirs(args.workdir, exist_ok=True)
     install_keychain(args.keychain, args.keychain_password, key, dist_cert, inst_cert, args.workdir)
@@ -340,12 +347,14 @@ def cmd_prepare_signing(args):
         "mac_profile_name": mac_name,
         "mac_profile_uuid": mac_uuid,
         "signing_key_created": created,
+        "cloudkit_ready": cloudkit_ready,
     }
     print(json.dumps(out))
     if args.github_env:
         with open(args.github_env, "a") as f:
             f.write(f"TEAM_ID={team}\nIOS_PROFILE={ios_name}\nMAC_PROFILE={mac_name}\n")
             f.write(f"SIGNING_KEY_CREATED={'true' if created else 'false'}\n")
+            f.write(f"CLOUDKIT_READY={'true' if cloudkit_ready else 'false'}\n")
 
 
 def find_app(api, bundle_id):
@@ -422,6 +431,7 @@ def main():
     p = sub.add_parser("prepare-signing")
     p.add_argument("--bundle-id", required=True)
     p.add_argument("--keychain", required=True)
+    p.add_argument("--container", default="iCloud.com.erblinkastrati.theo")
     p.add_argument("--keychain-password", required=True)
     p.add_argument("--workdir", default="/tmp/theo-signing")
     p.add_argument("--github-env", default=os.environ.get("GITHUB_ENV"))

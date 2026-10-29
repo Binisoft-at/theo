@@ -10,6 +10,12 @@ enum Persistence {
         (Bundle.main.object(forInfoDictionaryKey: "TheoCloudKitContainer") as? String) ?? "iCloud.com.erblinkastrati.theo"
     }
 
+    /// Builds signed before the iCloud container is attached to the App ID ship without the
+    /// iCloud entitlement; they keep everything on the device.
+    static var syncEnabled: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "TheoSyncEnabled") as? String)?.uppercased() != "NO"
+    }
+
     /// Launch arguments used for screenshots and UI smoke tests.
     static var isDemo: Bool { ProcessInfo.processInfo.arguments.contains("-TheoDemo") }
 
@@ -24,12 +30,14 @@ enum Persistence {
                 return container
             }
         }
-        do {
-            let config = ModelConfiguration("Theo", schema: schema, cloudKitDatabase: .automatic)
-            return try ModelContainer(for: schema, configurations: config)
-        } catch {
-            print("Theo: CloudKit store unavailable (\(error)). Falling back to local store.")
-            SyncMonitor.startupError = error.localizedDescription
+        if syncEnabled {
+            do {
+                let config = ModelConfiguration("Theo", schema: schema, cloudKitDatabase: .automatic)
+                return try ModelContainer(for: schema, configurations: config)
+            } catch {
+                print("Theo: CloudKit store unavailable (\(error)). Falling back to local store.")
+                SyncMonitor.startupError = error.localizedDescription
+            }
         }
         do {
             let config = ModelConfiguration("Theo", schema: schema, cloudKitDatabase: .none)
@@ -99,6 +107,7 @@ final class SyncMonitor {
     }
 
     var statusText: String {
+        if !Persistence.syncEnabled { return "On this device only (sync arrives in a later build)" }
         if !hasICloudAccount { return "Not signed in to iCloud" }
         if activeEvents > 0 { return "Syncing…" }
         if lastError != nil { return "Sync problem" }

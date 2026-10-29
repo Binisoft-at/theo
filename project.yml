@@ -24,6 +24,7 @@ settings:
     SWIFT_EMIT_LOC_STRINGS: YES
     GENERATE_INFOPLIST_FILE: NO
     THEO_CLOUDKIT_CONTAINER: iCloud.com.erblinkastrati.theo
+    THEO_SYNC_ENABLED: "YES"
   configs:
     Debug:
       APS_ENVIRONMENT: development

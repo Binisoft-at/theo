@@ -30,5 +30,7 @@
 	<string>© 2026 Erblin Kastrati</string>
 	<key>TheoCloudKitContainer</key>
 	<string>$(THEO_CLOUDKIT_CONTAINER)</string>
+	<key>TheoSyncEnabled</key>
+	<string>$(THEO_SYNC_ENABLED)</string>
 </dict>
 </plist>

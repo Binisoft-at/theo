@@ -28,6 +28,8 @@
 	<true/>
 	<key>TheoCloudKitContainer</key>
 	<string>$(THEO_CLOUDKIT_CONTAINER)</string>
+	<key>TheoSyncEnabled</key>
+	<string>$(THEO_SYNC_ENABLED)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
