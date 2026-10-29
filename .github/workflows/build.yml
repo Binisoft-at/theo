@@ -10,6 +10,10 @@ on:
         description: Capture simulator screenshots
         type: boolean
         default: true
+      mac_only:
+        description: Only build and screenshot the macOS app
+        type: boolean
+        default: false
 
 concurrency:
   group: build-${{ github.ref }}-${{ github.event_name }}
@@ -52,6 +56,7 @@ jobs:
 
       - name: Build iOS app (simulator)
         id: ios
+        if: ${{ !inputs.mac_only }}
         continue-on-error: true
         run: |
           set -o pipefail
@@ -92,7 +97,7 @@ jobs:
         run: exit 1
 
       - name: Simulator screenshots
-        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.screenshots && !inputs.mac_only
         run: |
           set -x
           APP=build/Build/Products/Debug-iphonesimulator/Theo.app
@@ -123,15 +128,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.screenshots
         continue-on-error: true
         run: |
+          mkdir -p shots
           APP=build/Build/Products/Debug/Theo.app
-          open "$APP" --args -TheoDemo -TheoScreen today
+          "$APP/Contents/MacOS/Theo" -TheoDemo -TheoScreen today > shots/mac-stdout.txt 2>&1 &
           sleep 15
           screencapture -x shots/mac-today.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           osascript -e 'tell application "System Events" to set frontmost of first process whose name is "Theo" to true' || true
           osascript -e 'tell application "Theo" to activate' || true
-          sleep 3
+          osascript -e 'tell application "Theo" to reopen' || true
+          sleep 4
           screencapture -x shots/mac-today-2.png || true
+          osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' >> shots/mac-windows.txt 2>&1 || true
+          log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
       - name: Publish screenshots to ci-output branch
         if: always() && github.event_name == 'workflow_dispatch' && inputs.screenshots
