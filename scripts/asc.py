@@ -227,13 +227,10 @@ def ensure_capabilities(api, bundle, caps):
             log(f"warning: could not enable {cap}: {err}")
 
 
-def create_profile(api, name, profile_type, bundle_id, cert_id):
-    existing, _ = api.get_all("/v1/profiles", {"filter[name]": name})
-    for item in existing:
-        if item["attributes"]["name"] == name:
-            log(f"deleting old profile {name}")
-            api.request("DELETE", f"/v1/profiles/{item['id']}")
-    created = api.request("POST", "/v1/profiles", {
+def create_profile(api, prefix, profile_type, bundle_id, cert_id):
+    """Creates a uniquely named profile (with retries), then removes older CI profiles."""
+    name = f"{prefix} {time.strftime('%Y%m%d-%H%M%S')}"
+    body = {
         "data": {
             "type": "profiles",
             "attributes": {"name": name, "profileType": profile_type},
@@ -242,9 +239,30 @@ def create_profile(api, name, profile_type, bundle_id, cert_id):
                 "certificates": {"data": [{"type": "certificates", "id": cert_id}]},
             },
         }
-    })
-    attrs = created["data"]["attributes"]
-    return attrs["uuid"], base64.b64decode(attrs["profileContent"])
+    }
+    created = None
+    for attempt in range(5):
+        try:
+            created = api.request("POST", "/v1/profiles", body)
+            break
+        except RuntimeError as err:
+            if attempt == 4 or "HTTP 5" not in str(err):
+                raise
+            wait = 5 * (attempt + 1)
+            log(f"profile creation failed ({str(err)[:80]}...), retrying in {wait}s")
+            time.sleep(wait)
+    data = created["data"]
+    existing, _ = api.get_all("/v1/profiles", {"filter[profileType]": profile_type})
+    for item in existing:
+        other = item["attributes"]["name"]
+        if item["id"] != data["id"] and other.startswith(prefix):
+            log(f"deleting old profile {other}")
+            try:
+                api.request("DELETE", f"/v1/profiles/{item['id']}")
+            except RuntimeError as err:
+                log(f"warning: {err}")
+    attrs = data["attributes"]
+    return name, attrs["uuid"], base64.b64decode(attrs["profileContent"])
 
 
 def profile_entitlements(content):
@@ -319,10 +337,8 @@ def cmd_prepare_signing(args):
     log(f"bundle id {bundle['id']} platform={bundle['attributes'].get('platform')} capabilities={caps}")
     ensure_capabilities(api, bundle, caps)
 
-    ios_name = f"Theo CI iOS App Store"
-    mac_name = f"Theo CI macOS App Store"
-    ios_uuid, ios_content = create_profile(api, ios_name, "IOS_APP_STORE", bundle["id"], dist_id)
-    mac_uuid, mac_content = create_profile(api, mac_name, "MAC_APP_STORE", bundle["id"], dist_id)
+    ios_name, ios_uuid, ios_content = create_profile(api, "Theo CI iOS App Store", "IOS_APP_STORE", bundle["id"], dist_id)
+    mac_name, mac_uuid, mac_content = create_profile(api, "Theo CI macOS App Store", "MAC_APP_STORE", bundle["id"], dist_id)
     cloudkit_ready = True
     for label, content in [("iOS", ios_content), ("macOS", mac_content)]:
         ents = profile_entitlements(content).get("Entitlements", {})
