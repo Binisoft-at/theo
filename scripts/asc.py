@@ -390,11 +390,13 @@ def cmd_beta_setup(args):
                 log(f"warning: {err}")
     testers, _ = api.get_all(f"/v1/betaGroups/{group['id']}/betaTesters")
     emails = {t["attributes"].get("email", "").lower() for t in testers}
+    # Only the explicitly listed people are added - never the whole team.
+    wanted = {e.strip().lower() for e in os.environ.get("TESTFLIGHT_TESTERS", "").split(",") if e.strip()}
     users, _ = api.get_all("/v1/users")
     for user in users:
         attrs = user["attributes"]
         email = (attrs.get("username") or "").lower()
-        if not email or email in emails:
+        if not email or email in emails or email not in wanted:
             continue
         log(f"adding {email} to the internal group")
         try:
@@ -408,6 +410,25 @@ def cmd_beta_setup(args):
         except RuntimeError as err:
             log(f"warning: could not add {email}: {err}")
     print(json.dumps({"app_id": app["id"], "group_id": group["id"]}))
+
+
+def cmd_beta_prune(args):
+    """Removes everyone except --keep from the app's internal TestFlight group(s)."""
+    api = ASC()
+    keep = {e.strip().lower() for e in args.keep.split(",") if e.strip()}
+    app = find_app(api, args.bundle_id)
+    groups, _ = api.get_all(f"/v1/apps/{app['id']}/betaGroups")
+    for group in groups:
+        if not group["attributes"].get("isInternalGroup"):
+            continue
+        testers, _ = api.get_all(f"/v1/betaGroups/{group['id']}/betaTesters")
+        remove = [t for t in testers if t["attributes"].get("email", "").lower() not in keep]
+        log(f"group {group['attributes'].get('name')}: {len(testers)} testers, removing {len(remove)}")
+        for chunk in [remove[i:i + 50] for i in range(0, len(remove), 50)]:
+            api.request("DELETE", f"/v1/betaGroups/{group['id']}/relationships/betaTesters",
+                        {"data": [{"type": "betaTesters", "id": t["id"]} for t in chunk]})
+        left, _ = api.get_all(f"/v1/betaGroups/{group['id']}/betaTesters")
+        log("remaining: " + ", ".join(t["attributes"].get("email", "?") for t in left))
 
 
 def cmd_status(args):
@@ -439,6 +460,10 @@ def main():
     b = sub.add_parser("beta-setup")
     b.add_argument("--bundle-id", required=True)
     b.set_defaults(func=cmd_beta_setup)
+    pr = sub.add_parser("beta-prune")
+    pr.add_argument("--bundle-id", required=True)
+    pr.add_argument("--keep", required=True)
+    pr.set_defaults(func=cmd_beta_prune)
     s = sub.add_parser("status")
     s.add_argument("--bundle-id", required=True)
     s.set_defaults(func=cmd_status)

@@ -172,6 +172,8 @@ jobs:
 
       - name: TestFlight group
         continue-on-error: true
+        env:
+          TESTFLIGHT_TESTERS: ${{ vars.TESTFLIGHT_TESTERS }}
         run: |
           "$RUNNER_TEMP/venv/bin/python" scripts/asc.py beta-setup --bundle-id "$BUNDLE_ID" 2>&1 | tee beta.log
           "$RUNNER_TEMP/venv/bin/python" scripts/asc.py status --bundle-id "$BUNDLE_ID" 2>&1 | tee -a beta.log

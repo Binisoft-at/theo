@@ -1,0 +1,34 @@
+name: TestFlight testers
+
+# Keeps only the listed people in Theo's internal TestFlight group.
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: Comma-separated emails to keep in the internal group
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet pyjwt cryptography
+      - name: Prune internal group
+        run: python3 scripts/asc.py beta-prune --bundle-id com.erblinkastrati.theo --keep "${{ inputs.keep }}" 2>&1 | tee prune.log
+      - name: Publish result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" && cp prune.log "$RUNNER_TEMP/out/" || true
+          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "testers ${{ github.run_id }}" ci-testers
