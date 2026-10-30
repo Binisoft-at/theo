@@ -13,7 +13,10 @@ struct WatchRootView: View {
                         Button {
                             model.show(.lists)
                         } label: {
+                            // The toolbar fills this button with the tint; keep the glyph readable on it.
                             Image(systemName: "list.bullet")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.black)
                         }
                         .accessibilityLabel("Lists")
                     }
