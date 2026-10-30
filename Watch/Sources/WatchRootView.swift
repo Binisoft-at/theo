@@ -10,7 +10,9 @@ struct WatchRootView: View {
             WatchTodayView()
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        NavigationLink(value: WatchRoute.lists) {
+                        Button {
+                            model.show(.lists)
+                        } label: {
                             Image(systemName: "list.bullet")
                         }
                         .accessibilityLabel("Lists")

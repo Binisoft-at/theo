@@ -43,6 +43,11 @@ struct WatchTodayView: View {
             }
         }
         .navigationTitle("Today")
+        .onAppear {
+            guard model.opensFirstTask, let first = sections.first?.rows.first?.task else { return }
+            model.opensFirstTask = false
+            model.show(.task(first))
+        }
         .overlay {
             if page.isEmpty {
                 ContentUnavailableView {

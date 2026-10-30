@@ -136,6 +136,7 @@ jobs:
           wshoot watch-today
           wshoot watch-lists -TheoScreen lists
           wshoot watch-upcoming -TheoScreen upcoming
+          wshoot watch-detail -TheoScreen detail
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "TheoWatch"' --style compact > shots/watch-log.txt 2>&1 || true
 
       - name: macOS screenshot

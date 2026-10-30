@@ -18,6 +18,8 @@ final class WatchModel {
     /// Start of the current logical day, refreshed whenever the app becomes active.
     var dayStart: Date
     var path: [WatchRoute] = []
+    /// `-TheoScreen detail`: Today opens its first task once it has loaded (screenshots).
+    var opensFirstTask = false
 
     init() {
         dayStart = DayBoundary.current.start(of: Date())
@@ -33,12 +35,13 @@ final class WatchModel {
         path.append(route)
     }
 
-    /// `-TheoScreen lists|upcoming|priority` opens a page directly (screenshots).
+    /// `-TheoScreen lists|upcoming|priority|detail` opens a page directly (screenshots).
     private func applyLaunchArguments() {
         switch UserDefaults.standard.string(forKey: "TheoScreen") {
         case "lists": path = [.lists]
         case "upcoming": path = [.lists, .upcoming]
         case "priority": path = [.lists, .priority]
+        case "detail": opensFirstTask = true
         default: break
         }
     }
