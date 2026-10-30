@@ -1,8 +1,8 @@
 name: CloudKit schema
 
-# Alternative to "run a development build once": imports cloudkit/schema.ckdb into the app
-# container's Development environment. Afterwards, deploy it to Production once in the
-# CloudKit Console (TestFlight and App Store builds use Production).
+# One click instead of "run a development build once": imports cloudkit/schema.ckdb into the
+# app container's Development environment. Afterwards deploy it to Production once in the
+# CloudKit Console (TestFlight and App Store builds use Production); the run summary links it.
 
 on:
   workflow_dispatch:
@@ -21,7 +21,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check secrets
         run: |
-          [ -n "$CLOUDKIT_MANAGEMENT_TOKEN" ] || { echo "::error::Add the CLOUDKIT_MANAGEMENT_TOKEN secret"; exit 1; }
+          if [ -z "$CLOUDKIT_MANAGEMENT_TOKEN" ]; then
+            msg="Missing repository secret CLOUDKIT_MANAGEMENT_TOKEN. Create one at https://icloud.developer.apple.com (Binisoft team) > Settings > Tokens & Keys > + next to Management Tokens, then add it under Settings > Secrets and variables > Actions."
+            echo "::error::$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"; exit 1
+          fi
           [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Add the APPLE_TEAM_ID repository secret"; exit 1; }
       - name: Resolve container from Config/Base.xcconfig
         run: |
@@ -48,6 +51,26 @@ jobs:
           xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" --environment production --output-file production.ckdb || true
           echo "--- development"; cat development.ckdb
           echo "--- production"; cat production.ckdb || true
+      - name: Next step
+        if: success()
+        run: |
+          {
+            echo "## Development schema imported into \`$CONTAINER_ID\`"
+            echo
+            echo "Last step (TestFlight builds use Production):"
+            echo
+            echo "1. Open https://icloud.developer.apple.com, choose the Binisoft team"
+            echo "2. **CloudKit Database** > container \`$CONTAINER_ID\` > environment **Development**"
+            echo "3. **Deploy Schema Changes…** > **Deploy**"
+            echo
+            if [ -f production.ckdb ] && diff -q <(grep -E "RECORD TYPE|^ *\"?[A-Za-z_]+\"? +(STRING|INT64|DOUBLE|TIMESTAMP|REFERENCE|BYTES|ASSET|LIST)" development.ckdb | sort) \
+                                               <(grep -E "RECORD TYPE|^ *\"?[A-Za-z_]+\"? +(STRING|INT64|DOUBLE|TIMESTAMP|REFERENCE|BYTES|ASSET|LIST)" production.ckdb | sort) >/dev/null; then
+              echo "Production already matches Development, so nothing to deploy."
+            else
+              echo "Production doesn't match Development yet, so deploy it."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish result to ci-cloudkit branch
         if: always()
         env:

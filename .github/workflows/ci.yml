@@ -1,6 +1,8 @@
 name: CI
 
 # Mac minutes count 10x on private repos: build only main and PRs, cancel superseded runs.
+# Every run publishes its status (and errors / screenshots) to the `ci-output` branch.
+# Screenshots: run manually, or put "[screenshots]" in the commit message.
 on:
   push:
     branches: [main]
@@ -8,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       screenshots:
-        description: Capture simulator / Mac screenshots (published to the ci-output branch)
+        description: Capture iPhone / Watch / Mac screenshots (published to the ci-output branch)
         type: boolean
         default: true
       mac_only:
@@ -28,9 +30,11 @@ env:
 
 jobs:
   build:
-    name: Test + build iOS / macOS
+    name: Test + build iOS / watchOS / macOS
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 50
+    env:
+      SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || contains(github.event.head_commit.message, '[screenshots]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +44,10 @@ jobs:
           xcodebuild -version
 
       - name: Unit tests (TheoCore)
-        run: make test
+        id: tests
+        run: |
+          set -o pipefail
+          make test 2>&1 | tee test.log
 
       - name: Generate Xcode project
         run: make generate
@@ -50,29 +57,31 @@ jobs:
         continue-on-error: true
         run: make build-mac XCBEAUTIFY="xcbeautify --renderer github-actions"
 
-      - name: Build iOS app (simulator)
+      # The iOS app embeds the watch app, so its build needs the watchOS platform. Runner
+      # images usually ship it; download only when the matching runtime is missing.
+      - name: watchOS platform
+        if: ${{ !inputs.mac_only }}
+        run: |
+          SDK=$(xcrun --sdk watchsimulator --show-sdk-version)
+          if xcrun simctl list runtimes | grep -q "watchOS ${SDK}"; then
+            echo "watchOS ${SDK} runtime present"
+          else
+            xcrun simctl list runtimes
+            xcodebuild -downloadPlatform watchOS
+          fi
+
+      - name: Build iOS + watchOS apps (simulator)
         id: ios
         if: ${{ !inputs.mac_only }}
         continue-on-error: true
         run: make build-ios XCBEAUTIFY="xcbeautify --renderer github-actions"
-
-      - name: Publish build errors to ci-output branch
-        if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/out"
-          grep -h -E "error:" mac-build.log ios-build.log 2>/dev/null | sort -u | head -200 > "$RUNNER_TEMP/out/errors.txt" || true
-          cat "$RUNNER_TEMP/out/errors.txt"
-          for log in mac-build.log ios-build.log; do [ -f "$log" ] && gzip -c "$log" > "$RUNNER_TEMP/out/$log.gz"; done
-          scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "build ${{ github.run_id }} (failed)"
 
       - name: Fail if a build failed
         if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
         run: exit 1
 
       - name: Simulator screenshots
-        if: github.event_name == 'workflow_dispatch' && inputs.screenshots && !inputs.mac_only
+        if: env.SHOTS == 'true' && !inputs.mac_only
         run: |
           set -x
           APP=build/Build/Products/Debug-iphonesimulator/Theo.app
@@ -100,8 +109,37 @@ jobs:
           shoot priority-dark -TheoScreen priority
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Theo"' --style compact > shots/ios-log.txt 2>&1 || true
 
+      - name: Watch screenshots
+        if: env.SHOTS == 'true' && !inputs.mac_only
+        continue-on-error: true
+        run: |
+          set -x
+          APP=build/Build/Products/Debug-watchsimulator/TheoWatch.app
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for r,l in d.items() if 'watchOS' in r for x in l if x['name'].startswith('Apple Watch')]; c.sort(key=lambda x: ('Series' not in x['name'], 'Ultra' in x['name'])); print(c[0]['udid'] if c else '')")
+          if [ -z "$UDID" ]; then
+            RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x.get('platform')=='watchOS' and x.get('isAvailable')]; print(r[-1]['identifier'] if r else '')")
+            DEVICE_TYPE=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys; t=[x for x in json.load(sys.stdin)['devicetypes'] if x.get('productFamily')=='Apple Watch' and 'Series' in x['name']]; print(t[-1]['identifier'] if t else '')")
+            UDID=$(xcrun simctl create "CI Watch" "$DEVICE_TYPE" "$RUNTIME")
+          fi
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          wshoot() {
+            local name=$1; shift
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+            xcrun simctl launch "$UDID" "$BUNDLE_ID" -TheoDemo "$@"
+            sleep 10
+            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+          }
+          wshoot watch-today
+          wshoot watch-lists -TheoScreen lists
+          wshoot watch-upcoming -TheoScreen upcoming
+          xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "TheoWatch"' --style compact > shots/watch-log.txt 2>&1 || true
+
       - name: macOS screenshot
-        if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+        if: env.SHOTS == 'true'
         continue-on-error: true
         run: |
           mkdir -p shots
@@ -112,11 +150,20 @@ jobs:
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
-      - name: Publish screenshots to ci-output branch
-        if: always() && github.event_name == 'workflow_dispatch' && inputs.screenshots
+      - name: Publish status to ci-output branch
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p "$RUNNER_TEMP/out"
-          cp -R shots "$RUNNER_TEMP/out/" 2>/dev/null || true
-          scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "screenshots ${{ github.run_id }}"
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
+          {
+            echo "run ${{ github.run_number }} (${{ github.event_name }}) ${{ github.sha }}"
+            echo "job=${{ job.status }} tests=${{ steps.tests.outcome }} mac=${{ steps.mac.outcome }} ios+watch=${{ steps.ios.outcome }}"
+          } > "$out/status.txt"
+          cat "$out/status.txt"
+          grep -h -E "error:" mac-build.log ios-build.log 2>/dev/null | sort -u | head -200 > "$out/errors.txt" || true
+          [ -f test.log ] && tail -150 test.log > "$out/test-tail.txt"
+          for log in mac-build.log ios-build.log; do [ -f "$log" ] && gzip -c "$log" > "$out/$log.gz"; done
+          cp -R shots "$out/" 2>/dev/null || true
+          scripts/ci/publish-ci-output.sh "$out" "ci ${{ github.run_id }}: ${{ job.status }}"

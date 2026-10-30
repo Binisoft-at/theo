@@ -172,13 +172,7 @@ enum PageBuilder {
     /// A task belongs on the logical day page starting at `dayStart` if it is still open
     /// (and not deferred past that day) or if it was completed during that day.
     static func isOnToday(_ task: TaskItem, dayStart: Date) -> Bool {
-        guard task.deletedAt == nil else { return false }
-        if task.isDone {
-            guard let completed = task.completedAt else { return false }
-            return completed >= dayStart
-        }
-        if let deferred = task.deferredUntil, deferred > dayStart { return false }
-        return true
+        task.isOnPage(of: dayStart)
     }
 
     static func matches(_ task: TaskItem, search: String) -> Bool {

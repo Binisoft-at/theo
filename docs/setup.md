@@ -6,14 +6,14 @@
 | Home-screen name | Theo |
 | GitHub repo | `Binisoft-at/theo` (private) |
 | Bundle ID (iOS + macOS) / SKU | `at.binisoft.theo` |
+| Watch app bundle ID | `at.binisoft.theo.watchkitapp` (ships inside the iOS app, no extra App Store record) |
 | Own iCloud container | `iCloud.at.binisoft.theo` |
 | Shared iCloud container | `iCloud.at.binisoft.shared` (already exists, just tick it) |
 | Shared App Group | `group.at.binisoft.shared` (already exists, just tick it) |
 | Shared keychain group | `$(AppIdentifierPrefix)at.binisoft.shared` (no portal step) |
 
-Theo has no watch app or extensions yet. Future ones follow `at.binisoft.theo.watchkitapp` and
-`at.binisoft.theo.<extension>`, each needs App Groups ticked. All identifiers are defined in
-[`Config/Base.xcconfig`](../Config/Base.xcconfig).
+Future extensions follow `at.binisoft.theo.<extension>`, each with App Groups ticked. All
+identifiers are defined in [`Config/Base.xcconfig`](../Config/Base.xcconfig).
 
 ## 1. Apple Developer portal
 
@@ -26,6 +26,11 @@ Theo has no watch app or extensions yet. Future ones follow `at.binisoft.theo.wa
    - **App Groups** → **Configure** → tick `group.at.binisoft.shared` → **Continue**
    - **iCloud** → **Configure** → tick `iCloud.at.binisoft.theo` **and** `iCloud.at.binisoft.shared` → **Continue**
    - **Save** (top right) → **Confirm**
+4. Watch app: back to the list → **+** → **App IDs** → **Continue** → **App** → **Continue** →
+   Description `Theo Watch`, Bundle ID **Explicit** `at.binisoft.theo.watchkitapp` → tick
+   **App Groups**, **iCloud** (with CloudKit) and **Push Notifications** → **Continue** → **Register**.
+   Then click **Theo Watch** in the list and configure it exactly like step 3 (same App Group,
+   same two containers) → **Save** → **Confirm**.
 
 ## 2. App Store Connect
 
@@ -51,25 +56,35 @@ Theo has no watch app or extensions yet. Future ones follow `at.binisoft.theo.wa
 
 ## 4. CloudKit schema (before the first syncing TestFlight build)
 
-TestFlight builds use the Production environment, so it needs the schema first:
+TestFlight builds use the Production environment, so it needs the schema first.
 
-1. Create the Development schema with **one** of these:
-   - Run the app once from Xcode (`make open`, set your team in `Config/Local.xcconfig`, ⌘R) and add a task.
-   - Or add a `CLOUDKIT_MANAGEMENT_TOKEN` repository secret and run **Actions → CloudKit schema**.
-2. https://icloud.developer.apple.com → **CloudKit Database** → container `iCloud.at.binisoft.theo`
-   → environment **Development** → **Deploy Schema Changes…** → **Deploy**.
+1. Needs the repository secret `CLOUDKIT_MANAGEMENT_TOKEN` once. If it's missing:
+   https://icloud.developer.apple.com → pick the Binisoft team → **Settings** → **Tokens & Keys**
+   → **+** next to *Management Tokens* → name `Theo CI` → **Create** → copy it → GitHub repo →
+   Settings → Secrets and variables → Actions → **New repository secret**.
+2. https://github.com/Binisoft-at/theo/actions/workflows/cloudkit-schema.yml → **Run workflow**
+   → **Run workflow**. It imports `cloudkit/schema.ckdb` into Development (about a minute).
+3. https://icloud.developer.apple.com → **CloudKit Database** → container `iCloud.at.binisoft.theo`
+   → environment **Development** → **Deploy Schema Changes…** → **Deploy**. The run's summary
+   repeats this step.
+
+Running a Debug build from Xcode once also works instead of step 2: it pushes the full schema
+on first launch (`Persistence.initializeCloudKitSchemaIfNeeded`).
 
 ## 5. Release
 
-- **Actions → TestFlight → Run workflow** (or push a `v*` tag). Signing is automatic through the
-  API key, and the build number is the workflow run number.
-- **Actions → CI** runs on every push to `main` and on PRs: TheoCore unit tests plus iOS and
-  macOS builds.
+- https://github.com/Binisoft-at/theo/actions/workflows/testflight.yml → **Run workflow** →
+  **Run workflow** (or push a `v*` tag). Signing is automatic through the API key, the build
+  number is the workflow run number, and the iOS build carries the watch app. The builds show up
+  in TestFlight about 10–20 minutes after the run finishes.
+- Once they're there, delete the old record (section 2, step 4).
+- **Actions → CI** runs on every push to `main` and on PRs: TheoCore unit tests plus iOS,
+  watchOS and macOS builds. Add `[screenshots]` to a commit message to also get screenshots.
 
 ## Data rules
 
 - Theo's data lives only in `iCloud.at.binisoft.theo` (SwiftData `.private(...)`,
-  `groupContainer: .none`). The shared container is for small cross-app events and summaries,
+  `groupContainer: .none`), on every device including the watch, which syncs on its own. The shared container is for small cross-app events and summaries,
   never Theo's schema.
 - Data in the old `iCloud.com.erblinkastrati.theo` container doesn't move. To carry open tasks
   over: old app → Today → ⋯ → Share as Text, then new app → Today → ⋯ → Import from Notes.

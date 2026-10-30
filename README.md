@@ -2,7 +2,7 @@
 
 <img src="docs/icon/preview-ios.png" width="128" align="right" alt="Theo app icon">
 
-**Your Apple Notes daily-task routine, with a lot more power.** Theo is a native SwiftUI app for iPhone, iPad and Mac. It syncs through your private iCloud, like Notes does.
+**Your Apple Notes daily-task routine, with a lot more power.** Theo is a native SwiftUI app for iPhone, iPad, Mac and Apple Watch. It syncs through your private iCloud, like Notes does.
 
 ## The flow (same as your Notes routine)
 
@@ -29,11 +29,12 @@
 - **"Not Today"** hides a task until tomorrow. A small badge shows how many days a task has been carried over.
 - **Import from Notes**: paste a daily note and Theo turns its checklists into tasks and its headings into groups.
 - **Mac**: keyboard-first (⌘N, ⌘1–6, Space to complete, Return to edit, ⌘[ / ⌘], ⌥⌘1–3 priority), a menu-bar quick entry, and a Settings window.
+- **Apple Watch**: Today on your wrist. Tap a task to check it off, swipe for Not Today / details / delete, add tasks by voice (understands the same `tomorrow 5pm !! @group` shortcuts), plus Upcoming, Priority and every group. Change priority, deadline, group or position from the task's details. It syncs straight through iCloud, so it works without the phone nearby.
 - Light / Dark / System appearance, accent colors (Notes Yellow by default), Liquid Glass on iOS 26 and macOS 26.
 
 ## Tech
 
-- SwiftUI + SwiftData, iOS 26 / macOS 26, Swift 5 language mode. Two targets (`Theo`, `TheoMac`) build one source tree.
+- SwiftUI + SwiftData, iOS 26 / macOS 26 / watchOS 26, Swift 5 language mode. `Theo` (iPhone/iPad) and `TheoMac` build one source tree; `TheoWatch` is embedded in the iOS app and shares the model and store code in `Shared/`.
 - Sync: SwiftData's CloudKit mirroring into the user's private database (`.private("iCloud.at.binisoft.theo")`). It's free and needs no server. The schema is in `cloudkit/schema.ckdb`.
 - Binisoft conventions: every identifier lives in [`Config/Base.xcconfig`](Config/Base.xcconfig). Setup steps for the portal, App Store Connect and GitHub are in [`docs/setup.md`](docs/setup.md).
 
@@ -45,7 +46,8 @@
 | `Config/` | `Base.xcconfig` (identifiers, team, versions), plus Info.plist and entitlements per platform |
 | `Packages/TheoCore` | Platform-independent logic (quick-entry parser, day boundaries, checklist ordering, Notes import) with unit tests |
 | `App/Sources`, `App/Resources` | The app (iOS + macOS) |
-| `Shared/` | Code for the app and future watch/extension targets (identifiers from Info.plist) |
+| `Watch/Sources`, `Watch/Resources` | The Apple Watch app |
+| `Shared/` | Models, store, sync setup and section logic shared by every target |
 | `docs/` | Setup guide, app icon sources |
 | `scripts/ci/` | CI helpers |
 | `.github/workflows/` | `ci.yml`, `testflight.yml`, and the optional `cloudkit-schema.yml` |
@@ -64,9 +66,9 @@ To run on a device or with iCloud from Xcode, copy `Config/Local.xcconfig.exampl
 
 ### CI / TestFlight
 
-- `CI` runs on pushes to `main` and on PRs, and cancels superseded runs (Mac minutes count 10× on private repos). It runs the TheoCore unit tests and builds iOS and macOS. Running it manually also captures screenshots.
+- `CI` runs on pushes to `main` and on PRs, and cancels superseded runs (Mac minutes count 10× on private repos). It runs the TheoCore unit tests and builds iOS (with the watch app) and macOS. It publishes its status to the `ci-output` branch. Running it manually, or `[screenshots]` in the commit message, also captures iPhone, Watch and Mac screenshots.
 - `TestFlight` (manual or a `v*` tag) archives and uploads iOS and macOS builds with automatic signing through the App Store Connect API key. No certificates or profiles are in the repo, and the build number is the run number. It needs the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (team key "Binisoft CI").
-- `CloudKit schema` (optional, manual) imports the schema into Development, as an alternative to running a development build once. It needs `CLOUDKIT_MANAGEMENT_TOKEN`.
+- `CloudKit schema` (manual, one click) imports the schema into Development, then you deploy it to Production in the CloudKit Console. It needs `CLOUDKIT_MANAGEMENT_TOKEN`.
 
 ### Icon
 

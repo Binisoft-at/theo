@@ -1,9 +1,10 @@
 // Binisoft conventions: every identifier lives here, nothing is hard-coded elsewhere.
-// Watch app: $(APP_BUNDLE_ID).watchkitapp · extensions/widgets: $(APP_BUNDLE_ID).<extension>
+// Extensions/widgets: $(APP_BUNDLE_ID).<extension>
 
 BUNDLE_ID_PREFIX = at.binisoft
 DEVELOPMENT_TEAM =
 APP_BUNDLE_ID = $(BUNDLE_ID_PREFIX).theo
+WATCH_BUNDLE_ID = $(APP_BUNDLE_ID).watchkitapp
 APP_CLOUDKIT_CONTAINER = iCloud.$(APP_BUNDLE_ID)
 SHARED_APP_GROUP = group.$(BUNDLE_ID_PREFIX).shared
 SHARED_CLOUDKIT_CONTAINER = iCloud.$(BUNDLE_ID_PREFIX).shared

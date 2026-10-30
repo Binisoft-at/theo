@@ -58,13 +58,20 @@ jobs:
       - name: Generate Xcode project
         run: make generate
 
+      # The iOS app embeds the watch app; download the watchOS platform only if it's missing.
+      - name: watchOS platform
+        if: env.PLATFORMS != 'macos'
+        run: |
+          SDK=$(xcrun --sdk watchsimulator --show-sdk-version)
+          xcrun simctl list runtimes | grep -q "watchOS ${SDK}" || xcodebuild -downloadPlatform watchOS
+
       - name: API key
         run: |
           KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Archive & upload iOS
+      - name: Archive & upload iOS (with the watch app)
         if: env.PLATFORMS != 'macos'
         run: scripts/ci/archive-upload.sh Theo 'generic/platform=iOS' ios
 

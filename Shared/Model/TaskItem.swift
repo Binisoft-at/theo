@@ -71,6 +71,18 @@ extension TaskItem {
     }
 
     func touch() { modifiedAt = Date() }
+
+    /// Whether the task belongs on the daily page starting at `dayStart`: still open (and not
+    /// hidden with "Not Today" past that day), or completed during that day.
+    func isOnPage(of dayStart: Date) -> Bool {
+        guard deletedAt == nil else { return false }
+        if isDone {
+            guard let completedAt else { return false }
+            return completedAt >= dayStart
+        }
+        if let deferredUntil, deferredUntil > dayStart { return false }
+        return true
+    }
 }
 
 extension TaskItem: ChecklistItem {}

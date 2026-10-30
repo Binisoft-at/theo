@@ -3,6 +3,7 @@ options:
   deploymentTarget:
     iOS: "26.0"
     macOS: "26.0"
+    watchOS: "26.0"
   developmentLanguage: en
   createIntermediateGroups: true
   groupSortPosition: top
@@ -34,7 +35,7 @@ packages:
   TheoCore:
     path: Packages/TheoCore
 
-# One source tree (App/Sources + Shared), two targets.
+# One source tree (App/Sources + Shared) for iPhone/iPad and Mac; the watch app shares Shared/.
 targets:
   Theo:
     type: application
@@ -45,6 +46,7 @@ targets:
       - path: Shared
     dependencies:
       - package: TheoCore
+      - target: TheoWatch
     settings:
       base:
         PRODUCT_NAME: Theo
@@ -77,5 +79,26 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
         DEAD_CODE_STRIPPING: YES
+    scheme:
+      testTargets: []
+
+  # Watch companion, embedded in the iOS app ("Embed Watch Content").
+  TheoWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Watch/Sources
+      - path: Watch/Resources
+      - path: Shared
+    dependencies:
+      - package: TheoCore
+    settings:
+      base:
+        PRODUCT_NAME: TheoWatch
+        PRODUCT_BUNDLE_IDENTIFIER: $(WATCH_BUNDLE_ID)
+        INFOPLIST_FILE: Config/watchOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/watchOS/TheoWatch.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
     scheme:
       testTargets: []
