@@ -28,9 +28,11 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Erblin Kastrati</string>
-	<key>TheoCloudKitContainer</key>
-	<string>$(THEO_CLOUDKIT_CONTAINER)</string>
-	<key>TheoSyncEnabled</key>
-	<string>$(THEO_SYNC_ENABLED)</string>
+	<key>AppCloudKitContainer</key>
+	<string>$(APP_CLOUDKIT_CONTAINER)</string>
+	<key>SharedAppGroup</key>
+	<string>$(SHARED_APP_GROUP)</string>
+	<key>SharedCloudKitContainer</key>
+	<string>$(SHARED_CLOUDKIT_CONTAINER)</string>
 </dict>
 </plist>

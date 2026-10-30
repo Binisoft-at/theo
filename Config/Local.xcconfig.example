@@ -1,0 +1,2 @@
+// Copy to Config/Local.xcconfig (git-ignored) to run signed builds from Xcode.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

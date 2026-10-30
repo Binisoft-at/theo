@@ -1,6 +1,6 @@
 # Theo
 
-<img src="design/icon/preview-ios.png" width="128" align="right" alt="Theo app icon">
+<img src="docs/icon/preview-ios.png" width="128" align="right" alt="Theo app icon">
 
 **Your Apple Notes daily-task routine, with a lot more power.** Theo is a native SwiftUI app for iPhone, iPad and Mac. It syncs through your private iCloud, like Notes does.
 
@@ -33,42 +33,41 @@
 
 ## Tech
 
-- SwiftUI + SwiftData, iOS 26 / macOS 26, with two targets (`Theo`, `TheoMac`) sharing all code in `Theo/Shared`.
-- Sync: SwiftData's CloudKit mirroring into the user's private database. It's free and needs no server. The schema is in `cloudkit/schema.ckdb`.
-- The project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`.
+- SwiftUI + SwiftData, iOS 26 / macOS 26, Swift 5 language mode. Two targets (`Theo`, `TheoMac`) build one source tree.
+- Sync: SwiftData's CloudKit mirroring into the user's private database (`.private("iCloud.at.binisoft.theo")`). It's free and needs no server. The schema is in `cloudkit/schema.ckdb`.
+- Binisoft conventions: every identifier lives in [`Config/Base.xcconfig`](Config/Base.xcconfig). Setup steps for the portal, App Store Connect and GitHub are in [`docs/setup.md`](docs/setup.md).
 
-### Identifiers (Binisoft scheme)
+### Repo layout
 
-| | |
+| Path | What's in it |
 | --- | --- |
-| Bundle ID (iOS + macOS) | `at.binisoft.theo` |
-| Extensions / widgets | `at.binisoft.theo.<name>` |
-| iCloud containers | `iCloud.at.binisoft.theo` (Theo's data), `iCloud.at.binisoft.shared` |
-| App Group | `group.at.binisoft.shared` |
-| Keychain group | `$(AppIdentifierPrefix)at.binisoft.shared` |
-
-SwiftData sets both of its choices explicitly, `.private("iCloud.at.binisoft.theo")` and `groupContainer: .none`. With `.automatic`, it would pick the first container and store Theo's database in the shared App Group.
+| `project.yml` | XcodeGen spec. `Theo.xcodeproj` is generated, not committed |
+| `Config/` | `Base.xcconfig` (identifiers, team, versions), plus Info.plist and entitlements per platform |
+| `Packages/TheoCore` | Platform-independent logic (quick-entry parser, day boundaries, checklist ordering, Notes import) with unit tests |
+| `App/Sources`, `App/Resources` | The app (iOS + macOS) |
+| `Shared/` | Code for the app and future watch/extension targets (identifiers from Info.plist) |
+| `docs/` | Setup guide, app icon sources |
+| `scripts/ci/` | CI helpers |
+| `.github/workflows/` | `ci.yml`, `testflight.yml`, and the optional `cloudkit-schema.yml` |
 
 ### Run locally
 
 ```bash
-brew install xcodegen
+make test
 ```
 
 ```bash
-xcodegen generate
+make open
 ```
 
-```bash
-open Theo.xcodeproj
-```
+To run on a device or with iCloud from Xcode, copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and set your `DEVELOPMENT_TEAM`.
 
 ### CI / TestFlight
 
-- `Build` (every push) compiles both apps. Running it manually also captures simulator screenshots.
-- `TestFlight` (manual or a `v*` tag) creates the signing certificates and profiles through the App Store Connect API, checks that the App ID grants every identifier above, then archives and uploads iOS and macOS builds. It uses the `binisoft` organization secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (Admin key). Testers listed in the `TESTFLIGHT_TESTERS` variable (comma-separated) are added to the internal group.
-- `CloudKit schema` (manual) imports `cloudkit/schema.ckdb` into the Development environment of `iCloud.at.binisoft.theo`. It needs a `CLOUDKIT_MANAGEMENT_TOKEN` secret. After it runs, click **Deploy Schema Changes** once in the CloudKit Console so TestFlight builds can sync.
+- `CI` runs on pushes to `main` and on PRs, and cancels superseded runs (Mac minutes count 10× on private repos). It runs the TheoCore unit tests and builds iOS and macOS. Running it manually also captures screenshots.
+- `TestFlight` (manual or a `v*` tag) archives and uploads iOS and macOS builds with automatic signing through the App Store Connect API key. No certificates or profiles are in the repo, and the build number is the run number. It needs the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (team key "Binisoft CI").
+- `CloudKit schema` (optional, manual) imports the schema into Development, as an alternative to running a development build once. It needs `CLOUDKIT_MANAGEMENT_TOKEN`.
 
 ### Icon
 
-`design/icon/make_icon.py` holds the vector source: an abstract butler with a HUD ring, a bow tie, and a shirt front shaped like a check mark. `design/icon/export.sh` regenerates every PNG.
+`docs/icon/make_icon.py` holds the vector source: an abstract butler with a HUD ring, a bow tie, and a shirt front shaped like a check mark. `make icons` regenerates every PNG.

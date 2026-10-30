@@ -1,5 +1,7 @@
 name: TestFlight
 
+# Automatic signing with the App Store Connect API key ("Binisoft CI", Admin):
+# no certificates or profiles live in the repo. Build number = workflow run number.
 on:
   workflow_dispatch:
     inputs:
@@ -19,23 +21,21 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUNDLE_ID: at.binisoft.theo
   XCODE_APP: /Applications/Xcode_26.6.app
-  XCODEGEN_VERSION: 2.46.0
   PLATFORMS: ${{ inputs.platforms || 'both' }}
 
 jobs:
   upload:
     name: Archive & upload
     runs-on: macos-26
-    timeout-minutes: 75
-    # APPLE_TEAM_ID and the ASC_* key are organization secrets of the binisoft org.
+    timeout-minutes: 60
+    # Repository secrets (org secrets don't reach private repos on GitHub Free).
     env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      SIGNING_KEY_PEM: ${{ secrets.SIGNING_KEY_PEM }}
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,7 +46,7 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing secrets (expected as binisoft organization secrets):$missing"
+            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions)"
             exit 1
           fi
 
@@ -56,127 +56,21 @@ jobs:
           xcodebuild -version
 
       - name: Generate Xcode project
-        run: |
-          curl -sSL -o /tmp/xcodegen.zip "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
-          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
-          /tmp/xcodegen/xcodegen/bin/xcodegen generate
+        run: make generate
 
-      - name: Python dependencies
-        run: |
-          python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install --quiet pyjwt cryptography
-
-      - name: Prepare signing (certificates, profiles, keychain)
-        run: |
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 20)
-          echo "::add-mask::$KEYCHAIN_PASSWORD"
-          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
-          echo "KEYCHAIN=$RUNNER_TEMP/theo-signing.keychain-db" >> "$GITHUB_ENV"
-          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py prepare-signing \
-            --bundle-id "$BUNDLE_ID" \
-            --keychain "$RUNNER_TEMP/theo-signing.keychain-db" \
-            --keychain-password "$KEYCHAIN_PASSWORD" \
-            --container iCloud.at.binisoft.theo \
-            --container iCloud.at.binisoft.shared \
-            --app-group group.at.binisoft.shared \
-            --keychain-group at.binisoft.shared \
-            --workdir "$RUNNER_TEMP/signing" 2> >(tee signing.log >&2)
-
-      - name: Store encrypted signing key
-        if: env.SIGNING_KEY_CREATED == 'true'
-        run: |
-          git config user.name "Theo CI"
-          git config user.email "ci@users.noreply.github.com"
-          git add ci/signing-key.enc
-          git commit -m "ci: store encrypted signing key"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          # Without the stored key every run would create another certificate - fail loudly.
-          git push origin "HEAD:${GITHUB_REF_NAME}" || { echo "::error::Could not push ci/signing-key.enc (branch protection?)"; exit 1; }
-
-      - name: API key file and build number
+      - name: API key
         run: |
           KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_ENV"
-          INSTALLER=$(security find-identity -v -p basic "$RUNNER_TEMP/theo-signing.keychain-db" | grep -E "Installer" | head -1 | sed -E 's/.*"(.*)".*/\1/')
-          echo "Installer identity: $INSTALLER"
-          echo "INSTALLER_IDENTITY=$INSTALLER" >> "$GITHUB_ENV"
 
-      - name: Archive iOS
+      - name: Archive & upload iOS
         if: env.PLATFORMS != 'macos'
-        run: |
-          set -o pipefail
-          xcodebuild archive -project Theo.xcodeproj -scheme Theo -configuration Release \
-            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Theo-iOS.xcarchive" \
-            CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" 2>&1 | tee ios-archive.log | xcbeautify --renderer github-actions
+        run: scripts/ci/archive-upload.sh Theo 'generic/platform=iOS' ios
 
-      - name: Upload iOS to TestFlight
-        if: env.PLATFORMS != 'macos'
-        run: |
-          set -o pipefail
-          cat > "$RUNNER_TEMP/ExportIOS.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
-            <key>teamID</key><string>${TEAM_ID}</string>
-            <key>signingStyle</key><string>manual</string>
-            <key>signingCertificate</key><string>Apple Distribution</string>
-            <key>provisioningProfiles</key><dict><key>${BUNDLE_ID}</key><string>${IOS_PROFILE}</string></dict>
-            <key>uploadSymbols</key><true/>
-            <key>manageAppVersionAndBuildNumber</key><false/>
-          </dict></plist>
-          PLIST
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Theo-iOS.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportIOS.plist" -exportPath "$RUNNER_TEMP/export-ios" \
-            -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee ios-upload.log
-
-      - name: Archive macOS
+      - name: Archive & upload macOS
         if: env.PLATFORMS != 'ios'
-        run: |
-          set -o pipefail
-          xcodebuild archive -project Theo.xcodeproj -scheme TheoMac -configuration Release \
-            -destination 'generic/platform=macOS' -archivePath "$RUNNER_TEMP/Theo-macOS.xcarchive" \
-            CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$MAC_PROFILE" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" 2>&1 | tee mac-archive.log | xcbeautify --renderer github-actions
-
-      - name: Upload macOS to TestFlight
-        if: env.PLATFORMS != 'ios'
-        run: |
-          set -o pipefail
-          cat > "$RUNNER_TEMP/ExportMac.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
-            <key>teamID</key><string>${TEAM_ID}</string>
-            <key>signingStyle</key><string>manual</string>
-            <key>signingCertificate</key><string>Apple Distribution</string>
-            <key>installerSigningCertificate</key><string>${INSTALLER_IDENTITY}</string>
-            <key>provisioningProfiles</key><dict><key>${BUNDLE_ID}</key><string>${MAC_PROFILE}</string></dict>
-            <key>uploadSymbols</key><true/>
-            <key>manageAppVersionAndBuildNumber</key><false/>
-          </dict></plist>
-          PLIST
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Theo-macOS.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportMac.plist" -exportPath "$RUNNER_TEMP/export-mac" \
-            -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee mac-upload.log
-
-      - name: TestFlight group
-        continue-on-error: true
-        env:
-          TESTFLIGHT_TESTERS: ${{ vars.TESTFLIGHT_TESTERS }}
-        run: |
-          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py beta-setup --bundle-id "$BUNDLE_ID" 2>&1 | tee beta.log
-          "$RUNNER_TEMP/venv/bin/python" scripts/asc.py status --bundle-id "$BUNDLE_ID" 2>&1 | tee -a beta.log
+        run: scripts/ci/archive-upload.sh TheoMac 'generic/platform=macOS' macos
 
       - name: Publish logs to ci-testflight branch
         if: always()
@@ -186,14 +80,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out"
           for f in *.log; do
             [ -f "$f" ] || continue
-            grep -E "error|Error|ERROR|warning: .*(sign|profile|entitlement)|Upload|upload|succeeded|failed|FAILED|EXPORT|ARCHIVE" "$f" | tail -300 > "$RUNNER_TEMP/out/${f%.log}-summary.txt" || true
+            grep -E "error|Error|ERROR|warning: .*(sign|profile|entitlement|provision)|Upload|upload|succeeded|failed|FAILED|EXPORT|ARCHIVE" "$f" | tail -300 > "$RUNNER_TEMP/out/${f%.log}-summary.txt" || true
             tail -200 "$f" > "$RUNNER_TEMP/out/${f%.log}-tail.txt" || true
           done
-          echo "${{ job.status }}" > "$RUNNER_TEMP/out/status.txt"
-          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "testflight ${{ github.run_id }}" ci-testflight
+          echo "${{ job.status }} build ${BUILD_NUMBER}" > "$RUNNER_TEMP/out/status.txt"
+          scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "testflight ${{ github.run_id }}" ci-testflight
 
-      - name: Clean up keychain
+      - name: Remove API key
         if: always()
-        run: |
-          security delete-keychain "$RUNNER_TEMP/theo-signing.keychain-db" || true
-          rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8

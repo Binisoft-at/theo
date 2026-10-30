@@ -20,3 +20,10 @@ xcuserdata/
 
 # Python
 __pycache__/
+
+# Local build settings / tools
+Config/Local.xcconfig
+.build/
+.swiftpm/
+Packages/*/.build/
+*.log

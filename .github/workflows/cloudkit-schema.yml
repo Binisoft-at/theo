@@ -1,17 +1,14 @@
 name: CloudKit schema
 
-# Imports cloudkit/schema.ckdb into the container's Development environment. Afterwards,
-# open CloudKit Console > Schema > "Deploy Schema Changes…" once to push it to Production,
-# which TestFlight and App Store builds use.
+# Alternative to "run a development build once": imports cloudkit/schema.ckdb into the app
+# container's Development environment. Afterwards, deploy it to Production once in the
+# CloudKit Console (TestFlight and App Store builds use Production).
 
 on:
   workflow_dispatch:
 
 permissions:
   contents: write
-
-env:
-  CONTAINER_ID: iCloud.at.binisoft.theo
 
 jobs:
   import:
@@ -25,10 +22,17 @@ jobs:
       - name: Check secrets
         run: |
           [ -n "$CLOUDKIT_MANAGEMENT_TOKEN" ] || { echo "::error::Add the CLOUDKIT_MANAGEMENT_TOKEN secret"; exit 1; }
-          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::APPLE_TEAM_ID (binisoft organization secret) is not available"; exit 1; }
-      - name: Save token
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Add the APPLE_TEAM_ID repository secret"; exit 1; }
+      - name: Resolve container from Config/Base.xcconfig
         run: |
           sudo xcode-select -s /Applications/Xcode_26.6.app
+          make generate
+          CONTAINER_ID=$(xcodebuild -project Theo.xcodeproj -target Theo -showBuildSettings 2>/dev/null | awk -F' = ' '$1 ~ /^ *APP_CLOUDKIT_CONTAINER$/ {print $2}')
+          [ -n "$CONTAINER_ID" ] || { echo "::error::APP_CLOUDKIT_CONTAINER not found"; exit 1; }
+          echo "Container: $CONTAINER_ID"
+          echo "CONTAINER_ID=$CONTAINER_ID" >> "$GITHUB_ENV"
+      - name: Save token
+        run: |
           xcrun cktool save-token --help || true
           xcrun cktool save-token --type management "$CLOUDKIT_MANAGEMENT_TOKEN" \
             || printf '%s\n' "$CLOUDKIT_MANAGEMENT_TOKEN" | xcrun cktool save-token --type management
@@ -52,4 +56,4 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out"
           cp *.ckdb "$RUNNER_TEMP/out/" 2>/dev/null || true
           echo "${{ job.status }}" > "$RUNNER_TEMP/out/status.txt"
-          scripts/publish-ci-output.sh "$RUNNER_TEMP/out" "cloudkit ${{ github.run_id }}" ci-cloudkit
+          scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "cloudkit ${{ github.run_id }}" ci-cloudkit

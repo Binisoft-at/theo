@@ -26,10 +26,12 @@
 	<string>public.app-category.productivity</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>TheoCloudKitContainer</key>
-	<string>$(THEO_CLOUDKIT_CONTAINER)</string>
-	<key>TheoSyncEnabled</key>
-	<string>$(THEO_SYNC_ENABLED)</string>
+	<key>AppCloudKitContainer</key>
+	<string>$(APP_CLOUDKIT_CONTAINER)</string>
+	<key>SharedAppGroup</key>
+	<string>$(SHARED_APP_GROUP)</string>
+	<key>SharedCloudKitContainer</key>
+	<string>$(SHARED_CLOUDKIT_CONTAINER)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -39,7 +41,7 @@
 	<array>
 		<dict>
 			<key>UIApplicationShortcutItemType</key>
-			<string>at.binisoft.theo.quickentry</string>
+			<string>$(APP_BUNDLE_ID).quickentry</string>
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>Quick Entry</string>
 			<key>UIApplicationShortcutItemIconSymbolName</key>
