@@ -11,8 +11,7 @@ permissions:
   contents: write
 
 env:
-  CONTAINER_ID: iCloud.com.erblinkastrati.theo
-  APPLE_TEAM_ID: GFW7TGCL43
+  CONTAINER_ID: iCloud.at.binisoft.theo
 
 jobs:
   import:
@@ -20,11 +19,13 @@ jobs:
     timeout-minutes: 15
     env:
       CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
       - name: Check secrets
         run: |
           [ -n "$CLOUDKIT_MANAGEMENT_TOKEN" ] || { echo "::error::Add the CLOUDKIT_MANAGEMENT_TOKEN secret"; exit 1; }
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::APPLE_TEAM_ID (binisoft organization secret) is not available"; exit 1; }
       - name: Save token
         run: |
           sudo xcode-select -s /Applications/Xcode_26.6.app

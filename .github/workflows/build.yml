@@ -109,8 +109,8 @@ jobs:
           mkdir -p shots
           shoot() {
             local name=$1; shift
-            xcrun simctl terminate "$UDID" com.erblinkastrati.theo 2>/dev/null || true
-            xcrun simctl launch "$UDID" com.erblinkastrati.theo -TheoDemo "$@"
+            xcrun simctl terminate "$UDID" at.binisoft.theo 2>/dev/null || true
+            xcrun simctl launch "$UDID" at.binisoft.theo -TheoDemo "$@"
             sleep 9
             xcrun simctl io "$UDID" screenshot "shots/$name.png"
           }

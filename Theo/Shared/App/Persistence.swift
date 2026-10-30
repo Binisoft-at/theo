@@ -7,11 +7,11 @@ enum Persistence {
     static let schema = Schema([TaskItem.self, TaskGroup.self])
 
     static var cloudKitContainerID: String {
-        (Bundle.main.object(forInfoDictionaryKey: "TheoCloudKitContainer") as? String) ?? "iCloud.com.erblinkastrati.theo"
+        (Bundle.main.object(forInfoDictionaryKey: "TheoCloudKitContainer") as? String) ?? "iCloud.at.binisoft.theo"
     }
 
-    /// Builds signed before the iCloud container is attached to the App ID ship without the
-    /// iCloud entitlement; they keep everything on the device.
+    /// `THEO_SYNC_ENABLED=NO` builds a local-only app (data stays on the device), e.g. for
+    /// signing without the iCloud entitlement.
     static var syncEnabled: Bool {
         (Bundle.main.object(forInfoDictionaryKey: "TheoSyncEnabled") as? String)?.uppercased() != "NO"
     }
@@ -21,10 +21,14 @@ enum Persistence {
 
     /// The store syncs through the private iCloud database (like Notes). Builds without the
     /// iCloud entitlement (simulator CI builds) fall back to a local-only store.
+    ///
+    /// Both choices are explicit because the entitlements also list the shared Binisoft
+    /// identifiers: `.automatic` would pick the first iCloud container and put the store in the
+    /// shared App Group container.
     @MainActor
     static func makeContainer() -> ModelContainer {
         if isDemo {
-            let config = ModelConfiguration("TheoDemo", schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            let config = ModelConfiguration("TheoDemo", schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none)
             if let container = try? ModelContainer(for: schema, configurations: config) {
                 DemoData.seed(container.mainContext)
                 return container
@@ -32,7 +36,9 @@ enum Persistence {
         }
         if syncEnabled {
             do {
-                let config = ModelConfiguration("Theo", schema: schema, cloudKitDatabase: .automatic)
+                let config = ModelConfiguration(
+                    "Theo", schema: schema, groupContainer: .none, cloudKitDatabase: .private(cloudKitContainerID)
+                )
                 return try ModelContainer(for: schema, configurations: config)
             } catch {
                 print("Theo: CloudKit store unavailable (\(error)). Falling back to local store.")
@@ -40,11 +46,11 @@ enum Persistence {
             }
         }
         do {
-            let config = ModelConfiguration("Theo", schema: schema, cloudKitDatabase: .none)
+            let config = ModelConfiguration("Theo", schema: schema, groupContainer: .none, cloudKitDatabase: .none)
             return try ModelContainer(for: schema, configurations: config)
         } catch {
             print("Theo: local store unavailable (\(error)). Using in-memory store.")
-            let config = ModelConfiguration("TheoMemory", schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            let config = ModelConfiguration("TheoMemory", schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none)
             return try! ModelContainer(for: schema, configurations: config)
         }
     }

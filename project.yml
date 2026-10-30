@@ -1,6 +1,6 @@
 name: Theo
 options:
-  bundleIdPrefix: com.erblinkastrati
+  bundleIdPrefix: at.binisoft
   deploymentTarget:
     iOS: "26.0"
     macOS: "26.0"
@@ -23,7 +23,11 @@ settings:
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
     GENERATE_INFOPLIST_FILE: NO
-    THEO_CLOUDKIT_CONTAINER: iCloud.com.erblinkastrati.theo
+    # Binisoft identifier scheme: app at.binisoft.theo, extensions/widgets at.binisoft.theo.<name>,
+    # own iCloud container iCloud.at.binisoft.theo. The shared Binisoft identifiers
+    # (iCloud.at.binisoft.shared, group.at.binisoft.shared, keychain at.binisoft.shared)
+    # are listed in Config/*/Theo.entitlements.
+    THEO_CLOUDKIT_CONTAINER: iCloud.at.binisoft.theo
     THEO_SYNC_ENABLED: "YES"
   configs:
     Debug:
@@ -42,7 +46,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Theo
-        PRODUCT_BUNDLE_IDENTIFIER: com.erblinkastrati.theo
+        PRODUCT_BUNDLE_IDENTIFIER: at.binisoft.theo
         INFOPLIST_FILE: Config/iOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: Config/iOS/Theo.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -63,7 +67,7 @@ targets:
       base:
         PRODUCT_NAME: Theo
         PRODUCT_MODULE_NAME: Theo
-        PRODUCT_BUNDLE_IDENTIFIER: com.erblinkastrati.theo
+        PRODUCT_BUNDLE_IDENTIFIER: at.binisoft.theo
         INFOPLIST_FILE: Config/macOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: Config/macOS/Theo.entitlements
         ENABLE_HARDENED_RUNTIME: YES

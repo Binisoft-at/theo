@@ -39,7 +39,7 @@
 	<array>
 		<dict>
 			<key>UIApplicationShortcutItemType</key>
-			<string>com.erblinkastrati.theo.quickentry</string>
+			<string>at.binisoft.theo.quickentry</string>
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>Quick Entry</string>
 			<key>UIApplicationShortcutItemIconSymbolName</key>

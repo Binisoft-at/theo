@@ -37,6 +37,18 @@
 - Sync: SwiftData's CloudKit mirroring into the user's private database. It's free and needs no server. The schema is in `cloudkit/schema.ckdb`.
 - The project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`.
 
+### Identifiers (Binisoft scheme)
+
+| | |
+| --- | --- |
+| Bundle ID (iOS + macOS) | `at.binisoft.theo` |
+| Extensions / widgets | `at.binisoft.theo.<name>` |
+| iCloud containers | `iCloud.at.binisoft.theo` (Theo's data), `iCloud.at.binisoft.shared` |
+| App Group | `group.at.binisoft.shared` |
+| Keychain group | `$(AppIdentifierPrefix)at.binisoft.shared` |
+
+SwiftData sets both of its choices explicitly, `.private("iCloud.at.binisoft.theo")` and `groupContainer: .none`. With `.automatic`, it would pick the first container and store Theo's database in the shared App Group.
+
 ### Run locally
 
 ```bash
@@ -54,8 +66,8 @@ open Theo.xcodeproj
 ### CI / TestFlight
 
 - `Build` (every push) compiles both apps. Running it manually also captures simulator screenshots.
-- `TestFlight` (manual or a `v*` tag) creates the signing certificates and profiles through the App Store Connect API, then archives and uploads iOS and macOS builds. Required repository secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` (Admin key) and optionally `APPLE_TEAM_ID`.
-- `CloudKit schema` (manual) imports `cloudkit/schema.ckdb` into the Development environment. It needs `CLOUDKIT_MANAGEMENT_TOKEN` and `APPLE_TEAM_ID`. After it runs, click **Deploy Schema Changes** once in the CloudKit Console so TestFlight builds can sync.
+- `TestFlight` (manual or a `v*` tag) creates the signing certificates and profiles through the App Store Connect API, checks that the App ID grants every identifier above, then archives and uploads iOS and macOS builds. It uses the `binisoft` organization secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (Admin key). Testers listed in the `TESTFLIGHT_TESTERS` variable (comma-separated) are added to the internal group.
+- `CloudKit schema` (manual) imports `cloudkit/schema.ckdb` into the Development environment of `iCloud.at.binisoft.theo`. It needs a `CLOUDKIT_MANAGEMENT_TOKEN` secret. After it runs, click **Deploy Schema Changes** once in the CloudKit Console so TestFlight builds can sync.
 
 ### Icon
 

@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUNDLE_ID: com.erblinkastrati.theo
+  BUNDLE_ID: at.binisoft.theo
   XCODE_APP: /Applications/Xcode_26.6.app
   XCODEGEN_VERSION: 2.46.0
   PLATFORMS: ${{ inputs.platforms || 'both' }}
@@ -29,10 +29,11 @@ jobs:
     name: Archive & upload
     runs-on: macos-26
     timeout-minutes: 75
+    # APPLE_TEAM_ID and the ASC_* key are organization secrets of the binisoft org.
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       SIGNING_KEY_PEM: ${{ secrets.SIGNING_KEY_PEM }}
     steps:
@@ -41,11 +42,11 @@ jobs:
       - name: Check secrets
         run: |
           missing=""
-          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY; do
+          for name in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secrets:$missing"
+            echo "::error::Missing secrets (expected as binisoft organization secrets):$missing"
             exit 1
           fi
 
@@ -75,7 +76,10 @@ jobs:
             --bundle-id "$BUNDLE_ID" \
             --keychain "$RUNNER_TEMP/theo-signing.keychain-db" \
             --keychain-password "$KEYCHAIN_PASSWORD" \
-            --container iCloud.com.erblinkastrati.theo \
+            --container iCloud.at.binisoft.theo \
+            --container iCloud.at.binisoft.shared \
+            --app-group group.at.binisoft.shared \
+            --keychain-group at.binisoft.shared \
             --workdir "$RUNNER_TEMP/signing" 2> >(tee signing.log >&2)
 
       - name: Store encrypted signing key
@@ -86,22 +90,18 @@ jobs:
           git add ci/signing-key.enc
           git commit -m "ci: store encrypted signing key"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::Could not push signing key"
+          # Without the stored key every run would create another certificate - fail loudly.
+          git push origin "HEAD:${GITHUB_REF_NAME}" || { echo "::error::Could not push ci/signing-key.enc (branch protection?)"; exit 1; }
 
       - name: API key file and build number
         run: |
           KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          printf '%s\n' "$ASC_PRIVATE_KEY" | sed 's/\\n/\n/g' > "$KEY_PATH"
+          printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_ENV"
           INSTALLER=$(security find-identity -v -p basic "$RUNNER_TEMP/theo-signing.keychain-db" | grep -E "Installer" | head -1 | sed -E 's/.*"(.*)".*/\1/')
           echo "Installer identity: $INSTALLER"
           echo "INSTALLER_IDENTITY=$INSTALLER" >> "$GITHUB_ENV"
-          if [ "$CLOUDKIT_READY" != "true" ]; then
-            echo "::warning::iCloud container not attached to the App ID yet - this build keeps data on the device only."
-            echo "SYNC_OVERRIDES_IOS=CODE_SIGN_ENTITLEMENTS=Config/iOS/TheoLocal.entitlements THEO_SYNC_ENABLED=NO" >> "$GITHUB_ENV"
-            echo "SYNC_OVERRIDES_MAC=CODE_SIGN_ENTITLEMENTS=Config/macOS/TheoLocal.entitlements THEO_SYNC_ENABLED=NO" >> "$GITHUB_ENV"
-          fi
 
       - name: Archive iOS
         if: env.PLATFORMS != 'macos'
@@ -111,7 +111,7 @@ jobs:
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Theo-iOS.xcarchive" \
             CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" $SYNC_OVERRIDES_IOS 2>&1 | tee ios-archive.log | xcbeautify --renderer github-actions
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" 2>&1 | tee ios-archive.log | xcbeautify --renderer github-actions
 
       - name: Upload iOS to TestFlight
         if: env.PLATFORMS != 'macos'
@@ -144,7 +144,7 @@ jobs:
             -destination 'generic/platform=macOS' -archivePath "$RUNNER_TEMP/Theo-macOS.xcarchive" \
             CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="$MAC_PROFILE" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" $SYNC_OVERRIDES_MAC 2>&1 | tee mac-archive.log | xcbeautify --renderer github-actions
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" 2>&1 | tee mac-archive.log | xcbeautify --renderer github-actions
 
       - name: Upload macOS to TestFlight
         if: env.PLATFORMS != 'ios'

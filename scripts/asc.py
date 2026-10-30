@@ -5,15 +5,19 @@ Commands
   prepare-signing  Ensure an Apple Distribution + Mac Installer certificate exist for the CI
                    signing key, create fresh App Store provisioning profiles for iOS and macOS,
                    and install everything into a keychain on the build machine.
+                   Fails with a checklist if the App ID lacks a required iCloud container,
+                   App Group or keychain group.
   beta-setup       Ensure an internal TestFlight group exists that receives every build and
-                   contains all team members.
+                   contains the people listed in TESTFLIGHT_TESTERS.
+  beta-prune       Remove everyone except the given emails from the internal group.
   status           Print the app record, bundle ID capabilities and latest builds.
 
 Environment
-  ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY   App Store Connect API key (Admin role)
-  SIGNING_KEY_PEM (optional)                   RSA key for the signing certificates. If absent,
-                                               the key is kept AES-encrypted in ci/signing-key.enc,
-                                               keyed by ASC_PRIVATE_KEY.
+  ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8   App Store Connect API key (Admin role)
+  APPLE_TEAM_ID                           Developer team (falls back to the certificate's team)
+  SIGNING_KEY_PEM (optional)              RSA key for the signing certificates. If absent, the
+                                          key is kept AES-encrypted in ci/signing-key.enc, keyed
+                                          by ASC_KEY_P8.
 """
 import argparse
 import base64
@@ -57,7 +61,7 @@ class ASC:
     def __init__(self):
         self.key_id = os.environ["ASC_KEY_ID"].strip()
         self.issuer = os.environ["ASC_ISSUER_ID"].strip()
-        self.private_key = normalize_p8(os.environ["ASC_PRIVATE_KEY"])
+        self.private_key = normalize_p8(os.environ["ASC_KEY_P8"])
         self._token = None
         self._token_time = 0
 
@@ -121,7 +125,7 @@ def normalize_p8(text):
 # ---------------------------------------------------------------------------
 
 def _aes_key():
-    material = normalize_p8(os.environ["ASC_PRIVATE_KEY"]).encode() + b"|theo-signing-v1"
+    material = normalize_p8(os.environ["ASC_KEY_P8"]).encode() + b"|theo-signing-v1"
     return hashlib.sha256(material).digest()
 
 
@@ -203,13 +207,16 @@ def find_bundle_id(api, identifier):
             caps = [inc["attributes"].get("capabilityType") for inc in included if inc["type"] == "bundleIdCapabilities"
                     and inc["id"].startswith(item["id"])]
             return item, caps
-    raise RuntimeError(f"Bundle ID {identifier} is not registered. Register it at developer.apple.com > Identifiers.")
+    raise RuntimeError(
+        f"Bundle ID {identifier} is not registered. Register it at developer.apple.com > Identifiers "
+        "(App IDs > App) with iCloud (CloudKit), App Groups and Push Notifications enabled.")
 
 
 def ensure_capabilities(api, bundle, caps):
     wanted = {
         "ICLOUD": [{"key": "ICLOUD_VERSION", "options": [{"key": "XCODE_6"}]}],
         "PUSH_NOTIFICATIONS": None,
+        "APP_GROUPS": None,
     }
     for cap, settings in wanted.items():
         if cap in caps:
@@ -327,6 +334,21 @@ def install_profile(uuid, content):
 # Commands
 # ---------------------------------------------------------------------------
 
+def missing_entitlements(ents, args, team):
+    """Identifiers requested by the app's entitlements that the provisioning profile doesn't grant."""
+    missing = []
+    containers = ents.get("com.apple.developer.icloud-container-identifiers") or []
+    missing += [f"iCloud container {c}" for c in args.container if c not in containers]
+    groups = ents.get("com.apple.security.application-groups") or []
+    missing += [f"App Group {g}" for g in args.app_group if g not in groups]
+    keychain = ents.get("keychain-access-groups") or []
+    for group in args.keychain_group:
+        wanted = f"{team}.{group}"
+        if wanted not in keychain and f"{team}.*" not in keychain:
+            missing.append(f"keychain group {wanted}")
+    return missing
+
+
 def cmd_prepare_signing(args):
     api = ASC()
     key, created = load_or_create_signing_key()
@@ -337,19 +359,24 @@ def cmd_prepare_signing(args):
     log(f"bundle id {bundle['id']} platform={bundle['attributes'].get('platform')} capabilities={caps}")
     ensure_capabilities(api, bundle, caps)
 
-    ios_name, ios_uuid, ios_content = create_profile(api, "Theo CI iOS App Store", "IOS_APP_STORE", bundle["id"], dist_id)
-    mac_name, mac_uuid, mac_content = create_profile(api, "Theo CI macOS App Store", "MAC_APP_STORE", bundle["id"], dist_id)
-    cloudkit_ready = True
+    ios_name, ios_uuid, ios_content = create_profile(
+        api, f"Theo CI iOS App Store {args.bundle_id}", "IOS_APP_STORE", bundle["id"], dist_id)
+    mac_name, mac_uuid, mac_content = create_profile(
+        api, f"Theo CI macOS App Store {args.bundle_id}", "MAC_APP_STORE", bundle["id"], dist_id)
+    missing = []
     for label, content in [("iOS", ios_content), ("macOS", mac_content)]:
         ents = profile_entitlements(content).get("Entitlements", {})
-        log(f"{label} profile entitlements: " + json.dumps({k: v for k, v in ents.items()
-                                                           if "icloud" in k or "aps" in k}, default=str))
-        containers = ents.get("com.apple.developer.icloud-container-identifiers") or []
-        if args.container not in containers:
-            cloudkit_ready = False
-    if not cloudkit_ready:
-        log(f"warning: {args.container} is not attached to the App ID yet; building without iCloud sync. "
-            "Attach it at developer.apple.com > Identifiers > App ID > iCloud > Edit.")
+        log(f"{label} profile entitlements: " + json.dumps(
+            {k: v for k, v in ents.items() if "icloud" in k or "aps" in k or "group" in k}, default=str))
+        missing += [f"{label}: {item}" for item in missing_entitlements(ents, args, team)]
+    if missing:
+        raise RuntimeError(
+            f"The App ID {args.bundle_id} is missing identifiers the app's entitlements request:\n  - "
+            + "\n  - ".join(missing)
+            + "\nFix at developer.apple.com > Identifiers > " + args.bundle_id + ":\n"
+            "  iCloud > Edit: tick " + ", ".join(args.container) + "\n"
+            "  App Groups > Edit: tick " + ", ".join(args.app_group) + "\n"
+            "Then re-run the workflow.")
 
     os.makedirs(args.workdir, exist_ok=True)
     install_keychain(args.keychain, args.keychain_password, key, dist_cert, inst_cert, args.workdir)
@@ -363,14 +390,12 @@ def cmd_prepare_signing(args):
         "mac_profile_name": mac_name,
         "mac_profile_uuid": mac_uuid,
         "signing_key_created": created,
-        "cloudkit_ready": cloudkit_ready,
     }
     print(json.dumps(out))
     if args.github_env:
         with open(args.github_env, "a") as f:
             f.write(f"TEAM_ID={team}\nIOS_PROFILE={ios_name}\nMAC_PROFILE={mac_name}\n")
             f.write(f"SIGNING_KEY_CREATED={'true' if created else 'false'}\n")
-            f.write(f"CLOUDKIT_READY={'true' if cloudkit_ready else 'false'}\n")
 
 
 def find_app(api, bundle_id):
@@ -468,7 +493,11 @@ def main():
     p = sub.add_parser("prepare-signing")
     p.add_argument("--bundle-id", required=True)
     p.add_argument("--keychain", required=True)
-    p.add_argument("--container", default="iCloud.com.erblinkastrati.theo")
+    p.add_argument("--container", action="append", required=True,
+                   help="iCloud container the app needs (repeatable)")
+    p.add_argument("--app-group", action="append", default=[], help="App Group the app needs (repeatable)")
+    p.add_argument("--keychain-group", action="append", default=[],
+                   help="keychain access group without the team prefix (repeatable)")
     p.add_argument("--keychain-password", required=True)
     p.add_argument("--workdir", default="/tmp/theo-signing")
     p.add_argument("--github-env", default=os.environ.get("GITHUB_ENV"))
