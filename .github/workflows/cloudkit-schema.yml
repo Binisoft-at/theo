@@ -18,14 +18,36 @@ jobs:
       CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # Reports every secret Theo's workflows use, so one run shows what the repo can see.
       - name: Check secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
-          if [ -z "$CLOUDKIT_MANAGEMENT_TOKEN" ]; then
-            msg="Missing repository secret CLOUDKIT_MANAGEMENT_TOKEN. Create one at https://icloud.developer.apple.com (Binisoft team) > Settings > Tokens & Keys > + next to Management Tokens, then add it under Settings > Secrets and variables > Actions."
-            echo "::error::$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"; exit 1
+          {
+            echo "## Repository secrets"
+            echo
+            echo "| Secret | Used by | Visible to this repo |"
+            echo "| --- | --- | --- |"
+            for entry in CLOUDKIT_MANAGEMENT_TOKEN:"CloudKit schema" APPLE_TEAM_ID:"CloudKit schema, TestFlight" \
+                         ASC_KEY_ID:TestFlight ASC_ISSUER_ID:TestFlight ASC_KEY_P8:TestFlight; do
+              name=${entry%%:*}
+              [ -n "${!name}" ] && state="yes" || state="**missing**"
+              echo "| \`$name\` | ${entry#*:} | $state |"
+            done
+            echo
+            echo "Missing ones go under Settings > Secrets and variables > Actions > **Repository secrets**."
+            echo "Organization secrets don't reach private repositories on GitHub Free."
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+          missing=""
+          for name in CLOUDKIT_MANAGEMENT_TOKEN APPLE_TEAM_ID; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions > Repository secrets; organization secrets don't reach private repos on GitHub Free)"
+            exit 1
           fi
-          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::Add the APPLE_TEAM_ID repository secret"; exit 1; }
       - name: Resolve container from Config/Base.xcconfig
         run: |
           sudo xcode-select -s /Applications/Xcode_26.6.app

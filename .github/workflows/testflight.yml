@@ -37,7 +37,7 @@ jobs:
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check secrets
         run: |
@@ -46,7 +46,7 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions)"
+            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions > Repository secrets; organization secrets don't reach private repos on GitHub Free)"
             exit 1
           fi
 

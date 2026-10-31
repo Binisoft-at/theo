@@ -36,7 +36,7 @@ jobs:
     env:
       SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || contains(github.event.head_commit.message, '[screenshots]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Select Xcode
         run: |
