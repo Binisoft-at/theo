@@ -45,6 +45,7 @@ jobs:
 
       - name: Unit tests (TheoCore)
         id: tests
+        continue-on-error: true
         run: |
           set -o pipefail
           make test 2>&1 | tee test.log
@@ -76,8 +77,8 @@ jobs:
         continue-on-error: true
         run: make build-ios XCBEAUTIFY="xcbeautify --renderer github-actions"
 
-      - name: Fail if a build failed
-        if: steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
+      - name: Fail if tests or a build failed
+        if: steps.tests.outcome == 'failure' || steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
         run: exit 1
 
       - name: Simulator screenshots

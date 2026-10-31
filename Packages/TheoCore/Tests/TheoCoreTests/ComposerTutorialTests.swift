@@ -78,8 +78,10 @@ struct TutorialTests {
 
     @Test func addingATask() {
         var tracker = TutorialTracker(baseline: snapshot(tasks: 3))
-        #expect(!tracker.isMet(.addTask, now: snapshot(tasks: 3)))
-        #expect(tracker.isMet(.addTask, now: snapshot(tasks: 4)))
+        let met1 = tracker.isMet(.addTask, now: snapshot(tasks: 3))
+        #expect(!met1)
+        let met2 = tracker.isMet(.addTask, now: snapshot(tasks: 4))
+        #expect(met2)
     }
 
     @Test func shortcutsNeedDeadlineAndPriority() {
@@ -89,10 +91,12 @@ struct TutorialTests {
         var onlyDate = base
         onlyDate.taskCount = 4
         onlyDate.datedCount = 2
-        #expect(!tracker.isMet(.addTaskWithDetails, now: onlyDate))
+        let met3 = tracker.isMet(.addTaskWithDetails, now: onlyDate)
+        #expect(!met3)
         var both = onlyDate
         both.prioritizedCount = 1
-        #expect(tracker.isMet(.addTaskWithDetails, now: both))
+        let met4 = tracker.isMet(.addTaskWithDetails, now: both)
+        #expect(met4)
     }
 
     @Test func reorderIgnoresAddingAndRemoving() {
@@ -101,23 +105,28 @@ struct TutorialTests {
         var tracker = TutorialTracker(baseline: base)
         var added = base
         added.order = ["a", "b", "c", "d"]
-        #expect(!tracker.isMet(.reorder, now: added))
+        let met5 = tracker.isMet(.reorder, now: added)
+        #expect(!met5)
         var moved = base
         moved.order = ["c", "a", "b"]
-        #expect(tracker.isMet(.reorder, now: moved))
+        let met6 = tracker.isMet(.reorder, now: moved)
+        #expect(met6)
     }
 
     @Test func deleteThenUndo() {
         var tracker = TutorialTracker(baseline: snapshot(tasks: 3))
         var deleted = snapshot(tasks: 2)
         deleted.deletedCount = 1
-        #expect(!tracker.isMet(.deleteAndUndo, now: deleted))
-        #expect(tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3)))
+        let met7 = tracker.isMet(.deleteAndUndo, now: deleted)
+        #expect(!met7)
+        let met8 = tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3))
+        #expect(met8)
     }
 
     @Test func undoWithoutDeleteDoesNotCount() {
         var tracker = TutorialTracker(baseline: snapshot(tasks: 3))
-        #expect(!tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3)))
+        let met9 = tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3))
+        #expect(!met9)
     }
 
     @Test func restartForgetsThePreviousStep() {
@@ -126,7 +135,8 @@ struct TutorialTests {
         deleted.deletedCount = 1
         _ = tracker.isMet(.deleteAndUndo, now: deleted)
         tracker.restart(at: snapshot(tasks: 3))
-        #expect(!tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3)))
+        let met10 = tracker.isMet(.deleteAndUndo, now: snapshot(tasks: 3))
+        #expect(!met10)
     }
 
     private func snapshot(tasks: Int) -> TutorialSnapshot {
