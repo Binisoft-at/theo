@@ -167,7 +167,7 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "subtask", since: 1, symbol: "arrow.turn.down.right",
             title: "Break it down",
-            body: "Touch and hold \u{201C}Call grandma\u{201D} and tap Add Subtask. While editing a line, the ⇥ button above the keyboard indents it. In the bottom bar, start with \u{201C}- \u{201D} to add a subtask to the task you just added.",
+            body: "Touch and hold \u{201C}Call grandma\u{201D} → Add Subtask. While editing a line, ⇥ above the keyboard indents it, and in the bottom bar \u{201C}- \u{201D} files a line under the task you just added.",
             macBody: "Right-click \u{201C}Call grandma\u{201D} and choose Add Subtask (⌥⌘N). While editing a line, Tab indents and Shift-Tab outdents. In the bottom bar, start with \u{201C}- \u{201D} to add a subtask to the task you just added.",
             goal: .addSubtask
         ),
@@ -203,7 +203,7 @@ public enum TutorialCatalog {
             id: "group", since: 1, symbol: "folder.badge.plus",
             title: "Groups are headings",
             body: "Tap the folder button at the top to add a heading like Work or Home. Tap a heading to fold it, and drag tasks between headings.",
-            macBody: "Click the folder button in the toolbar to add a heading like Work or Home. Click a heading to fold it, and drag tasks between headings.",
+            macBody: "Press ⇧⌘N (File → New Group…) to add a heading like Work or Home. In the main window it's also the folder button in the toolbar. Click a heading to fold it, and drag tasks between headings.",
             goal: .addGroup
         ),
         TutorialStep(

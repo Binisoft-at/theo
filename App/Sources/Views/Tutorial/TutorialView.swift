@@ -209,7 +209,7 @@ struct TutorialCoach: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: isMet ? "checkmark.circle.fill" : step.symbol)
                     .font(.title2)
@@ -267,7 +267,8 @@ struct TutorialCoach: View {
                 }
             }
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .glassEffect(.regular, in: .rect(cornerRadius: 22))
         .padding(.horizontal, 12)
         .padding(.top, 6)
