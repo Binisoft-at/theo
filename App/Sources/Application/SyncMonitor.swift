@@ -35,10 +35,16 @@ final class SyncMonitor {
 
     func refreshAccount() {
         guard !Persistence.isDemo else { return }
-        Task.detached(priority: .utility) { [weak self] in
-            let signedIn = FileManager.default.ubiquityIdentityToken != nil
-            await MainActor.run { self?.hasICloudAccount = signedIn }
+        Task { [weak self] in
+            let signedIn = await Self.isSignedInToICloud()
+            self?.hasICloudAccount = signedIn
         }
+    }
+
+    private nonisolated static func isSignedInToICloud() async -> Bool {
+        await Task.detached(priority: .utility) {
+            FileManager.default.ubiquityIdentityToken != nil
+        }.value
     }
 
     private func handle(ended: Date?, succeeded: Bool, error: String?) {
