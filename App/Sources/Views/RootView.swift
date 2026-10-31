@@ -76,7 +76,7 @@ struct RootView: View {
         #else
         .sheet(item: $app.tour) { request in
             TutorialView(steps: request.steps) { app.finishTour() }
-                .frame(minWidth: 820, idealWidth: 900, minHeight: 720, idealHeight: 800)
+                .frame(minWidth: 760, idealWidth: 900, minHeight: 600, idealHeight: 780)
         }
         #endif
         .onAppear {

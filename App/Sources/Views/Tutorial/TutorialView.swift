@@ -9,6 +9,8 @@ struct TutorialView: View {
     let onFinish: () -> Void
 
     @State private var sandbox = TutorialSandbox()
+    /// The real app's model (this view sits outside the sandbox environment).
+    @Environment(AppModel.self) private var hostApp
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
 
     private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
@@ -20,6 +22,9 @@ struct TutorialView: View {
             // Practice-page settings (grouping, folded sections ...) never touch the real ones.
             .defaultAppStorage(sandbox.defaults)
             .tint(accent)
+            // Menu-bar commands (⌘N, ⌥⌘1 ...) act on the practice page while the tour is open.
+            .onAppear { hostApp.tourModel = sandbox.app }
+            .onDisappear { hostApp.tourModel = nil }
     }
 }
 
@@ -95,20 +100,21 @@ struct TutorialStage: View {
     var body: some View {
         let snapshot = currentSnapshot
         NavigationStack {
+            // Below the navigation bar, so its buttons stay reachable for the steps that use them.
             TodayView(dayStart: app.dayStart)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    TutorialCoach(
+                        step: step,
+                        index: index,
+                        count: steps.count,
+                        isMet: isMet,
+                        onBack: back,
+                        onNext: next,
+                        onClose: onClose
+                    )
+                }
         }
         .modifier(AppChrome(app: app, accent: accent))
-        .safeAreaInset(edge: .top, spacing: 0) {
-            TutorialCoach(
-                step: step,
-                index: index,
-                count: steps.count,
-                isMet: isMet,
-                onBack: back,
-                onNext: next,
-                onClose: onClose
-            )
-        }
         .onAppear {
             app.container.mainContext.undoManager = undoManager
             applyLaunchStep()
@@ -244,11 +250,20 @@ struct TutorialCoach: View {
                         Button("Back", action: onBack)
                             .buttonStyle(.borderless)
                     }
-                    Button(action: onNext) {
-                        Text(nextTitle)
-                            .frame(minWidth: 64)
+                    if step.goal != .none && !isMet {
+                        // Skipping is fine, but doing the step is the main path.
+                        Button(action: onNext) {
+                            Text(nextTitle)
+                                .frame(minWidth: 52)
+                        }
+                        .buttonStyle(.glass)
+                    } else {
+                        Button(action: onNext) {
+                            Text(nextTitle)
+                                .frame(minWidth: 64)
+                        }
+                        .buttonStyle(.glassProminent)
                     }
-                    .buttonStyle(.glassProminent)
                 }
             }
         }

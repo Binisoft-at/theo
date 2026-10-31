@@ -70,6 +70,11 @@ final class AppModel {
     var showSettings = false
     var toast: Toast?
     var tour: TourRequest?
+    /// The tour's practice-page model while the tour is open; menu commands go there.
+    var tourModel: AppModel?
+
+    /// Where menu-bar commands act: the practice page during the tour, otherwise this model.
+    var commandTarget: AppModel { tourModel ?? self }
 
     /// Parents whose subtasks are folded away (this device only).
     private(set) var collapsedTaskIDs: Set<UUID> = []
