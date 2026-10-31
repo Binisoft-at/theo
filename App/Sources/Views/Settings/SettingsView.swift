@@ -96,6 +96,28 @@ struct SettingsView: View {
                 Text("Theo syncs through your private iCloud database, just like Notes. Nothing leaves your Apple account.")
             }
 
+            Section {
+                Button {
+                    #if os(iOS)
+                    app.showSettings = false
+                    let model = app
+                    Task { @MainActor in
+                        // Let the settings sheet finish closing before the tour covers the screen.
+                        try? await Task.sleep(for: .milliseconds(450))
+                        model.startTour()
+                    }
+                    #else
+                    app.startTour()
+                    #endif
+                } label: {
+                    Label("Take the Tour", systemImage: "graduationcap")
+                }
+            } header: {
+                Text("Help")
+            } footer: {
+                Text("A hands-on tour of adding, subtasks, priorities, gestures and undo, on a practice page.")
+            }
+
             Section("Data") {
                 Button {
                     #if os(iOS)

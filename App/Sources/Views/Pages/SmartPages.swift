@@ -31,8 +31,10 @@ struct GroupPageView: View {
             if task.isDone { return showAllCompleted || (task.completedAt ?? .distantPast) >= app.dayStart }
             return true
         }
-        let ordered = PageBuilder.ordered(mine, completed: completed)
-        let rows = ordered.map { ListRow.task($0.task, depth: $0.depth, style: RowStyle(showDeferred: true)) }
+        let rows = PageBuilder.taskRows(
+            mine,
+            options: PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs)
+        )
         let open = mine.filter { !$0.isDone }.count
         let name = group?.displayName ?? "Quick Entry"
 

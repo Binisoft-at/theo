@@ -22,6 +22,12 @@ struct Toast: Identifiable, Equatable {
     static func == (lhs: Toast, rhs: Toast) -> Bool { lhs.id == rhs.id }
 }
 
+/// A request to show the interactive tour (all of it, or only what's new).
+struct TourRequest: Identifiable {
+    let id = UUID()
+    let steps: [TutorialStep]
+}
+
 /// A sheet that acts on one or more tasks.
 struct TaskBatch: Identifiable {
     let id = UUID()
@@ -46,6 +52,8 @@ enum GroupEditorTarget: Identifiable {
 final class AppModel {
     let container: ModelContainer
     let sync: SyncMonitor
+    /// The tour's practice page: nothing is remembered and nothing leaves the page.
+    let isSandbox: Bool
 
     var selection: SidebarItem? = .today
     var compactColumn: NavigationSplitViewColumn = .detail
@@ -61,6 +69,12 @@ final class AppModel {
     var showImport = false
     var showSettings = false
     var toast: Toast?
+    var tour: TourRequest?
+
+    /// Parents whose subtasks are folded away (this device only).
+    private(set) var collapsedTaskIDs: Set<UUID> = []
+    /// A task that should start inline editing as soon as its list shows it.
+    var pendingEditTaskID: UUID?
 
     /// Set to focus the quick entry field; the field resets it once focused.
     var wantsQuickEntryFocus = false
@@ -75,10 +89,14 @@ final class AppModel {
     /// Start of the current logical day, refreshed by `refreshDay()`.
     var dayStart: Date
 
-    init(container: ModelContainer) {
+    init(container: ModelContainer, isSandbox: Bool = false) {
         self.container = container
+        self.isSandbox = isSandbox
         self.sync = SyncMonitor()
         self.dayStart = DayBoundary.current.start(of: Date())
+        guard !isSandbox else { return }
+        let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []
+        collapsedTaskIDs = Set(stored.compactMap(UUID.init(uuidString:)))
         applyLaunchArguments()
         if let selection { phonePath = NavigationPath([selection]) }
         AppModel.shared = self
@@ -140,6 +158,67 @@ final class AppModel {
         store.toggle(task)
     }
 
+    /// Files tasks under another group, with Undo.
+    func move(_ tasks: [TaskItem], toGroup groupID: UUID?) {
+        let moved = tasks.flatMap { store.layout(for: $0.groupID).block(of: $0) }
+        let before = moved.map { (task: $0, group: $0.group, order: $0.sortOrder, indent: $0.indent) }
+        store.move(tasks, toGroup: groupID)
+        let name = store.group(id: groupID)?.displayName ?? "Quick Entry"
+        show("Moved to \(name)", symbol: "folder.fill") { [weak self] in
+            for item in before {
+                item.task.group = item.group
+                item.task.sortOrder = item.order
+                item.task.indent = item.indent
+                item.task.touch()
+            }
+            self?.store.save()
+        }
+    }
+
+    /// Folds or unfolds a parent's subtasks.
+    func toggleSubtasks(_ task: TaskItem) {
+        if collapsedTaskIDs.contains(task.uuid) {
+            collapsedTaskIDs.remove(task.uuid)
+        } else {
+            collapsedTaskIDs.insert(task.uuid)
+        }
+        saveCollapsed()
+    }
+
+    private func saveCollapsed() {
+        guard !isSandbox else { return }
+        UserDefaults.standard.set(collapsedTaskIDs.map(\.uuidString), forKey: Prefs.collapsedTasks)
+    }
+
+    /// Adds an empty subtask under `parent` (unfolding it) and starts editing it.
+    func addSubtask(to parent: TaskItem) {
+        if collapsedTaskIDs.contains(parent.uuid) {
+            collapsedTaskIDs.remove(parent.uuid)
+            saveCollapsed()
+        }
+        let child = store.addSubtask(ParsedEntry(title: ""), to: parent)
+        pendingEditTaskID = child.uuid
+    }
+
+    // MARK: - Tour
+
+    /// Shows the tour on first launch, or the steps added since the last one someone saw.
+    func offerTourIfNeeded() {
+        guard !isSandbox, !Persistence.isDemo, tour == nil else { return }
+        let steps = TutorialCatalog.steps(newerThan: UserDefaults.standard.integer(forKey: Prefs.tourSeenVersion))
+        guard !steps.isEmpty else { return }
+        tour = TourRequest(steps: steps)
+    }
+
+    func startTour() {
+        tour = TourRequest(steps: TutorialCatalog.steps)
+    }
+
+    func finishTour() {
+        UserDefaults.standard.set(TutorialCatalog.version, forKey: Prefs.tourSeenVersion)
+        tour = nil
+    }
+
     func deferToTomorrow(_ tasks: [TaskItem]) {
         let boundary = DayBoundary.current
         let tomorrow = boundary.dayStart(byAdding: 1, to: dayStart)
@@ -161,6 +240,7 @@ final class AppModel {
 
     private func applyLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("-TheoTour") { startTour() }
         if let index = args.firstIndex(of: "-TheoScreen"), index + 1 < args.count {
             switch args[index + 1] {
             case "upcoming": selection = .upcoming

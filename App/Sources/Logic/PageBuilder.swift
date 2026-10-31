@@ -34,6 +34,11 @@ struct SectionHeaderInfo: Identifiable {
 struct RowStyle {
     var showGroup = false
     var showDeferred = false
+    /// Subtasks below this line (all levels), and how many of them are done.
+    var subtaskCount = 0
+    var subtasksDone = 0
+    /// The subtasks are folded away.
+    var subtasksFolded = false
 }
 
 /// The flat row model behind every task list. Headers are rows too, exactly like headings
@@ -62,12 +67,33 @@ enum PageBuilder {
         var completed: CompletedMode = .bottom
         var style = RowStyle()
         var showEmptyPlaceholders = true
+        /// Parents whose subtasks are folded away.
+        var collapsedTasks: Set<UUID> = []
     }
 
-    /// Orders one section like a checklist: manual order, nested by indent, with completed
-    /// items sinking to the bottom of their level (most recently completed first).
-    static func ordered(_ tasks: [TaskItem], completed: CompletedMode) -> [(task: TaskItem, depth: Int)] {
-        Checklist.displayOrder(tasks, showCompleted: completed == .bottom).map { (task: $0.item, depth: $0.depth) }
+    /// One section's task rows: nested, completed lines at the bottom of their level, parents
+    /// carrying their subtask counts, and the subtasks of folded parents left out.
+    static func taskRows(_ tasks: [TaskItem], options: Options) -> [ListRow] {
+        let all = Checklist.displayOrder(tasks, showCompleted: true)
+        let depths = all.map(\.depth)
+        var rows: [ListRow] = []
+        var index = 0
+        while index < all.count {
+            let task = all[index].item
+            let end = Checklist.blockEnd(after: index, depths: depths)
+            if task.isDone && options.completed == .hide {
+                index = end
+                continue
+            }
+            let children = all[(index + 1)..<end].map(\.item)
+            var style = options.style
+            style.subtaskCount = children.count
+            style.subtasksDone = children.filter(\.isDone).count
+            style.subtasksFolded = !children.isEmpty && options.collapsedTasks.contains(task.uuid)
+            rows.append(.task(task, depth: all[index].depth, style: style))
+            index = style.subtasksFolded ? end : index + 1
+        }
+        return rows
     }
 
     /// A Notes-style page: Quick Entry on top, then every group heading with its tasks.
@@ -158,13 +184,11 @@ enum PageBuilder {
             collapsible: true
         )))
         guard !collapsed else { return }
-        let ordered = ordered(tasks, completed: options.completed)
-        if ordered.isEmpty, options.showEmptyPlaceholders, let placeholder {
+        let lines = taskRows(tasks, options: options)
+        if lines.isEmpty, options.showEmptyPlaceholders, let placeholder {
             rows.append(.placeholder(id: id, text: placeholder))
         }
-        for item in ordered {
-            rows.append(.task(item.task, depth: item.depth, style: options.style))
-        }
+        rows += lines
     }
 
     // MARK: - Filters

@@ -104,9 +104,12 @@ jobs:
           shoot sidebar-light -TheoScreen sidebar
           shoot upcoming-light -TheoScreen upcoming
           shoot history-light -TheoScreen history
+          shoot tour-light -TheoTour
+          shoot tour-subtask-light -TheoTour -TheoTourStep subtask
           xcrun simctl ui "$UDID" appearance dark
           shoot today-dark -TheoScreen today
           shoot priority-dark -TheoScreen priority
+          shoot tour-priority-dark -TheoTour -TheoTourStep priority
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Theo"' --style compact > shots/ios-log.txt 2>&1 || true
 
       - name: Watch screenshots
@@ -148,6 +151,11 @@ jobs:
           open --stdout "$PWD/shots/mac-stdout.txt" --stderr "$PWD/shots/mac-stdout.txt" "$APP" --args -TheoDemo -TheoScreen today
           sleep 15
           screencapture -x shots/mac-today.png || true
+          pkill -x Theo || true
+          sleep 2
+          open "$APP" --args -TheoDemo -TheoTour -TheoTourStep subtask
+          sleep 12
+          screencapture -x shots/mac-tour.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 

@@ -12,10 +12,32 @@ struct TaskMenuItems: View {
     private var allDone: Bool { tasks.allSatisfy(\.isDone) }
 
     var body: some View {
+        // One tap from the menu: ! / !! / !!!. Tapping the current level clears it.
+        ControlGroup {
+            ForEach([Priority.low, .medium, .high]) { level in
+                Button {
+                    let all = tasks.allSatisfy { $0.priority == level }
+                    app.store.setPriority(tasks, all ? .normal : level)
+                } label: {
+                    Label(level.title, systemImage: tasks.allSatisfy { $0.priority == level } ? "checkmark" : level.symbol)
+                }
+            }
+        } label: {
+            Label("Priority", systemImage: "exclamationmark.circle")
+        }
+
         Button {
             withAnimation(.snappy) { app.store.setDone(tasks, !allDone) }
         } label: {
             Label(allDone ? "Mark as Not Done" : "Mark as Done", systemImage: allDone ? "circle" : "checkmark.circle")
+        }
+
+        if let single {
+            Button {
+                withAnimation(.snappy) { app.addSubtask(to: single) }
+            } label: {
+                Label("Add Subtask", systemImage: "arrow.turn.down.right")
+            }
         }
 
         if let single, let onEdit {
@@ -27,22 +49,6 @@ struct TaskMenuItems: View {
             } label: {
                 Label("Details…", systemImage: "info.circle")
             }
-        }
-
-        Menu {
-            ForEach(Priority.allCases.reversed()) { priority in
-                Button {
-                    app.store.setPriority(tasks, priority)
-                } label: {
-                    if single?.priority == priority {
-                        Label(priority.title, systemImage: "checkmark")
-                    } else {
-                        Text(priority.title)
-                    }
-                }
-            }
-        } label: {
-            Label("Priority", systemImage: "exclamationmark.circle")
         }
 
         Menu {
@@ -72,13 +78,13 @@ struct TaskMenuItems: View {
 
         Menu {
             Button {
-                app.store.move(tasks, toGroup: nil)
+                app.move(tasks, toGroup: nil)
             } label: {
                 Label("Quick Entry", systemImage: "tray.and.arrow.down")
             }
             ForEach(app.store.liveGroups()) { group in
                 Button {
-                    app.store.move(tasks, toGroup: group.uuid)
+                    app.move(tasks, toGroup: group.uuid)
                 } label: {
                     Label(group.displayName, systemImage: group.symbol)
                 }

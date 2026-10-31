@@ -33,6 +33,42 @@ struct CheckCircle: View {
     }
 }
 
+/// Priority in one control: tap steps through none → ! → !! → !!!, touch and hold (or the menu
+/// arrow on Mac) picks a level directly.
+struct PriorityButton: View {
+    let priority: Priority
+    let onChange: (Priority) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(Priority.allCases.reversed()) { level in
+                Button {
+                    onChange(level)
+                } label: {
+                    if level == priority {
+                        Label(level.title, systemImage: "checkmark")
+                    } else {
+                        Label(level.title, systemImage: level.symbol)
+                    }
+                }
+            }
+        } label: {
+            if priority == .normal {
+                Image(systemName: "exclamationmark")
+            } else {
+                Text(priority.marks)
+                    .fontWeight(.heavy)
+                    .foregroundStyle(priority.color)
+            }
+        } primaryAction: {
+            onChange(priority.next)
+        }
+        .accessibilityLabel("Priority")
+        .accessibilityValue(priority.title)
+        .accessibilityHint("Tap to raise, touch and hold to choose")
+    }
+}
+
 /// A small ring used in the Today header.
 struct ProgressRing: View {
     let progress: Double

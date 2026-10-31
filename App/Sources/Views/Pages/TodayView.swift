@@ -42,7 +42,7 @@ struct TodayView: View {
         let filtered = visible.filter { filter.matches($0, today: dayStart) }
         switch grouping {
         case .groups:
-            var options = PageBuilder.Options(completed: completed)
+            var options = PageBuilder.Options(completed: completed, collapsedTasks: app.collapsedTaskIDs)
             if filter != .all {
                 options.showEmptyPlaceholders = false
                 let rows = PageBuilder.page(tasks: filtered, groups: groups, quickEntryCollapsed: false, options: options)
@@ -144,6 +144,13 @@ struct TodayView: View {
             }
             #endif
             Divider()
+            if !app.isSandbox {
+                Button {
+                    app.startTour()
+                } label: {
+                    Label("Take the Tour", systemImage: "graduationcap")
+                }
+            }
             ShareLink(item: TextExport.markdown(title: DateText.pageTitle(dayStart), rows: rows)) {
                 Label("Share as Text", systemImage: "square.and.arrow.up")
             }

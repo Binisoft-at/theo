@@ -102,6 +102,20 @@ extension TaskStore {
         save()
     }
 
+    // MARK: - Inline shortcuts
+
+    /// "!!" and "#tag" typed into a line become its priority and tags once you leave the line.
+    func applyInlineShortcuts(_ task: TaskItem) {
+        guard task.deletedAt == nil, task.title.contains("!") || task.title.contains("#") else { return }
+        let parsed = QuickParser.parse(task.title, groups: [], options: [.priority, .tags])
+        guard !parsed.title.isEmpty, parsed.priority != .normal || !parsed.tags.isEmpty else { return }
+        task.title = parsed.title
+        if parsed.priority != .normal { task.priority = parsed.priority }
+        if !parsed.tags.isEmpty { task.tags = task.tags + parsed.tags }
+        task.touch()
+        save()
+    }
+
     // MARK: - Import
 
     /// Creates groups and tasks from pasted Apple Notes / Markdown checklist text.

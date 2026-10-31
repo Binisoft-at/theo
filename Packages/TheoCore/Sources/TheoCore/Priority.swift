@@ -11,6 +11,9 @@ public enum Priority: Int, CaseIterable, Identifiable, Comparable, Sendable {
 
     public static func < (lhs: Priority, rhs: Priority) -> Bool { lhs.rawValue < rhs.rawValue }
 
+    /// The next level when a priority button is tapped repeatedly: none → ! → !! → !!! → none.
+    public var next: Priority { Priority(rawValue: (rawValue + 1) % 4) ?? .normal }
+
     /// Reminders-style marks: "!", "!!", "!!!".
     public var marks: String { String(repeating: "!", count: rawValue) }
 

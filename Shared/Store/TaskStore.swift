@@ -114,6 +114,33 @@ struct TaskStore {
         return new
     }
 
+    /// A new last subtask of `parent`, right after its existing subtasks. Adding work under a
+    /// finished task reopens it.
+    @discardableResult
+    func addSubtask(_ entry: ParsedEntry, to parent: TaskItem) -> TaskItem {
+        let layout = self.layout(for: parent.groupID)
+        guard let index = layout.index(of: parent) else {
+            return addTask(entry, defaultGroupID: parent.groupID, placement: .bottom)
+        }
+        let end = layout.blockEnd(after: index)
+        let upper = end < layout.items.count ? layout.items[end].sortOrder : nil
+        let task = TaskItem(title: entry.title, sortOrder: midpoint(layout.items[end - 1].sortOrder, upper), indent: layout.depths[index] + 1)
+        context.insert(task)
+        task.group = parent.group?.deletedAt == nil ? parent.group : nil
+        task.priority = entry.priority
+        task.dueDate = entry.due
+        task.dueHasTime = entry.dueHasTime
+        task.tags = entry.tags
+        if parent.isDone {
+            parent.isDone = false
+            parent.completedAt = nil
+            parent.touch()
+        }
+        normalizeIfNeeded(groupID: parent.groupID)
+        save()
+        return task
+    }
+
     func duplicate(_ task: TaskItem) {
         let copy = insertTask(after: task, title: task.title)
         copy.notes = task.notes

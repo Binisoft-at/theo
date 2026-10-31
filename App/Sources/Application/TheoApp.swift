@@ -86,12 +86,20 @@ struct TheoCommands: Commands {
                 .keyboardShortcut("6")
         }
 
+        CommandGroup(replacing: .help) {
+            Button("Theo Tour") { app.startTour() }
+        }
+
         CommandMenu("Task") {
             Button("Mark as Done / Not Done") {
                 let tasks = app.selectedTasks
                 app.store.setDone(tasks, !tasks.allSatisfy(\.isDone))
             }
             .keyboardShortcut(.return, modifiers: .command)
+            Button("New Subtask") {
+                if let task = app.selectedTasks.first { app.addSubtask(to: task) }
+            }
+            .keyboardShortcut("n", modifiers: [.command, .option])
             Button("Details…") {
                 if let task = app.selectedTasks.first { app.detailTask = task }
             }
@@ -120,6 +128,14 @@ struct TheoCommands: Commands {
                         .keyboardShortcut(KeyEquivalent(Character("\(priority.rawValue)")), modifiers: [.command, .option])
                 }
             }
+            Button("Raise Priority") {
+                for task in app.selectedTasks { app.store.setPriority([task], task.priority.next) }
+            }
+            .keyboardShortcut("p", modifiers: [.command, .option])
+            Button("Fold / Unfold Subtasks") {
+                if let task = app.selectedTasks.first { withAnimation(.snappy) { app.toggleSubtasks(task) } }
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
             Button("Due Today") { app.store.setDue(app.selectedTasks, QuickDate.today.date(from: app.dayStart)) }
                 .keyboardShortcut("t", modifiers: [.command, .option])
             Button("Due Tomorrow") { app.store.setDue(app.selectedTasks, QuickDate.tomorrow.date(from: app.dayStart)) }

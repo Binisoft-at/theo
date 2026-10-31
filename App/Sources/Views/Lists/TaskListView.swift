@@ -82,8 +82,14 @@ struct TaskListView<Header: View>: View {
         .onChange(of: focusedID) { oldValue, newValue in
             if let newValue, newValue == pendingEditID { pendingEditID = nil }
             if let oldValue, oldValue != newValue, let task = lookupTask(oldValue) {
+                app.store.applyInlineShortcuts(task)
                 app.store.discardIfEmpty(task)
             }
+        }
+        .onChange(of: app.pendingEditTaskID) { _, id in
+            guard let id, let task = app.store.task(id: id) else { return }
+            app.pendingEditTaskID = nil
+            beginEdit(task)
         }
         .onChange(of: app.isSelecting) { _, selecting in
             if selecting { focusedID = nil }
@@ -145,6 +151,9 @@ struct TaskListView<Header: View>: View {
                 },
                 onIndent: { delta in
                     withAnimation(.snappy) { app.store.indent(task, by: delta) }
+                },
+                onToggleSubtasks: {
+                    withAnimation(.snappy) { app.toggleSubtasks(task) }
                 }
             )
             .moveDisabled(!allowsReorder || task.isDone || isEditing(task))
@@ -156,6 +165,12 @@ struct TaskListView<Header: View>: View {
                 }
                 .tint(.green)
                 if !task.isDone {
+                    Button {
+                        app.store.setPriority([task], task.priority.next)
+                    } label: {
+                        Label("Priority", systemImage: task.priority.next == .normal ? "minus" : task.priority.next.symbol)
+                    }
+                    .tint(.orange)
                     Button {
                         app.deferToTomorrow([task])
                     } label: {
@@ -268,6 +283,7 @@ struct TaskListView<Header: View>: View {
     }
 
     #if os(iOS)
+    /// The bar above the keyboard while a line is being edited.
     @ViewBuilder
     private func keyboardTools(_ task: TaskItem) -> some View {
         Button {
@@ -275,21 +291,21 @@ struct TaskListView<Header: View>: View {
         } label: {
             Image(systemName: "decrease.indent")
         }
+        .accessibilityLabel("Outdent")
         Button {
             withAnimation(.snappy) { app.store.indent(task, by: 1) }
         } label: {
             Image(systemName: "increase.indent")
         }
-        Menu {
-            ForEach(Priority.allCases.reversed()) { priority in
-                Button {
-                    app.store.setPriority([task], priority)
-                } label: {
-                    Label(priority.title, systemImage: priority.symbol)
-                }
-            }
+        .accessibilityLabel("Make Subtask")
+        Button {
+            withAnimation(.snappy) { app.addSubtask(to: task) }
         } label: {
-            Image(systemName: "exclamationmark.circle")
+            Image(systemName: "arrow.turn.down.right")
+        }
+        .accessibilityLabel("Add Subtask")
+        PriorityButton(priority: task.priority) { level in
+            app.store.setPriority([task], level)
         }
         Menu {
             ForEach(QuickDate.allCases) { quick in
@@ -313,20 +329,44 @@ struct TaskListView<Header: View>: View {
                 }
             }
         } label: {
-            Image(systemName: "calendar")
+            Image(systemName: task.dueDate == nil ? "calendar" : "calendar.badge.checkmark")
         }
-        Button {
-            focusedID = nil
-            app.tagBatch = TaskBatch(tasks: [task])
+        .accessibilityLabel("Deadline")
+        Menu {
+            Button {
+                focusedID = nil
+                app.tagBatch = TaskBatch(tasks: [task])
+            } label: {
+                Label("Tags…", systemImage: "number")
+            }
+            Button {
+                focusedID = nil
+                app.moveBatch = TaskBatch(tasks: [task])
+            } label: {
+                Label("Move to…", systemImage: "folder")
+            }
+            Button {
+                app.deferToTomorrow([task])
+            } label: {
+                Label("Not Today", systemImage: "moon.zzz")
+            }
+            Button {
+                focusedID = nil
+                app.detailTask = task
+            } label: {
+                Label("Details…", systemImage: "info.circle")
+            }
         } label: {
-            Image(systemName: "number")
+            Image(systemName: "ellipsis.circle")
         }
+        .accessibilityLabel("More")
         Spacer()
         Button {
             focusedID = nil
         } label: {
             Image(systemName: "keyboard.chevron.compact.down")
         }
+        .accessibilityLabel("Done Editing")
     }
     #endif
 
@@ -360,8 +400,14 @@ struct TaskListView<Header: View>: View {
         let texts = rest.isEmpty ? [""] : rest
         let restIsEmpty = texts.allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty }
         if task.trimmedTitle.isEmpty && restIsEmpty {
-            // Return on an empty line ends editing, like leaving a checklist in Notes.
-            focusedID = nil
+            // Return on an empty subtask steps out one level; on an empty top-level line it
+            // ends editing. Same as leaving a checklist in Notes.
+            if app.store.layout(for: task.groupID).depth(of: task) > 0 {
+                withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                beginEdit(task)
+            } else {
+                focusedID = nil
+            }
             return
         }
         var anchor = task

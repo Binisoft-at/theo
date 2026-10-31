@@ -158,6 +158,10 @@ enum Prefs {
     static let quickEntryCollapsed = "quickEntryCollapsed"
     static let todayGrouping = "todayGrouping"
     static let showNotesPreview = "showNotesPreview"
+    /// Tour version last completed or skipped (0 = never).
+    static let tourSeenVersion = "tourSeenVersion"
+    /// Parents whose subtasks are folded away (UUID strings, this device only).
+    static let collapsedTasks = "collapsedTasks"
 }
 
 /// Curated SF Symbols for groups.

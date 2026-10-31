@@ -17,6 +17,8 @@ struct TaskRowView: View {
     var onInfo: () -> Void
     /// Tab / Shift-Tab on a hardware keyboard.
     var onIndent: (Int) -> Void = { _ in }
+    /// Folds or unfolds this line's subtasks.
+    var onToggleSubtasks: () -> Void = {}
 
     @AppStorage(Prefs.showAge) private var showAge = true
     @AppStorage(Prefs.showNotesPreview) private var showNotesPreview = true
@@ -46,6 +48,10 @@ struct TaskRowView: View {
             .onTapGesture { if !isEditing { onBeginEdit() } }
             #endif
 
+            if style.subtaskCount > 0 {
+                SubtaskBadge(done: style.subtasksDone, total: style.subtaskCount, folded: style.subtasksFolded, action: onToggleSubtasks)
+            }
+
             if isEditing {
                 Button(action: onInfo) {
                     Image(systemName: "info.circle")
@@ -57,6 +63,11 @@ struct TaskRowView: View {
             }
         }
         .padding(.leading, CGFloat(depth) * 26)
+        .overlay(alignment: .leading) {
+            if depth > 0 {
+                IndentGuides(depth: depth)
+            }
+        }
         .padding(.vertical, 3)
         .opacity(task.isDone && !isEditing ? 0.75 : 1)
         .animation(.snappy(duration: 0.25), value: displayDone)
@@ -181,6 +192,57 @@ struct TaskMetaLine: View {
         let color: Color = task.isDone ? .secondary : (overdue ? .red : (delta == 0 ? .orange : .secondary))
         Label(DateText.due(due, hasTime: task.dueHasTime, today: today), systemImage: overdue ? "exclamationmark.circle" : "calendar")
             .foregroundStyle(color)
+    }
+}
+
+/// "2/5 ›" on a parent line: subtask progress, and a tap folds or unfolds the subtasks.
+struct SubtaskBadge: View {
+    let done: Int
+    let total: Int
+    let folded: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Text("\(done)/\(total)")
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Image(systemName: "chevron.right")
+                    .imageScale(.small)
+                    .rotationEffect(.degrees(folded ? 0 : 90))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(done == total ? Color.accentColor : Color.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.secondary.opacity(0.12)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.borderless)
+        .padding(.top, 1)
+        .animation(.snappy(duration: 0.2), value: folded)
+        .accessibilityLabel(folded ? "Show \(total) subtasks" : "Hide \(total) subtasks")
+        .accessibilityValue("\(done) of \(total) done")
+    }
+}
+
+/// Thin vertical lines that show which parent a nested line belongs to.
+struct IndentGuides: View {
+    let depth: Int
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            ForEach(0..<depth, id: \.self) { level in
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.22))
+                    .frame(width: 1.5)
+                    .offset(x: CGFloat(level) * 26 + 10)
+            }
+        }
+        .padding(.vertical, -6)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

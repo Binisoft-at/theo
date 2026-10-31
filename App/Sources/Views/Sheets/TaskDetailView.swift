@@ -10,7 +10,22 @@ struct TaskDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
+    /// All live tasks, so the subtask list refreshes when lines are added or changed.
+    @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil }, sort: \TaskItem.sortOrder)
+    private var liveTasks: [TaskItem]
     @State private var newTag = ""
+    @State private var newSubtask = ""
+    @FocusState private var subtaskFieldFocused: Bool
+
+    /// Subtasks in page order, with their depth below this task.
+    private var subtasks: [(task: TaskItem, depth: Int)] {
+        let groupID = task.groupID
+        let layout = SectionLayout(liveTasks.filter { $0.groupID == groupID })
+        guard let index = layout.index(of: task) else { return [] }
+        let end = layout.blockEnd(after: index)
+        let base = layout.depths[index]
+        return (index + 1..<end).map { (task: layout.items[$0], depth: layout.depths[$0] - base - 1) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -28,6 +43,8 @@ struct TaskDetailView: View {
                         .lineLimit(3...12)
                 }
 
+                subtaskSection
+
                 Section("Priority") {
                     Picker("Priority", selection: priorityBinding) {
                         ForEach(Priority.allCases) { priority in
@@ -39,6 +56,18 @@ struct TaskDetailView: View {
                 }
 
                 Section("Deadline") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(QuickDate.allCases) { quick in
+                                let date = quick.date(from: app.dayStart)
+                                ChipButton(title: quick.title, symbol: quick.symbol, color: .orange, isOn: isDue(on: date)) {
+                                    app.store.setDue([task], isDue(on: date) ? nil : date)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .scrollClipDisabled()
                     Toggle(isOn: hasDueBinding) {
                         Label("Deadline", systemImage: "calendar")
                     }
@@ -140,6 +169,45 @@ struct TaskDetailView: View {
         #endif
     }
 
+    private var subtaskSection: some View {
+        Section {
+            ForEach(subtasks, id: \.task.uuid) { item in
+                SubtaskLine(task: item.task, depth: item.depth)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "plus")
+                    .foregroundStyle(.tint)
+                    .frame(width: 22)
+                TextField("Add subtask", text: $newSubtask)
+                    .textFieldStyle(.plain)
+                    .focused($subtaskFieldFocused)
+                    .onSubmit(addSubtask)
+                    #if os(iOS)
+                    .submitLabel(.next)
+                    #endif
+            }
+        } header: {
+            Text(subtasks.isEmpty ? "Subtasks" : "Subtasks · \(subtasks.filter { $0.task.isDone }.count)/\(subtasks.count)")
+        }
+    }
+
+    private func addSubtask() {
+        let title = newSubtask.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            subtaskFieldFocused = false
+            return
+        }
+        let entry = QuickParser.parse(title, groups: [], options: [.priority, .tags, .dates])
+        withAnimation(.snappy) { _ = app.store.addSubtask(entry, to: task) }
+        newSubtask = ""
+        subtaskFieldFocused = true
+    }
+
+    private func isDue(on date: Date) -> Bool {
+        guard let due = task.dueDate else { return false }
+        return Calendar.current.isDate(due, inSameDayAs: date)
+    }
+
     private func addTag() {
         let tag = Tags.clean(newTag)
         guard !tag.isEmpty else { return }
@@ -185,6 +253,35 @@ struct TaskDetailView: View {
                 app.store.move([task], toGroup: newValue)
             }
         )
+    }
+}
+
+/// One subtask inside the details sheet: check it off or rename it in place.
+struct SubtaskLine: View {
+    @Bindable var task: TaskItem
+    let depth: Int
+
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        HStack(spacing: 10) {
+            CheckCircle(done: task.isDone, priority: task.priority, size: 20) {
+                withAnimation(.snappy) { app.store.toggle(task) }
+            }
+            TextField("Subtask", text: $task.title, axis: .vertical)
+                .textFieldStyle(.plain)
+                .strikethrough(task.isDone, color: .secondary)
+                .foregroundStyle(task.isDone ? Color.secondary : Color.primary)
+                .onChange(of: task.title) { _, _ in task.touch() }
+        }
+        .padding(.leading, CGFloat(depth) * 22)
+        .swipeActions {
+            Button(role: .destructive) {
+                app.delete([task])
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
 
