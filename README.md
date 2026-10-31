@@ -18,7 +18,11 @@
 ## What's extra
 
 - **Natural-language entry**: `Call mom tomorrow 5pm !! #family @home` sets a deadline, priority, tag and group. Live chips show what Theo understood; tap a chip to undo that part.
-- **Return creates the next line**, pasting several lines creates several tasks, and Tab / Shift-Tab (or the keyboard bar) indents tasks into subtasks.
+- **One-tap composer**: buttons above the entry bar set priority (tap to raise, hold to pick), deadline and group. Start a line with `- ` to add it as a subtask of the task you just added. Pasting an indented list keeps the nesting. Every add can be undone from the confirmation line.
+- **Subtasks**: Add Subtask from the menu, the keyboard bar or the details sheet. Return creates the next line, and Return on an empty subtask steps back out (like Notes). Tab / Shift-Tab indent and outdent. Parents show a `2/5` badge that folds their subtasks away, and guide lines show the nesting.
+- **Priority in one tap**: a `! !! !!!` row in the context menu, a Priority swipe, the keyboard-bar button, `!!` typed at the end of a line, or ⌥⌘1–3 / ⌥⌘P on the Mac.
+- **Forgiving**: shake to undo (⌘Z on Mac) for any change, Undo on deletes, moves, Not Today and adds, and empty lines vanish on their own.
+- **Interactive tour**: shown on first launch, replayable from Settings, Today's ⋯ menu or Help → Theo Tour. You practise on a sample page, and each step ticks itself off once you've done it.
 - **Gestures**:
   - swipe right → Done / Not Today
   - swipe left → Delete / Move / Deadline
@@ -69,6 +73,10 @@ To run on a device or with iCloud from Xcode, copy `Config/Local.xcconfig.exampl
 - `CI` runs on pushes to `main` and on PRs, and cancels superseded runs (Mac minutes count 10× on private repos). It runs the TheoCore unit tests and builds iOS (with the watch app) and macOS. It publishes its status to the `ci-output` branch. Running it manually, or `[screenshots]` in the commit message, also captures iPhone, Watch and Mac screenshots.
 - `TestFlight` (manual or a `v*` tag) archives and uploads iOS and macOS builds with automatic signing through the App Store Connect API key. No certificates or profiles are in the repo, and the build number is the run number. It needs the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (team key "Binisoft CI").
 - `CloudKit schema` (manual, one click) imports the schema into Development, then you deploy it to Production in the CloudKit Console. It needs `CLOUDKIT_MANAGEMENT_TOKEN`.
+
+### Tour
+
+The steps live in [`Packages/TheoCore/Sources/TheoCore/Tutorial.swift`](Packages/TheoCore/Sources/TheoCore/Tutorial.swift). Each step has text for touch and for the Mac, plus a goal the practice page has to reach. To teach a new feature, add a step with `since: N + 1` and bump `TutorialCatalog.version` to `N + 1`. People who already took the tour then see just the new steps as "What's new"; first-time users get everything. `make test` checks the catalog and the goals.
 
 ### Icon
 
