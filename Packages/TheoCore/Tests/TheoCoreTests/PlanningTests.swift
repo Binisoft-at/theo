@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import TheoCore
 
-private struct Line: ChecklistItem, Estimated {
+private struct PlanLine: ChecklistItem, Estimated {
     var sortOrder: Double
     var indent: Int
     var isDone = false
@@ -40,20 +40,20 @@ struct PowerHoursTests {
 
     @Test func parentEstimateCountsOnlyWithoutEstimatedSubtasks() {
         let lines = [
-            Line(sortOrder: 0, indent: 0, estimate: 2),   // parent with a total ...
-            Line(sortOrder: 1, indent: 1, estimate: 1),   // ... and estimated subtasks
-            Line(sortOrder: 2, indent: 1, estimate: 1),
-            Line(sortOrder: 3, indent: 0, estimate: 3),   // parent with plain subtasks
-            Line(sortOrder: 4, indent: 1, estimate: 0),
-            Line(sortOrder: 5, indent: 0, estimate: 0.25),
+            PlanLine(sortOrder: 0, indent: 0, estimate: 2),   // parent with a total ...
+            PlanLine(sortOrder: 1, indent: 1, estimate: 1),   // ... and estimated subtasks
+            PlanLine(sortOrder: 2, indent: 1, estimate: 1),
+            PlanLine(sortOrder: 3, indent: 0, estimate: 3),   // parent with plain subtasks
+            PlanLine(sortOrder: 4, indent: 1, estimate: 0),
+            PlanLine(sortOrder: 5, indent: 0, estimate: 0.25),
         ]
         #expect(PowerHours.total(lines) == 5.25)
     }
 
     @Test func totalCanBeFiltered() {
         let lines = [
-            Line(sortOrder: 0, indent: 0, isDone: true, estimate: 0.5),
-            Line(sortOrder: 1, indent: 0, estimate: 1),
+            PlanLine(sortOrder: 0, indent: 0, isDone: true, estimate: 0.5),
+            PlanLine(sortOrder: 1, indent: 0, estimate: 1),
         ]
         #expect(PowerHours.total(lines, where: \.isDone) == 0.5)
     }
