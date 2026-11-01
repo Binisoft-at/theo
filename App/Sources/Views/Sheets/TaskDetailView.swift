@@ -96,11 +96,13 @@ struct TaskDetailView: View {
                     }
                 }
 
+                TaskPlanningSections(task: task)
+
                 Section("Organize") {
                     Picker(selection: groupBinding) {
                         Label("Quick Entry", systemImage: "tray.and.arrow.down").tag(UUID?.none)
-                        ForEach(groups) { group in
-                            Label(group.displayName, systemImage: group.symbol).tag(UUID?.some(group.uuid))
+                        ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
+                            Label(GroupTree.path(of: item.group, in: groups), systemImage: item.group.symbol).tag(UUID?.some(item.group.uuid))
                         }
                     } label: {
                         Label("Group", systemImage: "folder")

@@ -90,7 +90,9 @@ struct HistoryView: View {
         let titles = day.done.sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
             .map(\.trimmedTitle).filter { !$0.isEmpty }
         if titles.isEmpty { return "\(day.added) added" }
-        return "\(titles.count) done · " + titles.prefix(4).joined(separator: ", ")
+        let powerHours = PageBuilder.estimateTotals(day.done).done
+        let effort = powerHours > 0 ? " · " + PowerHours.format(powerHours) : ""
+        return "\(titles.count) done\(effort) · " + titles.prefix(4).joined(separator: ", ")
     }
 
     private static func bucket(_ days: [DaySummary], today: Date) -> [Bucket] {

@@ -11,6 +11,8 @@ struct SettingsView: View {
     @AppStorage(Prefs.showNotesPreview) private var showNotesPreview = true
     @AppStorage(Prefs.completedMode) private var completedRaw = CompletedMode.bottom.rawValue
     @AppStorage(Prefs.newTaskPlacement) private var placementRaw = NewTaskPlacement.bottom.rawValue
+    @AppStorage(Prefs.focusMinutes) private var focusMinutes = 50
+    @AppStorage(Prefs.breakMinutes) private var breakMinutes = 10
 
     var body: some View {
         Form {
@@ -73,6 +75,23 @@ struct SettingsView: View {
                 }
                 Toggle("Show days carried over", isOn: $showAge)
                 Toggle("Show notes preview", isOn: $showNotesPreview)
+            }
+
+            Section {
+                Picker("Focus", selection: $focusMinutes) {
+                    ForEach([25, 45, 50, 60, 90], id: \.self) { minutes in
+                        Text(minutes == 50 ? "50 min (1 PH)" : "\(minutes) min").tag(minutes)
+                    }
+                }
+                Picker("Break", selection: $breakMinutes) {
+                    ForEach([5, 10, 15, 20, 30], id: \.self) { minutes in
+                        Text("\(minutes) min").tag(minutes)
+                    }
+                }
+            } header: {
+                Text("Focus Timer")
+            } footer: {
+                Text("A Power Hour is 50 minutes of focused work. Focus time is booked on the task you start it from.")
             }
 
             Section {

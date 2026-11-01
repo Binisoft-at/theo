@@ -151,8 +151,19 @@ struct TaskMetaLine: View {
     }
 
     private var hasContent: Bool {
-        task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1)
+        task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
             || (style.showGroup && task.group != nil) || (style.showDeferred && task.deferredUntil != nil)
+    }
+
+    /// "0,5 PH", or "0,2 / 0,5 PH" once focus time has been booked on it.
+    private var estimateText: String? {
+        let focused = task.focusSeconds / (PowerHours.minutesPerPH * 60)
+        switch (task.estimate > 0, focused >= 0.05) {
+        case (true, true): return PowerHours.number(focused) + " / " + PowerHours.format(task.estimate)
+        case (true, false): return PowerHours.format(task.estimate)
+        case (false, true): return PowerHours.format(focused) + " focused"
+        case (false, false): return nil
+        }
     }
 
     var body: some View {
@@ -160,6 +171,18 @@ struct TaskMetaLine: View {
             HStack(spacing: 10) {
                 if let due = task.dueDate {
                     dueLabel(due)
+                    if task.recurrence != nil {
+                        Image(systemName: "repeat")
+                            .accessibilityLabel(task.recurrence?.title ?? "Repeats")
+                    }
+                    if task.dueHasTime && !task.isDone && !task.reminderOffsets.isEmpty {
+                        Image(systemName: "bell.fill")
+                            .accessibilityLabel("Reminder on")
+                    }
+                }
+                if let estimateText {
+                    Label(estimateText, systemImage: "timer")
+                        .foregroundStyle(task.estimate > 0 && task.focusSeconds / 60 >= task.estimate * PowerHours.minutesPerPH ? Color.green : Color.secondary)
                 }
                 if style.showDeferred, let deferred = task.deferredUntil, deferred > today {
                     Label(DateText.due(deferred, hasTime: false, today: today), systemImage: "moon.zzz")

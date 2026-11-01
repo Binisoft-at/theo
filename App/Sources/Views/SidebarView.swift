@@ -24,7 +24,13 @@ struct SidebarView: View {
         }.count
         let priorityCount = openTasks.filter { $0.priority != .normal }.count
         let quickCount = openTasks.filter { $0.groupID == nil }.count
+        let doFirstCount = openTasks.filter { task in
+            guard task.isOnPage(of: today) else { return false }
+            let position = task.matrixPosition(today: today)
+            return Matrix.quadrant(urgency: position.urgency, importance: position.importance) == .doFirst
+        }.count
         let tags = Sections.tags(in: openTasks)
+        let tree = GroupTree.ordered(groups)
 
         sidebarList(selection: usesSelection ? $app.selection : nil) {
             Section {
@@ -37,13 +43,17 @@ struct SidebarView: View {
                 NavigationLink(value: SidebarItem.priority) {
                     SidebarRow(title: "Priority", symbol: "exclamationmark.3", color: .pink, count: priorityCount)
                 }
+                NavigationLink(value: SidebarItem.matrix) {
+                    SidebarRow(title: "Matrix", symbol: "square.grid.2x2.fill", color: .purple, count: doFirstCount)
+                }
                 NavigationLink(value: SidebarItem.quickEntry) {
                     SidebarRow(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, count: quickCount)
                 }
             }
 
             Section("Groups") {
-                ForEach(groups) { group in
+                ForEach(tree, id: \.group.uuid) { item in
+                    let group = item.group
                     NavigationLink(value: SidebarItem.group(group.uuid)) {
                         SidebarRow(
                             title: group.displayName,
@@ -51,12 +61,18 @@ struct SidebarView: View {
                             color: group.color.color,
                             count: openTasks.filter { $0.groupID == group.uuid }.count
                         )
+                        .padding(.leading, CGFloat(item.level) * 16)
                     }
                     .contextMenu {
                         Button {
                             app.groupEditor = .edit(group)
                         } label: {
                             Label("Edit Group…", systemImage: "pencil")
+                        }
+                        Button {
+                            app.groupEditor = .subgroup(group)
+                        } label: {
+                            Label("New Subproject…", systemImage: "folder.badge.plus")
                         }
                         Button(role: .destructive) {
                             groupPendingDelete = group
@@ -66,7 +82,7 @@ struct SidebarView: View {
                     }
                 }
                 .onMove { source, destination in
-                    var reordered = groups
+                    var reordered = tree.map(\.group)
                     reordered.move(fromOffsets: source, toOffset: destination)
                     app.store.reorderGroups(reordered)
                 }

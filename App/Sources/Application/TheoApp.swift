@@ -87,6 +87,11 @@ struct TheoCommands: Commands {
                 .keyboardShortcut("5")
             Button("Recently Deleted") { app.go(.trash) }
                 .keyboardShortcut("6")
+            Button("Matrix") { app.go(.matrix) }
+                .keyboardShortcut("7")
+            Divider()
+            Button("Focus Timer") { app.commandTarget.showFocus = true }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
         }
 
         CommandGroup(replacing: .help) {
@@ -135,6 +140,20 @@ struct TheoCommands: Commands {
                 for task in target.selectedTasks { target.store.setPriority([task], task.priority.next) }
             }
             .keyboardShortcut("p", modifiers: [.command, .option])
+            Button("Start Focus") {
+                target.startFocus(on: target.selectedTasks.first)
+            }
+            .keyboardShortcut("f", modifiers: [.command, .option])
+            Button("Place in Matrix…") {
+                if let task = target.selectedTasks.first { target.matrixTask = task }
+            }
+            .keyboardShortcut("m", modifiers: [.command, .option])
+            Menu("Estimate") {
+                ForEach(PowerHours.presets, id: \.self) { value in
+                    Button(PowerHours.format(value)) { target.store.setEstimate(target.selectedTasks, value) }
+                }
+                Button("None") { target.store.setEstimate(target.selectedTasks, 0) }
+            }
             Button("Fold / Unfold Subtasks") {
                 if let task = target.selectedTasks.first { withAnimation(.snappy) { target.toggleSubtasks(task) } }
             }

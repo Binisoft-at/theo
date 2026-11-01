@@ -55,6 +55,9 @@ struct TodayView: View {
         case .deadline:
             let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
             return PageBuilder.labeled(Sections.byDeadline(filtered, groups: groups, today: dayStart, includeNone: true), options: options)
+        case .matrix:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
+            return PageBuilder.labeled(Sections.byMatrix(filtered, today: dayStart), options: options)
         }
     }
 
@@ -63,6 +66,7 @@ struct TodayView: View {
         let rows = self.rows(for: visible)
         let open = visible.filter { !$0.isDone }.count
         let done = visible.count - open
+        let estimates = PageBuilder.estimateTotals(visible)
 
         Group {
             if search.isEmpty {
@@ -71,6 +75,8 @@ struct TodayView: View {
                         date: dayStart,
                         open: open,
                         done: done,
+                        openEstimate: estimates.open,
+                        doneEstimate: estimates.done,
                         filter: $filter,
                         tags: Sections.tags(in: visible.filter { !$0.isDone })
                     )
@@ -143,6 +149,11 @@ struct TodayView: View {
                 Label("Select Tasks", systemImage: "checklist")
             }
             #endif
+            Button {
+                app.showFocus = true
+            } label: {
+                Label("Focus Timer", systemImage: "timer")
+            }
             Divider()
             if !app.isSandbox {
                 Button {
@@ -199,8 +210,12 @@ struct TodayHeader: View {
     let date: Date
     let open: Int
     let done: Int
+    var openEstimate: Double = 0
+    var doneEstimate: Double = 0
     @Binding var filter: TaskFilter
     let tags: [String]
+
+    @Environment(AppModel.self) private var app
 
     private var total: Int { open + done }
 
@@ -227,8 +242,16 @@ struct TodayHeader: View {
                     Text(summary)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    if openEstimate > 0 || doneEstimate > 0 {
+                        Label("\(PowerHours.format(openEstimate)) planned · \(PowerHours.number(doneEstimate)) done", systemImage: "timer")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
+                if let session = app.focus {
+                    FocusPill(session: session)
+                }
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

@@ -126,7 +126,7 @@ enum NewTaskPlacement: String, CaseIterable, Identifiable {
 }
 
 enum TodayGrouping: String, CaseIterable, Identifiable {
-    case groups, priority, deadline
+    case groups, priority, deadline, matrix
 
     var id: String { rawValue }
 
@@ -135,6 +135,7 @@ enum TodayGrouping: String, CaseIterable, Identifiable {
         case .groups: "Groups"
         case .priority: "Priority"
         case .deadline: "Deadline"
+        case .matrix: "Matrix"
         }
     }
 
@@ -143,6 +144,7 @@ enum TodayGrouping: String, CaseIterable, Identifiable {
         case .groups: "rectangle.grid.1x2"
         case .priority: "exclamationmark.3"
         case .deadline: "calendar"
+        case .matrix: "square.grid.2x2"
         }
     }
 }
@@ -162,6 +164,20 @@ enum Prefs {
     static let tourSeenVersion = "tourSeenVersion"
     /// Parents whose subtasks are folded away (UUID strings, this device only).
     static let collapsedTasks = "collapsedTasks"
+    /// Focus timer lengths in minutes (one Power Hour of focus, then a break, by default).
+    static let focusMinutes = "focusMinutes"
+    static let breakMinutes = "breakMinutes"
+}
+
+extension Matrix.Quadrant {
+    var color: Color {
+        switch self {
+        case .doFirst: .red
+        case .schedule: .blue
+        case .delegate: .orange
+        case .later: .gray
+        }
+    }
 }
 
 /// Curated SF Symbols for groups.

@@ -11,6 +11,9 @@ public struct ParsedEntry: Equatable, Sendable {
     public var tags: [String]
     public var groupID: UUID?
     public var groupName: String?
+    /// Power Hours ("(0,25PH)").
+    public var estimate: Double?
+    public var recurrence: Recurrence?
 
     public init(
         title: String,
@@ -20,7 +23,9 @@ public struct ParsedEntry: Equatable, Sendable {
         dueText: String? = nil,
         tags: [String] = [],
         groupID: UUID? = nil,
-        groupName: String? = nil
+        groupName: String? = nil,
+        estimate: Double? = nil,
+        recurrence: Recurrence? = nil
     ) {
         self.title = title
         self.priority = priority
@@ -30,10 +35,12 @@ public struct ParsedEntry: Equatable, Sendable {
         self.tags = tags
         self.groupID = groupID
         self.groupName = groupName
+        self.estimate = estimate
+        self.recurrence = recurrence
     }
 
     public var hasExtras: Bool {
-        priority != .normal || due != nil || !tags.isEmpty || groupID != nil
+        priority != .normal || due != nil || !tags.isEmpty || groupID != nil || estimate != nil || recurrence != nil
     }
 }
 
@@ -43,6 +50,9 @@ public struct ParsedEntry: Equatable, Sendable {
 /// - `#tag` adds a tag
 /// - `@group` files the task into a group (prefix match, spaces ignored)
 /// - dates and times ("tomorrow 5pm", "next friday", "oct 30") become the deadline
+/// - `📅 2026-11-04` or `due:2026-11-04` set an exact deadline (also understood by Import)
+/// - `0,5PH` / `(1PH)` set the estimate in Power Hours
+/// - `daily`, `weekly`, `every 3 days`, `täglich` ... make it repeat
 public enum QuickParser {
     public struct GroupRef: Sendable {
         public let id: UUID
@@ -65,7 +75,11 @@ public enum QuickParser {
         public static let priority = Options(rawValue: 1 << 1)
         public static let tags = Options(rawValue: 1 << 2)
         public static let group = Options(rawValue: 1 << 3)
-        public static let all: Options = [.dates, .priority, .tags, .group]
+        public static let estimate = Options(rawValue: 1 << 4)
+        public static let recurrence = Options(rawValue: 1 << 5)
+        /// Only `📅 2026-11-04` / `due:2026-11-04`, never guessed dates (used by Import).
+        public static let exactDates = Options(rawValue: 1 << 6)
+        public static let all: Options = [.dates, .priority, .tags, .group, .estimate, .recurrence, .exactDates]
     }
 
     private static let detector: NSDataDetector? = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
@@ -73,8 +87,23 @@ public enum QuickParser {
     public static func parse(_ text: String, groups: [GroupRef], options: Options = .all, now: Date = Date()) -> ParsedEntry {
         var entry = ParsedEntry(title: text.trimmingCharacters(in: .whitespacesAndNewlines))
         var kept: [String] = []
+        var source = text
 
-        for token in text.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init) {
+        if options.contains(.exactDates) || options.contains(.dates), let found = exactDate(in: source) {
+            entry.due = found.date
+            entry.dueText = String(source[found.range])
+            source.removeSubrange(found.range)
+        }
+        if options.contains(.estimate), let found = PowerHours.find(in: source) {
+            entry.estimate = found.value
+            source.replaceSubrange(found.range, with: " ")
+        }
+        if options.contains(.recurrence), let found = Recurrence.find(in: source) {
+            entry.recurrence = found.recurrence
+            source.replaceSubrange(found.range, with: " ")
+        }
+
+        for token in source.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init) {
             let lower = token.lowercased()
             if options.contains(.priority), let priority = priority(for: lower) {
                 entry.priority = priority
@@ -97,7 +126,7 @@ public enum QuickParser {
 
         var title = kept.joined(separator: " ")
 
-        if options.contains(.dates), let detector, !title.isEmpty {
+        if options.contains(.dates), entry.due == nil, let detector, !title.isEmpty {
             let range = NSRange(title.startIndex..., in: title)
             if let match = detector.matches(in: title, options: [], range: range).first,
                let date = match.date,
@@ -122,6 +151,21 @@ public enum QuickParser {
             entry.title = text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return entry
+    }
+
+    /// `📅 2026-11-04` or `due:2026-11-04`.
+    static func exactDate(in text: String) -> (date: Date, range: Range<String.Index>)? {
+        guard let range = text.range(of: #"(?:📅|due:)\s*\d{4}-\d{2}-\d{2}"#, options: [.regularExpression, .caseInsensitive]) else {
+            return nil
+        }
+        let digits = text[range].split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        guard digits.count == 3 else { return nil }
+        var components = DateComponents()
+        components.year = digits[0]
+        components.month = digits[1]
+        components.day = digits[2]
+        guard let date = Calendar.current.date(from: components) else { return nil }
+        return (Calendar.current.startOfDay(for: date), range)
     }
 
     public static func priority(for lower: String) -> Priority? {

@@ -92,6 +92,8 @@ struct TaskStore {
         task.dueDate = entry.due
         task.dueHasTime = entry.dueHasTime
         task.tags = entry.tags
+        task.estimate = entry.estimate ?? 0
+        task.recurrence = entry.recurrence
         save()
         return task
     }
@@ -131,6 +133,8 @@ struct TaskStore {
         task.dueDate = entry.due
         task.dueHasTime = entry.dueHasTime
         task.tags = entry.tags
+        task.estimate = entry.estimate ?? 0
+        task.recurrence = entry.recurrence
         if parent.isDone {
             parent.isDone = false
             parent.completedAt = nil
@@ -170,13 +174,43 @@ struct TaskStore {
             task.touch()
         }
         for task in tasks {
+            let wasDone = task.isDone
             apply(task)
             if done {
                 // Completing a parent completes its subtasks, like checking off a whole block.
                 for child in layout(for: task.groupID).block(of: task).dropFirst() { apply(child) }
+                if !wasDone { scheduleNextOccurrence(of: task, now: now) }
             }
         }
         save()
+    }
+
+    /// Completing a repeating task files its next occurrence right where it was, hidden until
+    /// that day. The finished one stays in History without the repeat, so reopening it doesn't
+    /// create a second copy.
+    private func scheduleNextOccurrence(of task: TaskItem, now: Date) {
+        guard let recurrence = task.recurrence, let due = task.dueDate else { return }
+        var next = recurrence.next(after: due)
+        let today = Calendar.current.startOfDay(for: now)
+        var steps = 0
+        while next < today && steps < 1000 {
+            next = recurrence.next(after: next)
+            steps += 1
+        }
+        let copy = insertTask(after: task, title: task.title)
+        copy.notes = task.notes
+        copy.priorityRaw = task.priorityRaw
+        copy.tagsRaw = task.tagsRaw
+        copy.estimate = task.estimate
+        copy.urgency = task.urgency
+        copy.importance = task.importance
+        copy.recurrenceRaw = task.recurrenceRaw
+        copy.remindersRaw = task.remindersRaw
+        copy.dueDate = next
+        copy.dueHasTime = task.dueHasTime
+        let showFrom = DayBoundary.current.start(of: next)
+        if showFrom > now { copy.deferredUntil = showFrom }
+        task.recurrenceRaw = ""
     }
 
     // MARK: - Deleting
@@ -256,6 +290,43 @@ struct TaskStore {
             task.priority = priority
             task.touch()
         }
+        save()
+    }
+
+    func setEstimate(_ tasks: [TaskItem], _ powerHours: Double) {
+        for task in tasks {
+            task.estimate = max(0, powerHours)
+            task.touch()
+        }
+        save()
+    }
+
+    /// Where the task sits on the Eisenhower matrix (0...1 each).
+    func setMatrix(_ task: TaskItem, urgency: Double, importance: Double) {
+        task.urgency = Matrix.clamp(urgency)
+        task.importance = Matrix.clamp(importance)
+        task.touch()
+        save()
+    }
+
+    func setRecurrence(_ tasks: [TaskItem], _ recurrence: Recurrence?) {
+        for task in tasks {
+            task.recurrence = recurrence
+            task.touch()
+        }
+        save()
+    }
+
+    func setReminders(_ task: TaskItem, _ offsets: [Int]) {
+        task.reminderOffsets = offsets
+        task.touch()
+        save()
+    }
+
+    func addFocusTime(_ task: TaskItem, seconds: Double) {
+        guard seconds > 0 else { return }
+        task.focusSeconds += seconds
+        task.touch()
         save()
     }
 
@@ -424,13 +495,23 @@ struct TaskStore {
     // MARK: - Groups
 
     @discardableResult
-    func addGroup(name: String, symbol: String = "list.bullet", color: TheoColor = .blue, isProject: Bool = false) -> TaskGroup {
+    func addGroup(name: String, symbol: String = "list.bullet", color: TheoColor = .blue, isProject: Bool = false, parent: UUID? = nil) -> TaskGroup {
         let order = (liveGroups().map(\.sortOrder).max() ?? 0) + 1
         let group = TaskGroup(name: name, symbol: symbol, color: color, sortOrder: order)
         group.isProject = isProject
+        group.parentUUID = parent
         context.insert(group)
         save()
         return group
+    }
+
+    /// Moves a group inside another one (a subproject), or to the top level with nil.
+    func setParent(_ group: TaskGroup, _ parentID: UUID?) {
+        guard parentID != group.uuid, group.parentUUID != parentID else { return }
+        if let parentID, GroupTree.descendants(of: group.uuid, in: liveGroups()).contains(where: { $0.uuid == parentID }) { return }
+        group.parentUUID = parentID
+        group.touch()
+        save()
     }
 
     func reorderGroups(_ groups: [TaskGroup]) {
@@ -443,6 +524,11 @@ struct TaskStore {
 
     func deleteGroup(_ group: TaskGroup, keepTasks: Bool) {
         let now = Date()
+        // Subprojects move up a level instead of disappearing with their parent.
+        for child in liveGroups() where child.parentUUID == group.uuid {
+            child.parentUUID = group.parentUUID
+            child.touch()
+        }
         if keepTasks {
             move(group.liveTasks, toGroup: nil)
         } else {

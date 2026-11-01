@@ -17,8 +17,9 @@ struct MoveSheet: View {
             List {
                 Section {
                     row(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, id: nil)
-                    ForEach(groups) { group in
-                        row(title: group.displayName, symbol: group.symbol, color: group.color.color, id: group.uuid)
+                    ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
+                        row(title: item.group.displayName, symbol: item.group.symbol, color: item.group.color.color, id: item.group.uuid)
+                            .padding(.leading, CGFloat(item.level) * 16)
                     }
                 }
                 Section("New Group") {

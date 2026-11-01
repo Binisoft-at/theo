@@ -118,11 +118,18 @@ extension TaskStore {
 
     // MARK: - Import
 
-    /// Creates groups and tasks from pasted Apple Notes / Markdown checklist text.
+    /// Creates groups and tasks from pasted Apple Notes / Markdown checklist text. `#` headings
+    /// are groups, `##` headings subprojects inside the group above, and so on. Estimates
+    /// ("(0,25PH)"), exact deadlines ("📅 2026-11-04"), priorities and tags are picked up.
     @discardableResult
     func importLines(_ lines: [NotesImport.Line], skipDone: Bool) -> Int {
-        var groupsByName: [String: TaskGroup] = [:]
-        for group in liveGroups() { groupsByName[group.displayName.lowercased()] = group }
+        func lookupKey(_ parent: UUID?, _ name: String) -> String {
+            (parent?.uuidString ?? "-") + "/" + name.lowercased()
+        }
+        var groupsByKey: [String: TaskGroup] = [:]
+        for group in liveGroups() { groupsByKey[lookupKey(group.parentUUID, group.displayName)] = group }
+        var headings: [TaskGroup] = []
+        var skippedBelow: Int?
         var currentGroup: TaskGroup?
         var orders: [UUID?: Double] = [:]
         func nextOrder(_ id: UUID?) -> Double {
@@ -137,25 +144,41 @@ extension TaskStore {
         var created = 0
         for line in lines {
             if line.isHeading {
-                let key = line.title.lowercased()
-                if key == "quick entry" || key == "quick" || key == "inbox" {
+                skippedBelow = nil
+                let name = line.title.lowercased()
+                if line.level <= 1 && (name == "quick entry" || name == "quick" || name == "inbox") {
                     currentGroup = nil
-                } else if let existing = groupsByName[key] {
-                    currentGroup = existing
-                } else {
-                    let group = addGroup(name: line.title, symbol: "list.bullet", color: TheoColor.forTag(key))
-                    groupsByName[key] = group
-                    currentGroup = group
+                    headings = []
+                    continue
                 }
+                let level = max(1, min(line.level, headings.count + 1))
+                let parent = level > 1 ? headings[level - 2] : nil
+                let group: TaskGroup
+                if let existing = groupsByKey[lookupKey(parent?.uuid, line.title)] {
+                    group = existing
+                } else {
+                    group = addGroup(name: line.title, symbol: "list.bullet", color: TheoColor.forTag(name), parent: parent?.uuid)
+                    groupsByKey[lookupKey(parent?.uuid, line.title)] = group
+                }
+                headings = Array(headings.prefix(level - 1)) + [group]
+                currentGroup = group
                 continue
             }
-            if skipDone && line.done { continue }
-            let parsed = QuickParser.parse(line.title, groups: [], options: [.priority, .tags])
+            // A finished line takes its subtasks with it.
+            if let skippedBelow, line.indent > skippedBelow { continue }
+            skippedBelow = nil
+            if skipDone && line.done {
+                skippedBelow = line.indent
+                continue
+            }
+            let parsed = QuickParser.parse(line.title, groups: [], options: [.priority, .tags, .estimate, .exactDates])
             let task = TaskItem(title: parsed.title, sortOrder: nextOrder(currentGroup?.uuid), indent: line.indent)
             context.insert(task)
             task.group = currentGroup
             task.priority = parsed.priority
             task.tags = parsed.tags
+            task.estimate = parsed.estimate ?? 0
+            task.dueDate = parsed.due
             if line.done {
                 task.isDone = true
                 task.completedAt = Date()

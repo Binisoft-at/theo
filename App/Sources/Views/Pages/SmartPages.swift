@@ -26,13 +26,21 @@ struct GroupPageView: View {
     @ViewBuilder
     private func content(group: TaskGroup?) -> some View {
         let completed = showAllCompleted ? CompletedMode.bottom : (CompletedMode(rawValue: completedRaw) ?? .bottom)
+        // The group's own tasks plus those of its subprojects.
+        let inside: Set<UUID> = groupID.map { Set([$0] + GroupTree.descendants(of: $0, in: groups).map(\.uuid)) } ?? []
         let mine = tasks.filter { task in
-            guard task.groupID == groupID else { return false }
+            if let groupID = task.groupID {
+                guard inside.contains(groupID) else { return false }
+            } else if groupID != nil {
+                return false
+            }
             if task.isDone { return showAllCompleted || (task.completedAt ?? .distantPast) >= app.dayStart }
             return true
         }
-        let rows = PageBuilder.taskRows(
-            mine,
+        let rows = PageBuilder.groupPage(
+            groupID: groupID,
+            tasks: mine,
+            groups: groups,
             options: PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs)
         )
         let open = mine.filter { !$0.isDone }.count
@@ -61,6 +69,13 @@ struct GroupPageView: View {
                         withAnimation(.snappy) { app.store.completeAll(in: groupID) }
                     } label: {
                         Label("Complete All", systemImage: "checkmark.circle")
+                    }
+                    if let group {
+                        Button {
+                            app.groupEditor = .subgroup(group)
+                        } label: {
+                            Label("New Subproject…", systemImage: "folder.badge.plus")
+                        }
                     }
                     #if os(iOS)
                     Button {

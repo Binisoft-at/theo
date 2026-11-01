@@ -139,6 +139,11 @@ struct TutorialStage: View {
         snapshot.collapsedCount = app.collapsedTaskIDs.count
         snapshot.order = tasks.filter { !$0.isDone }.sorted(by: Sections.pageOrder(groups)).map(\.uuid.uuidString)
         snapshot.detailsOpen = app.detailTask != nil
+        snapshot.estimateSum = tasks.reduce(0) { $0 + $1.estimate }
+        snapshot.matrixSum = tasks.reduce(0) { $0 + $1.urgency + $1.importance }
+        snapshot.focusRunning = app.focus != nil
+        snapshot.timedCount = tasks.filter { $0.dueHasTime && $0.dueDate != nil }.count
+        snapshot.subgroupCount = groups.filter { $0.parentUUID != nil }.count
         return snapshot
     }
 

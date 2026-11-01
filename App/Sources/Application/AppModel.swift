@@ -6,6 +6,7 @@ enum SidebarItem: Hashable {
     case today
     case upcoming
     case priority
+    case matrix
     case quickEntry
     case history
     case trash
@@ -36,14 +37,24 @@ struct TaskBatch: Identifiable {
 
 enum GroupEditorTarget: Identifiable {
     case new
+    /// A new subproject inside this group.
+    case subgroup(TaskGroup)
     case edit(TaskGroup)
 
     var id: String {
         switch self {
         case .new: "new"
+        case .subgroup(let parent): "sub-" + parent.uuid.uuidString
         case .edit(let group): group.uuid.uuidString
         }
     }
+}
+
+/// A task being dragged onto the Eisenhower canvas from the composer's handle.
+struct MatrixDrag: Equatable {
+    var title: String
+    /// Finger position in global coordinates.
+    var location: CGPoint
 }
 
 /// App-wide UI state shared by all windows (and the macOS menu bar extra).
@@ -73,6 +84,18 @@ final class AppModel {
     /// The tour's practice-page model while the tour is open; menu commands go there.
     var tourModel: AppModel?
 
+    /// The running focus timer, if any (kept across launches through `saveFocus()`).
+    var focus: FocusSession?
+    var showFocus = false
+    /// A drag from the composer's matrix handle, shown on the full-screen canvas.
+    var matrixDrag: MatrixDrag?
+    /// The canvas's frame in global coordinates while it's on screen.
+    var matrixCanvasFrame: CGRect = .zero
+    /// An existing task being placed on the canvas.
+    var matrixTask: TaskItem?
+    /// Schedules the notifications for timed tasks (not on the tour's practice page).
+    let reminders: ReminderScheduler?
+
     /// Where menu-bar commands act: the practice page during the tour, otherwise this model.
     var commandTarget: AppModel { tourModel ?? self }
 
@@ -99,7 +122,9 @@ final class AppModel {
         self.isSandbox = isSandbox
         self.sync = SyncMonitor()
         self.dayStart = DayBoundary.current.start(of: Date())
+        self.reminders = isSandbox ? nil : ReminderScheduler(container: container)
         guard !isSandbox else { return }
+        focus = Self.loadFocus()
         let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []
         collapsedTaskIDs = Set(stored.compactMap(UUID.init(uuidString:)))
         applyLaunchArguments()
@@ -123,7 +148,7 @@ final class AppModel {
 
     func requestQuickEntry() {
         switch selection {
-        case .history, .trash, .upcoming, .priority, .tag, .none: go(.today)
+        case .history, .trash, .upcoming, .priority, .matrix, .tag, .none: go(.today)
         default: if phonePath.isEmpty { go(selection ?? .today) }
         }
         detailPath = NavigationPath()
@@ -250,6 +275,7 @@ final class AppModel {
             switch args[index + 1] {
             case "upcoming": selection = .upcoming
             case "priority": selection = .priority
+            case "matrix": selection = .matrix
             case "history": selection = .history
             case "quick": selection = .quickEntry
             case "sidebar":

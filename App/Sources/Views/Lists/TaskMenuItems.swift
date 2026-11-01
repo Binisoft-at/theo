@@ -77,16 +77,89 @@ struct TaskMenuItems: View {
         }
 
         Menu {
+            ForEach(PowerHours.presets, id: \.self) { value in
+                Button {
+                    app.store.setEstimate(tasks, value)
+                } label: {
+                    if single?.estimate == value {
+                        Label(PowerHours.format(value), systemImage: "checkmark")
+                    } else {
+                        Text(PowerHours.format(value))
+                    }
+                }
+            }
+            if let single {
+                Button {
+                    app.detailTask = single
+                } label: {
+                    Label("Custom…", systemImage: "slider.horizontal.3")
+                }
+            }
+            if tasks.contains(where: { $0.estimate > 0 }) {
+                Divider()
+                Button(role: .destructive) {
+                    app.store.setEstimate(tasks, 0)
+                } label: {
+                    Label("No Estimate", systemImage: "xmark.circle")
+                }
+            }
+        } label: {
+            Label("Estimate", systemImage: "timer")
+        }
+
+        if tasks.allSatisfy({ $0.dueDate != nil }) {
+            Menu {
+                ForEach(Recurrence.common, id: \.self) { recurrence in
+                    Button {
+                        app.store.setRecurrence(tasks, recurrence)
+                    } label: {
+                        if single?.recurrence == recurrence {
+                            Label(recurrence.title, systemImage: "checkmark")
+                        } else {
+                            Text(recurrence.title)
+                        }
+                    }
+                }
+                if tasks.contains(where: { $0.recurrence != nil }) {
+                    Divider()
+                    Button(role: .destructive) {
+                        app.store.setRecurrence(tasks, nil)
+                    } label: {
+                        Label("Don't Repeat", systemImage: "xmark.circle")
+                    }
+                }
+            } label: {
+                Label("Repeat", systemImage: "repeat")
+            }
+        }
+
+        if let single {
+            Button {
+                withAnimation(.snappy) { app.matrixTask = single }
+            } label: {
+                Label("Place in Matrix…", systemImage: "square.grid.2x2")
+            }
+            if !single.isDone {
+                Button {
+                    app.startFocus(on: single)
+                } label: {
+                    Label("Start Focus", systemImage: "timer")
+                }
+            }
+        }
+
+        Menu {
             Button {
                 app.move(tasks, toGroup: nil)
             } label: {
                 Label("Quick Entry", systemImage: "tray.and.arrow.down")
             }
-            ForEach(app.store.liveGroups()) { group in
+            let allGroups = app.store.liveGroups()
+            ForEach(GroupTree.ordered(allGroups), id: \.group.uuid) { item in
                 Button {
-                    app.move(tasks, toGroup: group.uuid)
+                    app.move(tasks, toGroup: item.group.uuid)
                 } label: {
-                    Label(group.displayName, systemImage: group.symbol)
+                    Label(GroupTree.path(of: item.group, in: allGroups), systemImage: item.group.symbol)
                 }
             }
             Divider()

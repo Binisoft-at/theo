@@ -18,6 +18,8 @@ final class TaskGroup {
     var createdAt: Date = Date()
     var modifiedAt: Date = Date()
     var deletedAt: Date?
+    /// The group this one sits inside (a subproject); nil = top level.
+    var parentUUID: UUID?
 
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.group)
     var tasks: [TaskItem]? = []

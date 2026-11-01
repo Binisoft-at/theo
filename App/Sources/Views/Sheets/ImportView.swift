@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import TheoCore
 
 /// Paste a daily note from Apple Notes (or any Markdown checklist) and turn it into tasks.
@@ -9,6 +10,7 @@ struct ImportView: View {
     @State private var text = ""
     @State private var plainLinesAreHeadings = false
     @State private var skipDone = true
+    @State private var showFilePicker = false
 
     private var lines: [NotesImport.Line] {
         NotesImport.parse(text, plainLinesAreHeadings: plainLinesAreHeadings)
@@ -28,10 +30,15 @@ struct ImportView: View {
                         #if os(iOS)
                         .textInputAutocapitalization(.never)
                         #endif
+                    Button {
+                        showFilePicker = true
+                    } label: {
+                        Label("Choose a Text or Markdown File…", systemImage: "doc.text")
+                    }
                 } header: {
                     Text("Paste your note")
                 } footer: {
-                    Text("In Notes: select all in your daily note, copy, and paste here. Checklist items become tasks, indented items become subtasks, and lines ending with “:” or starting with “#” become groups.")
+                    Text("In Notes: select all in your daily note, copy, and paste here. Checklist items become tasks, indented items become subtasks, “#” lines become groups and “##” lines subprojects inside them. “(0,5PH)” sets the estimate, “📅 2026-11-04” the deadline, “!!” the priority.")
                 }
 
                 Section {
@@ -43,8 +50,9 @@ struct ImportView: View {
                     Section("Preview · \(tasks) tasks · \(headings) groups") {
                         ForEach(parsed.prefix(60)) { line in
                             if line.isHeading {
-                                Label(line.title, systemImage: "folder")
-                                    .font(.headline)
+                                Label(line.title, systemImage: line.level > 1 ? "folder.badge.plus" : "folder")
+                                    .font(line.level > 1 ? .subheadline.weight(.semibold) : .headline)
+                                    .padding(.leading, CGFloat(max(0, line.level - 1)) * 16)
                             } else if !(skipDone && line.done) {
                                 HStack(spacing: 8) {
                                     Image(systemName: line.done ? "checkmark.circle.fill" : "circle")
@@ -58,6 +66,12 @@ struct ImportView: View {
                 }
             }
             .formStyle(.grouped)
+            .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.plainText, .text, UTType(filenameExtension: "md") ?? .plainText]) { result in
+                guard case .success(let url) = result else { return }
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() } }
+                if let content = try? String(contentsOf: url, encoding: .utf8) { text = content }
+            }
             .navigationTitle("Import from Notes")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

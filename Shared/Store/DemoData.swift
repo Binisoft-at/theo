@@ -78,6 +78,18 @@ enum DemoData {
                 task.createdAt = cal.date(byAdding: .day, value: -day - 1, to: Date()) ?? Date()
             }
         }
+
+        // Spread the open tasks over the matrix and give some an estimate.
+        let samples: [(urgency: Double, importance: Double, estimate: Double)] = [
+            (0.82, 0.86, 0.5), (0.3, 0.8, 1), (0.74, 0.3, 0.25), (0.2, 0.18, 0), (0.6, 0.66, 0.75),
+            (0.15, 0.62, 2), (0.9, 0.42, 0.25), (0.42, 0.33, 0), (0.55, 0.92, 1), (0.08, 0.4, 0.5),
+        ]
+        for (index, task) in store.liveTasks().filter({ !$0.isDone }).enumerated() {
+            let sample = samples[index % samples.count]
+            task.urgency = sample.urgency
+            task.importance = sample.importance
+            task.estimate = sample.estimate
+        }
         store.save()
     }
 }

@@ -241,6 +241,11 @@ struct TaskListView<Header: View>: View {
                 Label("Edit Group…", systemImage: "pencil")
             }
             Button {
+                app.groupEditor = .subgroup(group)
+            } label: {
+                Label("New Subproject…", systemImage: "folder.badge.plus")
+            }
+            Button {
                 app.go(.group(group.uuid))
             } label: {
                 Label("Open as Page", systemImage: "arrow.up.forward.square")
@@ -308,6 +313,32 @@ struct TaskListView<Header: View>: View {
             app.store.setPriority([task], level)
         }
         Menu {
+            ForEach(PowerHours.presets, id: \.self) { value in
+                Button(PowerHours.format(value)) { app.store.setEstimate([task], value) }
+            }
+            Button {
+                focusedID = nil
+                app.detailTask = task
+            } label: {
+                Label("Custom…", systemImage: "slider.horizontal.3")
+            }
+            if task.estimate > 0 {
+                Button(role: .destructive) {
+                    app.store.setEstimate([task], 0)
+                } label: {
+                    Label("No Estimate", systemImage: "xmark.circle")
+                }
+            }
+        } label: {
+            if task.estimate > 0 {
+                Text(PowerHours.number(task.estimate))
+                    .font(.subheadline.weight(.semibold))
+            } else {
+                Image(systemName: "timer")
+            }
+        }
+        .accessibilityLabel("Estimate")
+        Menu {
             ForEach(QuickDate.allCases) { quick in
                 Button {
                     app.store.setDue([task], quick.date(from: app.dayStart))
@@ -349,6 +380,18 @@ struct TaskListView<Header: View>: View {
                 app.deferToTomorrow([task])
             } label: {
                 Label("Not Today", systemImage: "moon.zzz")
+            }
+            Button {
+                focusedID = nil
+                withAnimation(.snappy) { app.matrixTask = task }
+            } label: {
+                Label("Place in Matrix…", systemImage: "square.grid.2x2")
+            }
+            Button {
+                focusedID = nil
+                app.startFocus(on: task)
+            } label: {
+                Label("Start Focus", systemImage: "timer")
             }
             Button {
                 focusedID = nil

@@ -8,12 +8,15 @@ public enum NotesImport {
         public var done: Bool
         public var indent: Int
         public var isHeading: Bool
+        /// Heading level: 1 for `#` (a group), 2 for `##` (a subproject inside it) ...
+        public var level: Int
 
-        public init(title: String, done: Bool, indent: Int, isHeading: Bool) {
+        public init(title: String, done: Bool, indent: Int, isHeading: Bool, level: Int = 1) {
             self.title = title
             self.done = done
             self.indent = indent
             self.isHeading = isHeading
+            self.level = level
         }
     }
 
@@ -45,8 +48,9 @@ public enum NotesImport {
             var line = String(body).trimmingCharacters(in: .whitespaces)
 
             if line.hasPrefix("#") {
+                let level = line.prefix(while: { $0 == "#" }).count
                 let title = line.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces)
-                if !title.isEmpty { result.append(Line(title: title, done: false, indent: 0, isHeading: true)) }
+                if !title.isEmpty { result.append(Line(title: title, done: false, indent: 0, isHeading: true, level: level)) }
                 continue
             }
 

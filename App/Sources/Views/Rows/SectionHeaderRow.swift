@@ -47,7 +47,7 @@ struct SectionHeaderRow: View {
                     .foregroundStyle(color)
                     .frame(minWidth: 22)
                 Text(title)
-                    .font(.title3.weight(.bold))
+                    .font(info.level == 0 ? .title3.weight(.bold) : .headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 if let project, let due = project.dueDate {
@@ -59,6 +59,16 @@ struct SectionHeaderRow: View {
                         .foregroundStyle(color)
                 }
                 Spacer(minLength: 8)
+                if info.openEstimate > 0 {
+                    Text(PowerHours.format(info.openEstimate))
+                        .font(.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                        .accessibilityLabel("\(PowerHours.format(info.openEstimate)) planned")
+                }
                 if total > 0 {
                     Text(info.doneCount > 0 ? "\(info.doneCount)/\(total)" : "\(info.openCount)")
                         .font(.subheadline.weight(.medium))
@@ -91,7 +101,8 @@ struct SectionHeaderRow: View {
                     .scaleEffect(x: 1, y: 0.7, anchor: .center)
             }
         }
-        .padding(.top, 14)
+        .padding(.leading, CGFloat(info.level) * 18)
+        .padding(.top, info.level == 0 ? 14 : 8)
         .padding(.bottom, 2)
         .contentShape(Rectangle())
         .onTapGesture {

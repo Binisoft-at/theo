@@ -96,6 +96,8 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 app.refreshDay()
+                app.tickFocus()
+                app.reminders?.scheduleSoon()
                 if QuickActions.pendingQuickEntry {
                     QuickActions.pendingQuickEntry = false
                     app.requestQuickEntry()
@@ -149,6 +151,21 @@ struct AppChrome: ViewModifier {
                 ImportView()
                     .tint(accent)
             }
+            .sheet(isPresented: $app.showFocus) {
+                FocusView()
+                    .tint(accent)
+            }
+            .overlay {
+                if let drag = app.matrixDrag {
+                    MatrixDropOverlay(drag: drag)
+                        .tint(accent)
+                } else if let task = app.matrixTask {
+                    MatrixPlacementOverlay(task: task)
+                        .tint(accent)
+                }
+            }
+            .animation(.snappy(duration: 0.2), value: app.matrixDrag == nil)
+            .animation(.snappy(duration: 0.2), value: app.matrixTask == nil)
     }
 }
 
@@ -165,6 +182,8 @@ struct DetailRouter: View {
             UpcomingView()
         case .priority:
             PriorityView()
+        case .matrix:
+            MatrixPageView()
         case .quickEntry:
             GroupPageView(groupID: nil)
         case .group(let id):

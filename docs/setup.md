@@ -71,6 +71,12 @@ TestFlight builds use the Production environment, so it needs the schema first.
 Running a Debug build from Xcode once also works instead of step 2: it pushes the full schema
 on first launch (`Persistence.initializeCloudKitSchemaIfNeeded`).
 
+### Schema changes
+
+Whenever `cloudkit/schema.ckdb` gains fields (like the estimates, matrix, reminders and
+subprojects fields), run step 4 again (CloudKit schema workflow → Deploy Schema Changes) before
+installing a build that uses them. Otherwise the new fields can't sync in Production.
+
 ## 5. Release
 
 - https://github.com/Binisoft-at/theo/actions/workflows/testflight.yml → **Run workflow** →

@@ -28,6 +28,10 @@ struct SectionHeaderInfo: Identifiable {
     let doneCount: Int
     let isCollapsed: Bool
     let collapsible: Bool
+    /// Power Hours still open in the section.
+    var openEstimate: Double = 0
+    /// Subproject depth (0 = top-level group).
+    var level: Int = 0
 }
 
 /// Per-row presentation flags.
@@ -127,7 +131,11 @@ enum PageBuilder {
                 placeholder: "Dump anything here. Sort it later."
             )
         }
-        for group in groups {
+        // Subprojects follow their parent and fold away with it.
+        var foldedBelow: Int?
+        for (group, level) in GroupTree.ordered(groups) {
+            if let foldedBelow, level > foldedBelow { continue }
+            foldedBelow = group.isCollapsed ? level : nil
             appendSection(
                 into: &rows,
                 id: group.uuid.uuidString,
@@ -135,7 +143,8 @@ enum PageBuilder {
                 tasks: byGroup[group.uuid] ?? [],
                 collapsed: group.isCollapsed,
                 options: options,
-                placeholder: nil
+                placeholder: nil,
+                level: level
             )
         }
         return rows
@@ -172,7 +181,8 @@ enum PageBuilder {
         tasks: [TaskItem],
         collapsed: Bool,
         options: Options,
-        placeholder: String?
+        placeholder: String?,
+        level: Int = 0
     ) {
         let open = tasks.filter { !$0.isDone }.count
         rows.append(.header(SectionHeaderInfo(
@@ -181,7 +191,9 @@ enum PageBuilder {
             openCount: open,
             doneCount: tasks.count - open,
             isCollapsed: collapsed,
-            collapsible: true
+            collapsible: true,
+            openEstimate: PowerHours.total(tasks, where: { !$0.isDone }),
+            level: level
         )))
         guard !collapsed else { return }
         let lines = taskRows(tasks, options: options)
@@ -189,6 +201,43 @@ enum PageBuilder {
             rows.append(.placeholder(id: id, text: placeholder))
         }
         rows += lines
+    }
+
+    /// A group's own page: its tasks, then each subproject under its own heading.
+    static func groupPage(groupID: UUID?, tasks: [TaskItem], groups: [TaskGroup], options: Options) -> [ListRow] {
+        var rows = taskRows(tasks.filter { $0.groupID == groupID }, options: options)
+        guard let groupID else { return rows }
+        let inside = Set(GroupTree.descendants(of: groupID, in: groups).map(\.uuid))
+        let ordered = GroupTree.ordered(groups).filter { inside.contains($0.group.uuid) }
+        let base = ordered.map(\.level).min() ?? 0
+        var foldedBelow: Int?
+        for (group, level) in ordered {
+            if let foldedBelow, level > foldedBelow { continue }
+            foldedBelow = group.isCollapsed ? level : nil
+            appendSection(
+                into: &rows,
+                id: group.uuid.uuidString,
+                kind: .group(group),
+                tasks: tasks.filter { $0.groupID == group.uuid },
+                collapsed: group.isCollapsed,
+                options: options,
+                placeholder: nil,
+                level: level - base
+            )
+        }
+        return rows
+    }
+
+    /// Planned and finished Power Hours of a set of tasks, totalled per group so nesting is
+    /// read correctly.
+    static func estimateTotals(_ tasks: [TaskItem]) -> (open: Double, done: Double) {
+        var open = 0.0
+        var done = 0.0
+        for section in Dictionary(grouping: tasks, by: \.groupID).values {
+            open += PowerHours.total(section, where: { !$0.isDone })
+            done += PowerHours.total(section, where: \.isDone)
+        }
+        return (open, done)
     }
 
     // MARK: - Filters

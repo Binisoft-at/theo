@@ -29,7 +29,7 @@ enum Sections {
     /// Page position of a task: Quick Entry first, then groups in order, then manual order.
     static func pageOrder(_ groups: [TaskGroup]) -> (TaskItem, TaskItem) -> Bool {
         var groupRank: [UUID: Int] = [:]
-        for (index, group) in groups.enumerated() { groupRank[group.uuid] = index }
+        for (index, item) in GroupTree.ordered(groups).enumerated() { groupRank[item.group.uuid] = index }
         return { a, b in
             let ra = a.groupID.flatMap { groupRank[$0] } ?? -1
             let rb = b.groupID.flatMap { groupRank[$0] } ?? -1
@@ -127,13 +127,25 @@ enum Sections {
         return result
     }
 
+    /// The Eisenhower quadrants, each ranked by matrix score (highest first).
+    static func byMatrix(_ tasks: [TaskItem], today: Date) -> [LabeledSection] {
+        let scored = tasks.map { (task: $0, position: $0.matrixPosition(today: today)) }
+        return Matrix.Quadrant.allCases.map { quadrant in
+            let items = scored
+                .filter { Matrix.quadrant(urgency: $0.position.urgency, importance: $0.position.importance) == quadrant }
+                .sorted { Matrix.score(urgency: $0.position.urgency, importance: $0.position.importance) > Matrix.score(urgency: $1.position.urgency, importance: $1.position.importance) }
+                .map(\.task)
+            return (key: "m\(quadrant.rawValue)", title: quadrant.title, symbol: quadrant.symbol, color: quadrant.color, tasks: items)
+        }
+    }
+
     static func byGroup(_ tasks: [TaskItem], groups: [TaskGroup]) -> [LabeledSection] {
         var result: [LabeledSection] = []
         let quick = tasks.filter { $0.groupID == nil }.sorted { $0.sortOrder < $1.sortOrder }
         result.append((key: "quick", title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .secondary, tasks: quick))
-        for group in groups {
+        for (group, _) in GroupTree.ordered(groups) {
             let items = tasks.filter { $0.groupID == group.uuid }.sorted { $0.sortOrder < $1.sortOrder }
-            result.append((key: group.uuid.uuidString, title: group.displayName, symbol: group.symbol, color: group.color.color, tasks: items))
+            result.append((key: group.uuid.uuidString, title: GroupTree.path(of: group, in: groups), symbol: group.symbol, color: group.color.color, tasks: items))
         }
         return result
     }

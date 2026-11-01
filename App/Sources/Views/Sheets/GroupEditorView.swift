@@ -7,6 +7,8 @@ struct GroupEditorView: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
+    @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
+    private var groups: [TaskGroup]
 
     @State private var name = ""
     @State private var symbol = "list.bullet"
@@ -15,12 +17,20 @@ struct GroupEditorView: View {
     @State private var hasDue = false
     @State private var due = Date()
     @State private var notes = ""
+    @State private var parentID: UUID?
     @State private var loaded = false
     @FocusState private var nameFocused: Bool
 
     private var existing: TaskGroup? {
         if case .edit(let group) = target { return group }
         return nil
+    }
+
+    /// Groups this one can sit inside: anything but itself and its own subprojects.
+    private var parentOptions: [(group: TaskGroup, level: Int)] {
+        guard let existing else { return GroupTree.ordered(groups) }
+        let excluded = Set([existing.uuid] + GroupTree.descendants(of: existing.uuid, in: groups).map(\.uuid))
+        return GroupTree.ordered(groups).filter { !excluded.contains($0.group.uuid) }
     }
 
     private let columns = [GridItem(.adaptive(minimum: 40), spacing: 10)]
@@ -88,6 +98,20 @@ struct GroupEditorView: View {
                 }
 
                 Section {
+                    Picker(selection: $parentID) {
+                        Text("Top Level").tag(UUID?.none)
+                        ForEach(parentOptions, id: \.group.uuid) { option in
+                            Text(String(repeating: "   ", count: option.level) + option.group.displayName)
+                                .tag(UUID?.some(option.group.uuid))
+                        }
+                    } label: {
+                        Label("Inside", systemImage: "folder")
+                    }
+                } footer: {
+                    Text("Put a group inside another one to make it a subproject.")
+                }
+
+                Section {
                     Toggle(isOn: $isProject) {
                         Label("Project", systemImage: "chart.bar.fill")
                     }
@@ -122,7 +146,7 @@ struct GroupEditorView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(existing == nil ? "New Group" : "Edit Group")
+            .navigationTitle(existing != nil ? "Edit Group" : (parentID == nil ? "New Group" : "New Subproject"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -155,7 +179,9 @@ struct GroupEditorView: View {
                 hasDue = true
                 due = date
             }
+            parentID = existing.parentUUID
         } else {
+            if case .subgroup(let parent) = target { parentID = parent.uuid }
             color = TheoColor.allCases.randomElement() ?? .blue
             nameFocused = true
         }
@@ -164,7 +190,8 @@ struct GroupEditorView: View {
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        let group = existing ?? app.store.addGroup(name: trimmed, symbol: symbol, color: color)
+        let group = existing ?? app.store.addGroup(name: trimmed, symbol: symbol, color: color, parent: parentID)
+        app.store.setParent(group, parentID)
         group.name = trimmed
         group.symbol = symbol
         group.color = color

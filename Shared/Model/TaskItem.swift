@@ -30,6 +30,17 @@ final class TaskItem {
     /// Soft delete ("Recently Deleted").
     var deletedAt: Date?
     var group: TaskGroup?
+    /// Estimated effort in Power Hours (50 focused minutes each); 0 = none.
+    var estimate: Double = 0
+    /// Focus-timer time spent on this task.
+    var focusSeconds: Double = 0
+    /// Position on the Eisenhower matrix, 0...1 each.
+    var urgency: Double = 0.25
+    var importance: Double = 0.25
+    /// How the deadline repeats (`Recurrence.raw`); empty = once.
+    var recurrenceRaw: String = ""
+    /// Notification offsets for timed deadlines (`Reminders` format); empty = at the time.
+    var remindersRaw: String = ""
 
     init(title: String = "", group: TaskGroup? = nil, sortOrder: Double = 0, indent: Int = 0) {
         let now = Date()
@@ -72,6 +83,27 @@ extension TaskItem {
 
     func touch() { modifiedAt = Date() }
 
+    var recurrence: Recurrence? {
+        get { Recurrence(raw: recurrenceRaw) }
+        set { recurrenceRaw = newValue?.raw ?? "" }
+    }
+
+    var reminderOffsets: [Int] {
+        get { Reminders.offsets(from: remindersRaw) }
+        set { remindersRaw = Reminders.raw(for: newValue) }
+    }
+
+    /// Importance and urgency as the matrix ranks them: priority adds importance, a close
+    /// deadline adds urgency.
+    func matrixPosition(today: Date) -> (urgency: Double, importance: Double) {
+        (Matrix.effectiveUrgency(urgency, due: isDone ? nil : dueDate, today: today), Matrix.effectiveImportance(importance, priority: priority))
+    }
+
+    func matrixScore(today: Date) -> Double {
+        let position = matrixPosition(today: today)
+        return Matrix.score(urgency: position.urgency, importance: position.importance)
+    }
+
     /// Whether the task belongs on the daily page starting at `dayStart`: still open (and not
     /// hidden with "Not Today" past that day), or completed during that day.
     func isOnPage(of dayStart: Date) -> Bool {
@@ -85,4 +117,4 @@ extension TaskItem {
     }
 }
 
-extension TaskItem: ChecklistItem {}
+extension TaskItem: ChecklistItem, Estimated {}

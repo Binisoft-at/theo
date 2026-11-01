@@ -16,6 +16,11 @@ public enum TutorialGoal: String, Sendable, CaseIterable {
     case deleteAndUndo
     case addGroup
     case openDetails
+    case estimate
+    case placeInMatrix
+    case startFocus
+    case addReminder
+    case addSubproject
 }
 
 /// A summary of the practice page, taken after every change.
@@ -33,6 +38,13 @@ public struct TutorialSnapshot: Equatable, Sendable {
     /// Open task IDs in page order.
     public var order: [String] = []
     public var detailsOpen = false
+    public var estimateSum = 0.0
+    /// Sum of every task's urgency and importance; changes when one is placed on the matrix.
+    public var matrixSum = 0.0
+    public var focusRunning = false
+    /// Tasks whose deadline has a time (and so a reminder).
+    public var timedCount = 0
+    public var subgroupCount = 0
 
     public init() {}
 }
@@ -105,6 +117,16 @@ public struct TutorialTracker: Sendable {
             return now.groupCount > base.groupCount
         case .openDetails:
             return now.detailsOpen
+        case .estimate:
+            return abs(now.estimateSum - base.estimateSum) > 0.001
+        case .placeInMatrix:
+            return abs(now.matrixSum - base.matrixSum) > 0.001
+        case .startFocus:
+            return now.focusRunning
+        case .addReminder:
+            return now.timedCount > base.timedCount
+        case .addSubproject:
+            return now.subgroupCount > base.subgroupCount
         }
     }
 }
@@ -112,7 +134,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 1
+    public static let version = 2
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -214,10 +236,44 @@ public enum TutorialCatalog {
             goal: .openDetails
         ),
         TutorialStep(
+            id: "estimate", since: 2, symbol: "timer",
+            title: "Time it in Power Hours",
+            body: "One PH is 50 focused minutes. Type \u{201C}0,5ph\u{201D} in the bottom bar, tap the PH chip, or touch and hold a task → Estimate. Today adds up what's planned and what's done.",
+            macBody: "One PH is 50 focused minutes. Type \u{201C}0,5ph\u{201D} in the bottom bar, click the PH chip, or right-click a task → Estimate. Today adds up what's planned and what's done.",
+            goal: .estimate
+        ),
+        TutorialStep(
+            id: "matrix", since: 2, symbol: "square.grid.2x2",
+            title: "Urgent or important?",
+            body: "Drag the ⊞ handle at the right of the bottom bar onto the matrix and let go: where you drop it sets how urgent and important it is. For an existing task: touch and hold → Place in Matrix.",
+            macBody: "Drag the ⊞ handle at the right of the bottom bar onto the matrix and let go: where you drop it sets how urgent and important it is. For an existing task: right-click → Place in Matrix (⌥⌘M).",
+            goal: .placeInMatrix
+        ),
+        TutorialStep(
+            id: "focus", since: 2, symbol: "scope",
+            title: "Focus for a Power Hour",
+            body: "Touch and hold a task → Start Focus. 50 minutes of focus, then a break, and the time is booked on the task. Close the timer and it keeps running.",
+            macBody: "Select a task and press ⌥⌘F (or right-click → Start Focus). 50 minutes of focus, then a break, and the time is booked on the task.",
+            goal: .startFocus
+        ),
+        TutorialStep(
+            id: "reminder", since: 2, symbol: "bell.badge",
+            title: "Never miss a time",
+            body: "Add \u{201C}call the bank tomorrow 9am\u{201D}. Tasks with a time remind you. In a task's details you can add earlier reminders, follow-ups and repeats like \u{201C}every week\u{201D}.",
+            goal: .addReminder
+        ),
+        TutorialStep(
+            id: "subproject", since: 2, symbol: "folder.badge.plus",
+            title: "Projects inside projects",
+            body: "Touch and hold the Work heading → New Subproject. Subprojects sit under their parent and fold away with it.",
+            macBody: "Right-click the Work heading → New Subproject. Subprojects sit under their parent and fold away with it.",
+            goal: .addSubproject
+        ),
+        TutorialStep(
             id: "everywhere", since: 1, symbol: "applewatch",
             title: "Everywhere you are",
-            body: "Upcoming, Priority, History and each group are one tap back. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
-            macBody: "Upcoming, Priority, History and each group are in the sidebar (⌘1–6). The menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            body: "Upcoming, Priority, the Matrix, History and each group are one tap back. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            macBody: "Upcoming, Priority, the Matrix, History and each group are in the sidebar (⌘1–7). ⇧⌘F opens the focus timer. The menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
             goal: .none
         ),
         finish,
