@@ -71,6 +71,11 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      # Automatic signing creates a throwaway development certificate on every fresh runner;
+      # remember what's in the keychain so the run can revoke only its own afterwards.
+      - name: Snapshot signing identities
+        run: scripts/ci/ci-certificates.py snapshot "$RUNNER_TEMP/identities-before.txt"
+
       - name: Archive & upload iOS (with the watch app)
         if: env.PLATFORMS != 'macos'
         run: scripts/ci/archive-upload.sh Theo 'generic/platform=iOS' ios
@@ -78,6 +83,11 @@ jobs:
       - name: Archive & upload macOS
         if: env.PLATFORMS != 'ios'
         run: scripts/ci/archive-upload.sh TheoMac 'generic/platform=macOS' macos
+
+      - name: Revoke this run's development certificate
+        if: always()
+        continue-on-error: true
+        run: scripts/ci/ci-certificates.py revoke-new "$RUNNER_TEMP/identities-before.txt" 2>&1 | tee certificates.log
 
       - name: Publish logs to ci-testflight branch
         if: always()

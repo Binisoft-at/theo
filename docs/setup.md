@@ -78,6 +78,10 @@ on first launch (`Persistence.initializeCloudKitSchemaIfNeeded`).
   number is the workflow run number, and the iOS build carries the watch app. The builds show up
   in TestFlight about 10–20 minutes after the run finishes.
 - Once they're there, delete the old record (section 2, step 4).
+- Each run revokes the throwaway development certificate it created (fresh runners can't keep
+  one). If a run still fails with "maximum number of certificates", revoke the leftover CI
+  certificates once: https://developer.apple.com/account/resources/certificates/list → each
+  **Development** certificate created by the API key (not your personal ones) → **Revoke**.
 - **Actions → CI** runs on every push to `main` and on PRs: TheoCore unit tests plus iOS,
   watchOS and macOS builds. Add `[screenshots]` to a commit message to also get screenshots.
 
