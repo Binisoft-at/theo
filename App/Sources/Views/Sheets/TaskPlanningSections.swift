@@ -182,12 +182,12 @@ struct TaskPlanningSections: View {
             GeometryReader { geo in
                 ZStack {
                     MatrixBackground(compact: true)
-                    MatrixDot(urgency: task.urgency, importance: task.importance, effective: effective, isSelected: true, size: geo.size)
+                    MatrixDot(urgency: effective.urgency, importance: effective.importance, isSelected: true, size: geo.size)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { location in
                     let position = MatrixGeometry.position(of: location, in: geo.size)
-                    withAnimation(.snappy) { app.store.setMatrix(task, urgency: position.urgency, importance: position.importance) }
+                    withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
                 }
             }
             .frame(height: 190)

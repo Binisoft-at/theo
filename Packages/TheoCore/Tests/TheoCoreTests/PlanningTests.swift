@@ -152,6 +152,12 @@ struct MatrixTests {
         #expect(Matrix.effectiveImportance(0.9, priority: .high) == 1)
     }
 
+    @Test func dropLandsWhereItWasDropped() {
+        let stored = Matrix.storedPosition(forDrop: 0.7, importance: 0.8, priority: .medium)
+        #expect(abs(Matrix.effectiveImportance(stored.importance, priority: .medium) - 0.8) < 0.0001)
+        #expect(stored.urgency == 0.7)
+    }
+
     @Test func deadlinesRaiseUrgency() {
         let calendar = Calendar(identifier: .gregorian)
         let today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!

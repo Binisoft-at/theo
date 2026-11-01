@@ -64,31 +64,18 @@ struct MatrixBackground: View {
     }
 }
 
-/// A dot on the canvas, with a faint ring where priority and deadline push it.
+/// A task on the canvas, drawn where it ranks (priority and deadline included).
 struct MatrixDot: View {
     let urgency: Double
     let importance: Double
-    var effective: (urgency: Double, importance: Double)?
     var title: String?
     var isSelected = false
     let size: CGSize
 
     var body: some View {
         let point = MatrixGeometry.point(urgency: urgency, importance: importance, in: size)
-        let quadrant = Matrix.quadrant(urgency: effective?.urgency ?? urgency, importance: effective?.importance ?? importance)
+        let quadrant = Matrix.quadrant(urgency: urgency, importance: importance)
         ZStack {
-            if let effective, abs(effective.urgency - urgency) > 0.01 || abs(effective.importance - importance) > 0.01 {
-                let target = MatrixGeometry.point(urgency: effective.urgency, importance: effective.importance, in: size)
-                Path { path in
-                    path.move(to: point)
-                    path.addLine(to: target)
-                }
-                .stroke(quadrant.color.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                Circle()
-                    .strokeBorder(quadrant.color.opacity(0.5), lineWidth: 1.5)
-                    .frame(width: 12, height: 12)
-                    .position(target)
-            }
             Circle()
                 .fill(quadrant.color)
                 .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: isSelected ? 3 : 1.5))
@@ -187,17 +174,10 @@ struct MatrixPlacementOverlay: View {
                 }
                 .multilineTextAlignment(.center)
                 GeometryReader { geo in
-                    let current = point.map { MatrixGeometry.position(of: $0, in: geo.size) } ?? (urgency: task.urgency, importance: task.importance)
+                    let current = point.map { MatrixGeometry.position(of: $0, in: geo.size) } ?? task.matrixPosition(today: app.dayStart)
                     ZStack {
                         MatrixBackground()
-                        MatrixDot(
-                            urgency: current.urgency,
-                            importance: current.importance,
-                            effective: (urgency: Matrix.effectiveUrgency(current.urgency, due: task.dueDate, today: app.dayStart),
-                                        importance: Matrix.effectiveImportance(current.importance, priority: task.priority)),
-                            isSelected: true,
-                            size: geo.size
-                        )
+                        MatrixDot(urgency: current.urgency, importance: current.importance, isSelected: true, size: geo.size)
                     }
                     .contentShape(Rectangle())
                     .gesture(
@@ -205,7 +185,7 @@ struct MatrixPlacementOverlay: View {
                             .onChanged { value in point = value.location }
                             .onEnded { value in
                                 let position = MatrixGeometry.position(of: value.location, in: geo.size)
-                                app.store.setMatrix(task, urgency: position.urgency, importance: position.importance)
+                                app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance)
                                 close()
                             }
                     )
@@ -273,22 +253,21 @@ struct MatrixPageView: View {
                 MatrixBackground()
                 ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
                     let isDragging = dragging?.id == task.uuid
-                    let raw: (urgency: Double, importance: Double) = isDragging
+                    let shown: (urgency: Double, importance: Double) = isDragging
                         ? MatrixGeometry.position(of: dragging?.point ?? .zero, in: geo.size)
-                        : (urgency: task.urgency, importance: task.importance)
+                        : task.matrixPosition(today: app.dayStart)
                     MatrixDot(
-                        urgency: raw.urgency,
-                        importance: raw.importance,
-                        effective: (urgency: Matrix.effectiveUrgency(raw.urgency, due: task.dueDate, today: app.dayStart),
-                                    importance: Matrix.effectiveImportance(raw.importance, priority: task.priority)),
-                        title: index < 8 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
+                        urgency: shown.urgency,
+                        importance: shown.importance,
+                        title: index < 5 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
                         isSelected: selectedID == task.uuid || isDragging,
                         size: geo.size
                     )
                 }
                 // One invisible hit target per dot, so dots can be dragged and tapped.
                 ForEach(tasks, id: \.uuid) { task in
-                    let point = MatrixGeometry.point(urgency: task.urgency, importance: task.importance, in: geo.size)
+                    let shown = task.matrixPosition(today: app.dayStart)
+                    let point = MatrixGeometry.point(urgency: shown.urgency, importance: shown.importance, in: geo.size)
                     Circle()
                         .fill(Color.white.opacity(0.001))
                         .frame(width: 34, height: 34)
@@ -299,7 +278,7 @@ struct MatrixPageView: View {
                                 .onEnded { value in
                                     let position = MatrixGeometry.position(of: value.location, in: geo.size)
                                     withAnimation(.snappy) {
-                                        app.store.setMatrix(task, urgency: position.urgency, importance: position.importance)
+                                        app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance)
                                     }
                                     dragging = nil
                                     selectedID = task.uuid
@@ -308,7 +287,7 @@ struct MatrixPageView: View {
                         .simultaneousGesture(TapGesture().onEnded { selectedID = selectedID == task.uuid ? nil : task.uuid })
                         .accessibilityElement()
                         .accessibilityLabel(task.trimmedTitle)
-                        .accessibilityValue(MatrixGeometry.describe(urgency: task.urgency, importance: task.importance))
+                        .accessibilityValue(MatrixGeometry.describe(urgency: shown.urgency, importance: shown.importance))
                 }
             }
             .coordinateSpace(.named("matrix"))
@@ -317,12 +296,12 @@ struct MatrixPageView: View {
                 // With a task picked in the strip below, a tap places it.
                 guard let id = selectedID, let task = tasks.first(where: { $0.uuid == id }) else { return }
                 let position = MatrixGeometry.position(of: location, in: geo.size)
-                withAnimation(.snappy) { app.store.setMatrix(task, urgency: position.urgency, importance: position.importance) }
+                withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
             }
             .dropDestination(for: String.self) { items, location in
                 guard let id = items.first.flatMap(UUID.init(uuidString:)), let task = app.store.task(id: id) else { return false }
                 let position = MatrixGeometry.position(of: location, in: geo.size)
-                withAnimation(.snappy) { app.store.setMatrix(task, urgency: position.urgency, importance: position.importance) }
+                withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
                 selectedID = id
                 return true
             }

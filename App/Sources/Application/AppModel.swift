@@ -122,7 +122,8 @@ final class AppModel {
         self.isSandbox = isSandbox
         self.sync = SyncMonitor()
         self.dayStart = DayBoundary.current.start(of: Date())
-        self.reminders = isSandbox ? nil : ReminderScheduler(container: container)
+        // No reminders on the practice page or the screenshot demo data.
+        self.reminders = isSandbox || Persistence.isDemo ? nil : ReminderScheduler(container: container)
         guard !isSandbox else { return }
         focus = Self.loadFocus()
         let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []

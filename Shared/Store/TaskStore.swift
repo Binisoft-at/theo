@@ -309,6 +309,12 @@ struct TaskStore {
         save()
     }
 
+    /// Places a task where it was dropped on the matrix, taking its priority boost into account.
+    func placeOnMatrix(_ task: TaskItem, urgency: Double, importance: Double) {
+        let stored = Matrix.storedPosition(forDrop: urgency, importance: importance, priority: task.priority)
+        setMatrix(task, urgency: stored.urgency, importance: stored.importance)
+    }
+
     func setRecurrence(_ tasks: [TaskItem], _ recurrence: Recurrence?) {
         for task in tasks {
             task.recurrence = recurrence

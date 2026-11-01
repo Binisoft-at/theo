@@ -550,7 +550,7 @@ struct QuickEntryBar: View {
         guard !created.isEmpty else { return }
         for task in created {
             if let group = task.group, group.isCollapsed { app.store.setCollapsed(group, false) }
-            if let matrixChoice { app.store.setMatrix(task, urgency: matrixChoice.urgency, importance: matrixChoice.importance) }
+            if let matrixChoice { app.store.placeOnMatrix(task, urgency: matrixChoice.urgency, importance: matrixChoice.importance) }
         }
         show(Confirmation(message: message, tasks: created))
         addedCount += 1

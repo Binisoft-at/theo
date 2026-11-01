@@ -82,4 +82,10 @@ public enum Matrix {
     public static func effectiveUrgency(_ urgency: Double, due: Date?, today: Date, calendar: Calendar = .current) -> Double {
         max(clamp(urgency), deadlineUrgency(due: due, today: today, calendar: calendar))
     }
+
+    /// The stored position that makes a task show up where it was dropped: the priority's
+    /// importance boost is taken back out. (A close deadline still keeps it at least that urgent.)
+    public static func storedPosition(forDrop urgency: Double, importance: Double, priority: Priority) -> (urgency: Double, importance: Double) {
+        (clamp(urgency), clamp(importance - 0.15 * Double(priority.rawValue)))
+    }
 }
