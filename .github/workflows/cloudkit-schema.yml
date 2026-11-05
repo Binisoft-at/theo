@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   import:
-    runs-on: macos-26
+    # The Binisoft self-hosted Mac; MAC_RUNNER = "macos-26" switches to GitHub's Macs.
+    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '["self-hosted", "macOS"]') }}
     timeout-minutes: 15
     env:
       CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
@@ -48,9 +49,12 @@ jobs:
             echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions > Repository secrets; organization secrets don't reach private repos on GitHub Free)"
             exit 1
           fi
+      - name: Select Xcode
+        env:
+          XCODE_APP: /Applications/Xcode_26.6.app
+        run: scripts/ci/select-xcode.sh
       - name: Resolve container from Config/Base.xcconfig
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.6.app
           make generate
           CONTAINER_ID=$(xcodebuild -project Theo.xcodeproj -target Theo -showBuildSettings 2>/dev/null | awk -F' = ' '$1 ~ /^ *APP_CLOUDKIT_CONTAINER$/ {print $2}')
           [ -n "$CONTAINER_ID" ] || { echo "::error::APP_CLOUDKIT_CONTAINER not found"; exit 1; }
@@ -92,6 +96,12 @@ jobs:
               echo "Production doesn't match Development yet, so deploy it."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # A self-hosted Mac keeps its keychain: don't leave the management token in it.
+      - name: Remove token (self-hosted)
+        if: always() && runner.environment == 'self-hosted'
+        continue-on-error: true
+        run: xcrun cktool remove-token --type management || true
 
       - name: Publish result to ci-cloudkit branch
         if: always()

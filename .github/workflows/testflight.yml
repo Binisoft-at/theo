@@ -2,6 +2,8 @@ name: TestFlight
 
 # Automatic signing with the App Store Connect API key ("Binisoft CI", Admin):
 # no certificates or profiles live in the repo. Build number = workflow run number.
+# Runs on the Binisoft self-hosted Mac; repository variable MAC_RUNNER = "macos-26" switches
+# back to GitHub's Macs (see docs/self-hosted-runner.md).
 on:
   workflow_dispatch:
     inputs:
@@ -27,7 +29,7 @@ env:
 jobs:
   upload:
     name: Archive & upload
-    runs-on: macos-26
+    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '["self-hosted", "macOS"]') }}
     timeout-minutes: 60
     # Repository secrets (org secrets don't reach private repos on GitHub Free).
     env:
@@ -51,9 +53,7 @@ jobs:
           fi
 
       - name: Select Xcode
-        run: |
-          sudo xcode-select -s "$XCODE_APP"
-          xcodebuild -version
+        run: scripts/ci/select-xcode.sh
 
       - name: Generate Xcode project
         run: make generate
@@ -71,8 +71,9 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      # Automatic signing creates a throwaway development certificate on every fresh runner;
-      # remember what's in the keychain so the run can revoke only its own afterwards.
+      # Automatic signing creates a throwaway development certificate on every fresh GitHub
+      # runner; remember what's in the keychain so the run can revoke only its own afterwards.
+      # A self-hosted Mac keeps its keychain, so it reuses one certificate and revokes nothing.
       - name: Snapshot signing identities
         run: scripts/ci/ci-certificates.py snapshot "$RUNNER_TEMP/identities-before.txt"
 
@@ -85,7 +86,7 @@ jobs:
         run: scripts/ci/archive-upload.sh TheoMac 'generic/platform=macOS' macos
 
       - name: Revoke this run's development certificate
-        if: always()
+        if: always() && runner.environment == 'github-hosted'
         continue-on-error: true
         run: scripts/ci/ci-certificates.py revoke-new "$RUNNER_TEMP/identities-before.txt" 2>&1 | tee certificates.log
 

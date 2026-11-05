@@ -1,6 +1,8 @@
 name: CI
 
-# Mac minutes count 10x on private repos: build only main and PRs, cancel superseded runs.
+# Runs on the Binisoft self-hosted Mac (docs/self-hosted-runner.md). To use GitHub's Macs
+# instead, set the repository variable MAC_RUNNER to "macos-26" (with the quotes); their
+# minutes count 10x on private repos, so build only main and PRs and cancel superseded runs.
 # Every run publishes its status (and errors / screenshots) to the `ci-output` branch.
 # Screenshots: run manually, or put "[screenshots]" in the commit message.
 on:
@@ -31,7 +33,7 @@ env:
 jobs:
   build:
     name: Test + build iOS / watchOS / macOS
-    runs-on: macos-26
+    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '["self-hosted", "macOS"]') }}
     timeout-minutes: 50
     env:
       SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || contains(github.event.head_commit.message, '[screenshots]') }}
@@ -39,9 +41,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Select Xcode
-        run: |
-          sudo xcode-select -s "$XCODE_APP"
-          xcodebuild -version
+        run: scripts/ci/select-xcode.sh
 
       - name: Unit tests (TheoCore)
         id: tests
@@ -56,7 +56,7 @@ jobs:
       - name: Build macOS app
         id: mac
         continue-on-error: true
-        run: make build-mac XCBEAUTIFY="xcbeautify --renderer github-actions"
+        run: make build-mac XCBEAUTIFY="$XCBEAUTIFY"
 
       # The iOS app embeds the watch app, so its build needs the watchOS platform. Runner
       # images usually ship it; download only when the matching runtime is missing.
@@ -75,7 +75,7 @@ jobs:
         id: ios
         if: ${{ !inputs.mac_only }}
         continue-on-error: true
-        run: make build-ios XCBEAUTIFY="xcbeautify --renderer github-actions"
+        run: make build-ios XCBEAUTIFY="$XCBEAUTIFY"
 
       - name: Fail if tests or a build failed
         if: steps.tests.outcome == 'failure' || steps.mac.outcome == 'failure' || steps.ios.outcome == 'failure'
@@ -87,8 +87,14 @@ jobs:
           set -x
           APP=build/Build/Products/Debug-iphonesimulator/Theo.app
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
-          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']))")
-          xcrun simctl boot "$UDID"
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']), ''))")
+          if [ -z "$UDID" ]; then
+            # A fresh Mac account may have no simulators yet: make one from the newest iOS runtime.
+            RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x.get('platform')=='iOS' and x.get('isAvailable')]; print(r[-1]['identifier'] if r else '')")
+            DEVICE_TYPE=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys; t=[x for x in json.load(sys.stdin)['devicetypes'] if x.get('productFamily')=='iPhone' and x['name'].endswith(' Pro')]; print(t[-1]['identifier'] if t else '')")
+            UDID=$(xcrun simctl create "CI iPhone" "$DEVICE_TYPE" "$RUNTIME")
+          fi
+          xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
           xcrun simctl install "$UDID" "$APP"
@@ -128,7 +134,7 @@ jobs:
             DEVICE_TYPE=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys; t=[x for x in json.load(sys.stdin)['devicetypes'] if x.get('productFamily')=='Apple Watch' and 'Series' in x['name']]; print(t[-1]['identifier'] if t else '')")
             UDID=$(xcrun simctl create "CI Watch" "$DEVICE_TYPE" "$RUNTIME")
           fi
-          xcrun simctl boot "$UDID"
+          xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" "$APP"
           mkdir -p shots
@@ -145,8 +151,9 @@ jobs:
           wshoot watch-detail -TheoScreen detail
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "TheoWatch"' --style compact > shots/watch-log.txt 2>&1 || true
 
+      # Only on GitHub's Macs: on a self-hosted Mac, screencapture would grab that Mac's screen.
       - name: macOS screenshot
-        if: env.SHOTS == 'true'
+        if: env.SHOTS == 'true' && runner.environment == 'github-hosted'
         continue-on-error: true
         run: |
           mkdir -p shots
@@ -161,6 +168,14 @@ jobs:
           screencapture -x shots/mac-tour.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
+
+      # A self-hosted Mac keeps running after the job: don't leave simulators or the app open.
+      - name: Clean up (self-hosted)
+        if: always() && runner.environment == 'self-hosted'
+        continue-on-error: true
+        run: |
+          xcrun simctl shutdown all || true
+          pkill -x Theo || true
 
       - name: Publish status to ci-output branch
         if: always()

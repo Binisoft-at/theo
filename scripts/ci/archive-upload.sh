@@ -2,7 +2,7 @@
 # Archives one scheme and uploads it to App Store Connect, signed automatically through the
 # App Store Connect API key (no certificates or profiles in the repo).
 # usage: archive-upload.sh <scheme> <destination> <label>
-# env:   APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH BUILD_NUMBER
+# env:   APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH BUILD_NUMBER [XCBEAUTIFY]
 set -euo pipefail
 scheme=$1
 destination=$2
@@ -17,11 +17,13 @@ auth=(-allowProvisioningUpdates
       -authenticationKeyID "$ASC_KEY_ID"
       -authenticationKeyIssuerID "$ASC_ISSUER_ID")
 
+# DerivedData in the job's temp folder: a self-hosted Mac would otherwise keep every build.
 xcodebuild archive \
   -project Theo.xcodeproj -scheme "$scheme" -configuration Release \
   -destination "$destination" -archivePath "$work/$scheme.xcarchive" \
+  -derivedDataPath "$work/DerivedData" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-  "${auth[@]}" 2>&1 | tee "$label-archive.log" | xcbeautify --renderer github-actions
+  "${auth[@]}" 2>&1 | tee "$label-archive.log" | ${XCBEAUTIFY:-cat}
 
 cat > "$work/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
