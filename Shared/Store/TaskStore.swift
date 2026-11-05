@@ -94,6 +94,7 @@ struct TaskStore {
         task.tags = entry.tags
         task.estimate = entry.estimate ?? 0
         task.recurrence = entry.recurrence
+        task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         save()
         return task
     }
@@ -111,6 +112,24 @@ struct TaskStore {
         let new = TaskItem(title: title, sortOrder: order, indent: task.indent)
         context.insert(new)
         new.group = task.group?.deletedAt == nil ? task.group : nil
+        new.importance = Matrix.defaultImportance
+        new.plannedDay = task.plannedDay
+        normalizeIfNeeded(groupID: task.groupID)
+        save()
+        return new
+    }
+
+    /// A new line after `task` and its subtasks, at the same level (inserting between lines).
+    func insertSibling(after task: TaskItem, title: String = "") -> TaskItem {
+        let layout = self.layout(for: task.groupID)
+        guard let index = layout.index(of: task) else { return insertTask(after: task, title: title) }
+        let end = layout.blockEnd(after: index)
+        let upper = end < layout.items.count ? layout.items[end].sortOrder : nil
+        let new = TaskItem(title: title, sortOrder: midpoint(layout.items[end - 1].sortOrder, upper), indent: layout.depths[index])
+        context.insert(new)
+        new.group = task.group?.deletedAt == nil ? task.group : nil
+        new.importance = Matrix.defaultImportance
+        new.plannedDay = task.plannedDay
         normalizeIfNeeded(groupID: task.groupID)
         save()
         return new
@@ -135,6 +154,8 @@ struct TaskStore {
         task.tags = entry.tags
         task.estimate = entry.estimate ?? 0
         task.recurrence = entry.recurrence
+        task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
+        task.plannedDay = parent.plannedDay
         if parent.isDone {
             parent.isDone = false
             parent.completedAt = nil
@@ -208,8 +229,8 @@ struct TaskStore {
         copy.remindersRaw = task.remindersRaw
         copy.dueDate = next
         copy.dueHasTime = task.dueHasTime
-        let showFrom = DayBoundary.current.start(of: next)
-        if showFrom > now { copy.deferredUntil = showFrom }
+        // A repeat is planned for its day on its own.
+        copy.plannedDay = Calendar.current.startOfDay(for: next)
         task.recurrenceRaw = ""
     }
 
@@ -285,12 +306,113 @@ struct TaskStore {
 
     // MARK: - Attributes
 
+    /// The marks and importance move together: a mark sets a matching importance level.
     func setPriority(_ tasks: [TaskItem], _ priority: Priority) {
         for task in tasks {
+            task.importance = Matrix.importance(for: priority, current: task.importance)
             task.priority = priority
             task.touch()
         }
         save()
+    }
+
+    /// Importance (0.1...1); the priority marks follow it.
+    func setImportance(_ tasks: [TaskItem], _ importance: Double) {
+        for task in tasks {
+            task.importance = min(1, max(0.1, importance))
+            task.priority = Matrix.priority(forImportance: task.importance)
+            task.touch()
+        }
+        save()
+    }
+
+    /// Moves the deadline to `days` from today, keeping its time of day; nil clears it (a
+    /// deadline beyond the matrix's two weeks stays).
+    func setDueDay(_ task: TaskItem, days: Int?, today: Date) {
+        let calendar = Calendar.current
+        guard let days else {
+            if let due = task.dueDate, (Matrix.daysUntil(due, today: today) ?? 0) <= Matrix.horizonDays {
+                task.dueDate = nil
+                task.dueHasTime = false
+            }
+            return
+        }
+        let day = calendar.date(byAdding: .day, value: days, to: calendar.startOfDay(for: today)) ?? today
+        if task.dueHasTime, let due = task.dueDate {
+            let time = calendar.dateComponents([.hour, .minute], from: due)
+            task.dueDate = calendar.date(bySettingHour: time.hour ?? 9, minute: time.minute ?? 0, second: 0, of: day)
+        } else {
+            task.dueDate = day
+            task.dueHasTime = false
+        }
+    }
+
+    /// Where it was dropped on the matrix: deadline in days (nil = no date) and importance level.
+    func placeOnMatrix(_ task: TaskItem, days: Int?, level: Int, today: Date) {
+        setDueDay(task, days: days, today: today)
+        task.importance = Matrix.importance(forLevel: level)
+        task.priority = Matrix.priority(forImportance: task.importance)
+        task.touch()
+        save()
+    }
+
+    /// Takes over a ranking position (importance plus urgency, as from `Matrix.between`).
+    func applyRank(_ task: TaskItem, importance: Double, urgency: Double, today: Date) {
+        if task.dueDate == nil || urgency > 0 { setDueDay(task, days: Matrix.days(forUrgency: urgency), today: today) }
+        task.importance = min(1, max(0.1, importance))
+        task.priority = Matrix.priority(forImportance: task.importance)
+        task.touch()
+        save()
+    }
+
+    /// After dragging a task between two others: only its importance changes, just enough to
+    /// rank between them. Its deadline stays.
+    func rank(_ task: TaskItem, between above: TaskItem?, and below: TaskItem?, today: Date) {
+        let scoreAbove = above?.matrixScore(today: today)
+        let scoreBelow = below?.matrixScore(today: today)
+        let target: Double
+        switch (scoreAbove, scoreBelow) {
+        case let (a?, b?): target = (a + b) / 2
+        case let (a?, nil): target = a - 0.03
+        case let (nil, b?): target = b + 0.03
+        case (nil, nil): return
+        }
+        setImportance([task], Matrix.importance(toReach: target, urgency: task.matrixPosition(today: today).urgency))
+    }
+
+    /// Moves deadlines `days` after today (keeping the time), e.g. to push something overdue.
+    func postpone(_ tasks: [TaskItem], days: Int, today: Date) {
+        for task in tasks {
+            setDueDay(task, days: days, today: today)
+            task.touch()
+        }
+        save()
+    }
+
+    /// Plans tasks (with their subtasks) for a day; nil takes them off any plan.
+    func plan(_ tasks: [TaskItem], for day: Date?) {
+        let key = day.map { Calendar.current.startOfDay(for: $0) }
+        var seen = Set<ObjectIdentifier>()
+        for task in tasks {
+            for item in layout(for: task.groupID).block(of: task) where !seen.contains(ObjectIdentifier(item)) {
+                seen.insert(ObjectIdentifier(item))
+                guard item.plannedDay != key else { continue }
+                item.plannedDay = key
+                item.touch()
+            }
+        }
+        save()
+    }
+
+    /// One-time: older tasks only had priority marks; give them a matching importance.
+    func syncImportanceWithPriority() {
+        let key = "importanceFromPriority"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        for task in liveTasks() where task.priority != .normal && Matrix.priority(forImportance: task.importance) != task.priority {
+            task.importance = Matrix.importance(for: task.priority, current: task.importance)
+        }
+        save()
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     func setEstimate(_ tasks: [TaskItem], _ powerHours: Double) {
@@ -299,20 +421,6 @@ struct TaskStore {
             task.touch()
         }
         save()
-    }
-
-    /// Where the task sits on the Eisenhower matrix (0...1 each).
-    func setMatrix(_ task: TaskItem, urgency: Double, importance: Double) {
-        task.urgency = Matrix.clamp(urgency)
-        task.importance = Matrix.clamp(importance)
-        task.touch()
-        save()
-    }
-
-    /// Places a task where it was dropped on the matrix, taking its priority boost into account.
-    func placeOnMatrix(_ task: TaskItem, urgency: Double, importance: Double) {
-        let stored = Matrix.storedPosition(forDrop: urgency, importance: importance, priority: task.priority)
-        setMatrix(task, urgency: stored.urgency, importance: stored.importance)
     }
 
     func setRecurrence(_ tasks: [TaskItem], _ recurrence: Recurrence?) {
@@ -452,6 +560,35 @@ struct TaskStore {
         } else {
             assignOrders(block, lower: remaining.last?.sortOrder, upper: nil)
         }
+        save()
+    }
+
+    /// Tucks a task (with its subtasks) under `parent`, the line shown above it, as its last
+    /// subtask. Used by swipe right, which follows what's on screen rather than stored order.
+    func makeSubtask(_ task: TaskItem, of parent: TaskItem) {
+        guard task !== parent, task.groupID == parent.groupID else { return }
+        let layout = self.layout(for: task.groupID)
+        guard let taskIndex = layout.index(of: task), layout.index(of: parent) != nil else { return }
+        let block = layout.block(of: task)
+        guard !block.contains(where: { $0 === parent }) else { return }
+        let blockIDs = Set(block.map(ObjectIdentifier.init))
+        let remaining = SectionLayout(layout.items.filter { !blockIDs.contains(ObjectIdentifier($0)) })
+        guard let parentIndex = remaining.index(of: parent) else { return }
+        let parentDepth = remaining.depths[parentIndex]
+        guard parentDepth < 4 else { return }
+        let end = remaining.blockEnd(after: parentIndex)
+        let lower = remaining.items[end - 1].sortOrder
+        let upper = end < remaining.items.count ? remaining.items[end].sortOrder : nil
+        let taskDepth = layout.depths[taskIndex]
+        for item in block {
+            item.indent = parentDepth + 1 + (layout.depth(of: item) - taskDepth)
+        }
+        assignOrders(block, lower: lower, upper: upper)
+        if parent.isDone && !task.isDone {
+            parent.isDone = false
+            parent.completedAt = nil
+        }
+        normalizeIfNeeded(groupID: task.groupID)
         save()
     }
 

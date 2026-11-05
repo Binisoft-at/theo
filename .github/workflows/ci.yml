@@ -106,6 +106,7 @@ jobs:
           shoot upcoming-light -TheoScreen upcoming
           shoot history-light -TheoScreen history
           shoot matrix-light -TheoScreen matrix
+          shoot plan-light -TheoScreen plan
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask
           xcrun simctl ui "$UDID" appearance dark

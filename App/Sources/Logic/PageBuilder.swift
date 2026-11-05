@@ -73,12 +73,15 @@ enum PageBuilder {
         var showEmptyPlaceholders = true
         /// Parents whose subtasks are folded away.
         var collapsedTasks: Set<UUID> = []
+        /// Ranks open lines by importance and urgency as of this day (nil = manual order).
+        var rankDay: Date?
     }
 
     /// One section's task rows: nested, completed lines at the bottom of their level, parents
     /// carrying their subtask counts, and the subtasks of folded parents left out.
     static func taskRows(_ tasks: [TaskItem], options: Options) -> [ListRow] {
-        let all = Checklist.displayOrder(tasks, showCompleted: true)
+        let rank: ((TaskItem) -> Double)? = options.rankDay.map { day in { $0.matrixScore(today: day) } }
+        let all = Checklist.displayOrder(tasks, showCompleted: true, rank: rank)
         let depths = all.map(\.depth)
         var rows: [ListRow] = []
         var index = 0
@@ -98,6 +101,33 @@ enum PageBuilder {
             index = style.subtasksFolded ? end : index + 1
         }
         return rows
+    }
+
+    /// One ranked list across groups (Today's default): each group is ordered on its own so
+    /// subtasks stay with their parents, then the top-level blocks are merged by score, open
+    /// ones first.
+    static func rankedRows(_ tasks: [TaskItem], options: Options) -> [ListRow] {
+        let day = options.rankDay ?? Date()
+        var blocks: [(score: Double, done: Bool, rows: [ListRow])] = []
+        for section in Dictionary(grouping: tasks, by: \.groupID).values {
+            var current: [ListRow] = []
+            var head: TaskItem?
+            for row in taskRows(section, options: options) {
+                guard case .task(let task, let depth, _) = row else { continue }
+                if depth == 0 {
+                    if let head { blocks.append((head.matrixScore(today: day), head.isDone, current)) }
+                    head = task
+                    current = []
+                }
+                current.append(row)
+            }
+            if let head { blocks.append((head.matrixScore(today: day), head.isDone, current)) }
+        }
+        blocks.sort { a, b in
+            if a.done != b.done { return !a.done }
+            return a.score > b.score
+        }
+        return blocks.flatMap(\.rows)
     }
 
     /// A Notes-style page: Quick Entry on top, then every group heading with its tasks.

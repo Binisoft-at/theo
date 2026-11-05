@@ -130,42 +130,79 @@ struct RemindersTests {
 
 @Suite("Matrix")
 struct MatrixTests {
-    @Test func defaultsSitInLater() {
-        #expect(Matrix.quadrant(urgency: Matrix.defaultUrgency, importance: Matrix.defaultImportance) == .later)
+    @Test func urgencyFollowsTheDeadline() {
+        #expect(Matrix.urgency(daysUntilDue: -3) == 1)
+        #expect(Matrix.urgency(daysUntilDue: 0) == 1)
+        #expect(Matrix.urgency(daysUntilDue: 7) > Matrix.urgency(daysUntilDue: 14))
+        #expect(Matrix.urgency(daysUntilDue: 14) > 0)
+        #expect(Matrix.urgency(daysUntilDue: 15) == 0)
+        #expect(Matrix.urgency(daysUntilDue: nil) == 0)
     }
 
-    @Test func scoreFollowsEisenhowerOrder() {
-        let doFirst = Matrix.score(urgency: 0.75, importance: 0.75)
-        let schedule = Matrix.score(urgency: 0.25, importance: 0.75)
-        let delegate = Matrix.score(urgency: 0.75, importance: 0.25)
-        let later = Matrix.score(urgency: 0.25, importance: 0.25)
-        #expect(doFirst > schedule && schedule > delegate && delegate > later)
+    @Test func urgencyRoundTripsToDays() {
+        for days in 0...Matrix.horizonDays {
+            #expect(Matrix.days(forUrgency: Matrix.urgency(daysUntilDue: days)) == days)
+        }
+        #expect(Matrix.days(forUrgency: 0) == nil)
     }
 
-    @Test func distanceInsideAQuadrantCounts() {
-        #expect(Matrix.score(urgency: 0.9, importance: 0.95) > Matrix.score(urgency: 0.6, importance: 0.6))
+    @Test func tenImportanceLevels() {
+        #expect(Matrix.level(forImportance: 0) == 1)
+        #expect(Matrix.level(forImportance: Matrix.defaultImportance) == 3)
+        #expect(Matrix.level(forImportance: 1) == 10)
+        #expect(Matrix.importance(forLevel: 7) == 0.7)
     }
 
-    @Test func priorityRaisesImportance() {
-        #expect(Matrix.effectiveImportance(0.25, priority: .normal) == 0.25)
-        #expect(Matrix.effectiveImportance(0.25, priority: .high) > 0.5)
-        #expect(Matrix.effectiveImportance(0.9, priority: .high) == 1)
+    @Test func marksAreACoarseViewOfImportance() {
+        #expect(Matrix.priority(forImportance: 0.3) == .normal)
+        #expect(Matrix.priority(forImportance: 0.6) == .low)
+        #expect(Matrix.priority(forImportance: 0.8) == .medium)
+        #expect(Matrix.priority(forImportance: 1) == .high)
+        #expect(Matrix.priority(forImportance: Matrix.importance(for: .medium, current: 0.3)) == .medium)
+        #expect(Matrix.importance(for: .high, current: 0.9) == 0.9)
     }
 
-    @Test func dropLandsWhereItWasDropped() {
-        let stored = Matrix.storedPosition(forDrop: 0.7, importance: 0.8, priority: .medium)
-        #expect(abs(Matrix.effectiveImportance(stored.importance, priority: .medium) - 0.8) < 0.0001)
-        #expect(stored.urgency == 0.7)
+    @Test func importanceOutranksUrgency() {
+        let importantLater = Matrix.score(importance: 0.9, urgency: 0)
+        let urgentUnimportant = Matrix.score(importance: 0.2, urgency: 1)
+        #expect(importantLater > urgentUnimportant)
     }
 
-    @Test func deadlinesRaiseUrgency() {
-        let calendar = Calendar(identifier: .gregorian)
-        let today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
-        let nextMonth = calendar.date(byAdding: .day, value: 30, to: today)!
-        #expect(Matrix.effectiveUrgency(0.25, due: tomorrow, today: today, calendar: calendar) > 0.5)
-        #expect(Matrix.effectiveUrgency(0.25, due: nextMonth, today: today, calendar: calendar) == 0.25)
-        #expect(Matrix.effectiveUrgency(0.25, due: nil, today: today, calendar: calendar) == 0.25)
+    @Test func solvingImportanceLandsOnTheTarget() {
+        let urgency = Matrix.urgency(daysUntilDue: 3)
+        let importance = Matrix.importance(toReach: 0.6, urgency: urgency)
+        #expect(abs(Matrix.score(importance: importance, urgency: urgency) - 0.6) < 0.0001)
+    }
+
+    @Test func betweenAveragesNeighbours() {
+        let value = Matrix.between((importance: 0.8, urgency: 1), (importance: 0.4, urgency: 0.5))
+        #expect(abs((value?.importance ?? 0) - 0.6) < 1e-9)
+        #expect(abs((value?.urgency ?? 0) - 0.75) < 1e-9)
+        #expect(Matrix.between(nil, (importance: 0.4, urgency: 0.5))?.importance == 0.4)
+        #expect(Matrix.between(nil, nil) == nil)
+    }
+
+    @Test func columns() {
+        #expect(Matrix.column(forDays: -2) == 0)
+        #expect(Matrix.column(forDays: 14) == 14)
+        #expect(Matrix.column(forDays: 30) == 15)
+        #expect(Matrix.column(forDays: nil) == 15)
+        #expect(Matrix.days(forColumn: 15) == nil)
+        #expect(Matrix.columns == 16)
+    }
+}
+
+@Suite("Ranked order")
+struct RankedOrderTests {
+    @Test func openSiblingsFollowTheirRankAndKeepSubtasks() {
+        let lines = [
+            PlanLine(sortOrder: 0, indent: 0, estimate: 1),   // rank 1
+            PlanLine(sortOrder: 1, indent: 1, estimate: 9),   // its subtask
+            PlanLine(sortOrder: 2, indent: 0, estimate: 5),   // rank 5
+            PlanLine(sortOrder: 3, indent: 0, estimate: 5),   // ties keep manual order
+        ]
+        let order = Checklist.displayOrder(lines, showCompleted: true, rank: { $0.estimate }).map(\.item.sortOrder)
+        #expect(order == [2, 3, 0, 1])
     }
 }
 

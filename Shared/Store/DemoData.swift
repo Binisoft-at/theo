@@ -79,16 +79,18 @@ enum DemoData {
             }
         }
 
-        // Spread the open tasks over the matrix and give some an estimate.
-        let samples: [(urgency: Double, importance: Double, estimate: Double)] = [
-            (0.82, 0.86, 0.5), (0.3, 0.8, 1), (0.74, 0.3, 0.25), (0.2, 0.18, 0), (0.6, 0.66, 0.75),
-            (0.15, 0.62, 2), (0.9, 0.42, 0.25), (0.42, 0.33, 0), (0.55, 0.92, 1), (0.08, 0.4, 0.5),
+        // Importance levels and estimates, and most of it planned for today.
+        let samples: [(level: Int, estimate: Double, planned: Bool)] = [
+            (9, 0.5, true), (6, 1, true), (4, 0.25, true), (2, 0, false), (7, 0.75, true),
+            (5, 2, false), (8, 0.25, true), (3, 0, true), (10, 1, true), (4, 0.5, false),
         ]
+        let todayKey = cal.startOfDay(for: today)
         for (index, task) in store.liveTasks().filter({ !$0.isDone }).enumerated() {
             let sample = samples[index % samples.count]
-            task.urgency = sample.urgency
-            task.importance = sample.importance
+            task.importance = Matrix.importance(forLevel: sample.level)
+            task.priority = Matrix.priority(forImportance: task.importance)
             task.estimate = sample.estimate
+            task.plannedDay = sample.planned ? todayKey : nil
         }
         store.save()
     }

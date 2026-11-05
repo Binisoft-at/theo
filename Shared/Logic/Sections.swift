@@ -91,13 +91,13 @@ enum Sections {
         return result
     }
 
-    /// Upcoming: one section per day for the next week, keyed by deadline or "Not Today" date.
+    /// Upcoming: one section per day for the next week, keyed by deadline or planned day.
     static func upcoming(_ tasks: [TaskItem], groups: [TaskGroup], today: Date) -> [LabeledSection] {
         let cal = Calendar.current
         let order = pageOrder(groups)
         func keyDate(_ task: TaskItem) -> Date? {
             if let due = task.dueDate { return due }
-            if let deferred = task.deferredUntil, deferred > today { return deferred }
+            if let planned = task.plannedDay, planned > today { return planned }
             return nil
         }
         let dated = tasks.compactMap { task in keyDate(task).map { (task, $0) } }
@@ -125,18 +125,6 @@ enum Sections {
         let later = dated.filter { DateText.dayDelta($0.1, today: today) > 6 }.sorted(by: sorter).map { $0.0 }
         result.append((key: "later", title: "Later", symbol: "calendar.badge.clock", color: .indigo, tasks: later))
         return result
-    }
-
-    /// The Eisenhower quadrants, each ranked by matrix score (highest first).
-    static func byMatrix(_ tasks: [TaskItem], today: Date) -> [LabeledSection] {
-        let scored = tasks.map { (task: $0, position: $0.matrixPosition(today: today)) }
-        return Matrix.Quadrant.allCases.map { quadrant in
-            let items = scored
-                .filter { Matrix.quadrant(urgency: $0.position.urgency, importance: $0.position.importance) == quadrant }
-                .sorted { Matrix.score(urgency: $0.position.urgency, importance: $0.position.importance) > Matrix.score(urgency: $1.position.urgency, importance: $1.position.importance) }
-                .map(\.task)
-            return (key: "m\(quadrant.rawValue)", title: quadrant.title, symbol: quadrant.symbol, color: quadrant.color, tasks: items)
-        }
     }
 
     static func byGroup(_ tasks: [TaskItem], groups: [TaskGroup]) -> [LabeledSection] {

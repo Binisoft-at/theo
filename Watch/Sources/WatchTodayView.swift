@@ -14,7 +14,7 @@ struct WatchTodayView: View {
 
     var body: some View {
         let page = tasks.filter { $0.isOnPage(of: model.dayStart) }
-        let sections = WatchPage.sections(page, groups: groups)
+        let sections = WatchPage.sections(page, groups: groups, dayStart: model.dayStart)
         let done = WatchPage.completed(page)
         List {
             Section {
@@ -23,7 +23,7 @@ struct WatchTodayView: View {
                     done: done.count,
                     total: page.count
                 )
-                WatchAddTaskRow(groupID: nil)
+                WatchAddTaskRow(groupID: nil, plansFor: model.dayStart)
             }
             ForEach(sections) { section in
                 Section {
@@ -51,9 +51,9 @@ struct WatchTodayView: View {
         .overlay {
             if page.isEmpty {
                 ContentUnavailableView {
-                    Label("Nothing Today", systemImage: "checkmark.circle")
+                    Label("Nothing Planned", systemImage: "calendar.badge.plus")
                 } description: {
-                    Text("Add a task with the button above, or on your iPhone or Mac.")
+                    Text("Plan your day on iPhone or Mac, or add a task above.")
                 }
                 .allowsHitTesting(false)
                 .padding(.top, 60)

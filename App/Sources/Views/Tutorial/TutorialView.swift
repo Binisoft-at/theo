@@ -72,6 +72,12 @@ final class TutorialSandbox {
         let work = store.addGroup(name: "Work", symbol: "briefcase", color: .blue)
         add("Prepare slides for Monday", work, priority: .medium)
         add("Send the invoice", work, dueToday: true)
+
+        // Everything but Work is on today's plan, so the Plan step has something to pick.
+        let key = Calendar.current.startOfDay(for: today)
+        for task in store.liveTasks() where task.group?.uuid != work.uuid {
+            task.plannedDay = key
+        }
         store.save()
     }
 }
@@ -133,7 +139,8 @@ struct TutorialStage: View {
         snapshot.prioritizedCount = tasks.filter { $0.priority != .normal }.count
         snapshot.datedCount = tasks.filter { $0.dueDate != nil }.count
         snapshot.subtaskCount = tasks.filter { $0.indent > 0 }.count
-        snapshot.deferredCount = tasks.filter { ($0.deferredUntil ?? .distantPast) > app.dayStart }.count
+        snapshot.deferredCount = tasks.filter { ($0.plannedDay ?? .distantPast) > app.todayKey }.count
+        snapshot.plannedCount = tasks.filter { !$0.isDone && $0.isPlanned(for: app.dayStart) }.count
         snapshot.deletedCount = deletedTasks.count
         snapshot.groupCount = groups.count
         snapshot.collapsedCount = app.collapsedTaskIDs.count

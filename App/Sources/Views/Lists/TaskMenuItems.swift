@@ -179,18 +179,36 @@ struct TaskMenuItems: View {
         }
 
         if !allDone {
-            if tasks.contains(where: { $0.deferredUntil != nil && ($0.deferredUntil ?? .distantPast) > app.dayStart }) {
-                Button {
-                    app.store.deferTasks(tasks, until: nil)
-                } label: {
-                    Label("Show Today", systemImage: "sun.max")
-                }
-            } else {
+            if tasks.allSatisfy({ $0.isPlanned(for: app.dayStart) }) {
                 Button {
                     app.deferToTomorrow(tasks)
                 } label: {
                     Label("Not Today", systemImage: "moon.zzz")
                 }
+            } else {
+                Button {
+                    app.plan(tasks, for: app.dayStart)
+                } label: {
+                    Label("Do Today", systemImage: "sun.max")
+                }
+            }
+            Menu {
+                ForEach(1..<8, id: \.self) { offset in
+                    let day = DayBoundary.current.dayStart(byAdding: offset, to: app.dayStart)
+                    Button(offset == 1 ? "Tomorrow" : day.formatted(.dateTime.weekday(.wide).day().month())) {
+                        app.plan(tasks, for: day)
+                    }
+                }
+                if tasks.contains(where: { $0.plannedDay != nil }) {
+                    Divider()
+                    Button(role: .destructive) {
+                        app.plan(tasks, for: nil)
+                    } label: {
+                        Label("Take Off the Plan", systemImage: "calendar.badge.minus")
+                    }
+                }
+            } label: {
+                Label("Plan for…", systemImage: "calendar.badge.plus")
             }
         }
 
@@ -200,7 +218,7 @@ struct TaskMenuItems: View {
                 Button {
                     withAnimation(.snappy) { app.store.moveToEdge(single, top: true) }
                 } label: {
-                    Label("Move to Top", systemImage: "arrow.up.to.line")
+                    Label("Move to Top of Ties", systemImage: "arrow.up.to.line")
                 }
                 Button {
                     withAnimation(.snappy) { app.store.move(single, .up) }

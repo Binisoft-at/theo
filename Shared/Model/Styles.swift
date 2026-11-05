@@ -126,25 +126,23 @@ enum NewTaskPlacement: String, CaseIterable, Identifiable {
 }
 
 enum TodayGrouping: String, CaseIterable, Identifiable {
-    case groups, priority, deadline, matrix
+    case ranked, groups, deadline
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .ranked: "Ranked"
         case .groups: "Groups"
-        case .priority: "Priority"
         case .deadline: "Deadline"
-        case .matrix: "Matrix"
         }
     }
 
     var symbol: String {
         switch self {
+        case .ranked: "list.number"
         case .groups: "rectangle.grid.1x2"
-        case .priority: "exclamationmark.3"
         case .deadline: "calendar"
-        case .matrix: "square.grid.2x2"
         }
     }
 }
@@ -169,14 +167,10 @@ enum Prefs {
     static let breakMinutes = "breakMinutes"
 }
 
-extension Matrix.Quadrant {
-    var color: Color {
-        switch self {
-        case .doFirst: .red
-        case .schedule: .blue
-        case .delegate: .orange
-        case .later: .gray
-        }
+extension Matrix {
+    /// Heat of a score: grey when it can wait, the accent's red end when it matters now.
+    static func color(forScore score: Double) -> Color {
+        Color(hue: 0.03 + 0.55 * (1 - clamp(score)), saturation: 0.25 + 0.6 * clamp(score), brightness: 0.85)
     }
 }
 

@@ -6,6 +6,8 @@ import TheoCore
 struct SidebarView: View {
     /// Split view (iPad/Mac) drives the detail through selection; the iPhone stack pushes links.
     var usesSelection = true
+    /// Today and Plan rows (the iPhone has them as tabs instead).
+    var showsDayPages = true
 
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
@@ -18,36 +20,37 @@ struct SidebarView: View {
         @Bindable var app = app
         let today = app.dayStart
         let todayCount = openTasks.filter { PageBuilder.isOnToday($0, dayStart: today) }.count
+        let tomorrowCount = openTasks.filter { $0.isPlanned(for: DayBoundary.current.dayStart(byAdding: 1, to: today)) }.count
         let dueCount = openTasks.filter { task in
             guard let due = task.dueDate else { return false }
             return DateText.dayDelta(due, today: today) <= 0
         }.count
         let priorityCount = openTasks.filter { $0.priority != .normal }.count
         let quickCount = openTasks.filter { $0.groupID == nil }.count
-        let doFirstCount = openTasks.filter { task in
-            guard task.isOnPage(of: today) else { return false }
-            let position = task.matrixPosition(today: today)
-            return Matrix.quadrant(urgency: position.urgency, importance: position.importance) == .doFirst
-        }.count
         let tags = Sections.tags(in: openTasks)
         let tree = GroupTree.ordered(groups)
 
         sidebarList(selection: usesSelection ? $app.selection : nil) {
             Section {
-                NavigationLink(value: SidebarItem.today) {
-                    SidebarRow(title: "Today", symbol: "sun.max.fill", color: .orange, count: todayCount)
+                if showsDayPages {
+                    NavigationLink(value: SidebarItem.today) {
+                        SidebarRow(title: "Today", symbol: "sun.max.fill", color: .orange, count: todayCount, shortcut: "⌘1")
+                    }
+                    NavigationLink(value: SidebarItem.plan) {
+                        SidebarRow(title: "Plan", symbol: "calendar.badge.plus", color: .indigo, count: tomorrowCount, shortcut: "⌘2")
+                    }
                 }
                 NavigationLink(value: SidebarItem.upcoming) {
-                    SidebarRow(title: "Upcoming", symbol: "calendar", color: .red, count: dueCount, countIsAlert: dueCount > 0)
-                }
-                NavigationLink(value: SidebarItem.priority) {
-                    SidebarRow(title: "Priority", symbol: "exclamationmark.3", color: .pink, count: priorityCount)
+                    SidebarRow(title: "Upcoming", symbol: "calendar", color: .red, count: dueCount, countIsAlert: dueCount > 0, shortcut: "⌘3")
                 }
                 NavigationLink(value: SidebarItem.matrix) {
-                    SidebarRow(title: "Matrix", symbol: "square.grid.2x2.fill", color: .purple, count: doFirstCount)
+                    SidebarRow(title: "Matrix", symbol: "square.grid.3x3.fill", color: .purple, count: 0, shortcut: "⌘4")
                 }
                 NavigationLink(value: SidebarItem.quickEntry) {
-                    SidebarRow(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, count: quickCount)
+                    SidebarRow(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, count: quickCount, shortcut: "⌘5")
+                }
+                NavigationLink(value: SidebarItem.priority) {
+                    SidebarRow(title: "Priority", symbol: "exclamationmark.3", color: .pink, count: priorityCount, shortcut: "⌘8")
                 }
             }
 
@@ -112,17 +115,20 @@ struct SidebarView: View {
 
             Section {
                 NavigationLink(value: SidebarItem.history) {
-                    SidebarRow(title: "History", symbol: "clock.arrow.circlepath", color: .indigo, count: 0)
+                    SidebarRow(title: "History", symbol: "clock.arrow.circlepath", color: .indigo, count: 0, shortcut: "⌘6")
                 }
                 NavigationLink(value: SidebarItem.trash) {
-                    SidebarRow(title: "Recently Deleted", symbol: "trash", color: .gray, count: 0)
+                    SidebarRow(title: "Recently Deleted", symbol: "trash", color: .gray, count: 0, shortcut: "⌘7")
                 }
             }
         }
         .navigationTitle("Theo")
         #if os(macOS)
         .safeAreaInset(edge: .bottom) {
-            SyncFooter()
+            VStack(alignment: .leading, spacing: 8) {
+                ShortcutLegend()
+                SyncFooter()
+            }
         }
         #endif
         .toolbar {
@@ -179,6 +185,8 @@ struct SidebarRow: View {
     let color: Color
     let count: Int
     var countIsAlert = false
+    /// Shown in grey on the Mac.
+    var shortcut: String?
 
     var body: some View {
         HStack {
@@ -196,9 +204,44 @@ struct SidebarRow: View {
                     .monospacedDigit()
                     .foregroundStyle(countIsAlert ? Color.red : Color.secondary)
             }
+            #if os(macOS)
+            if let shortcut {
+                Text(shortcut)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(minWidth: 22, alignment: .trailing)
+            }
+            #endif
         }
     }
 }
+
+#if os(macOS)
+/// The shortcuts worth remembering, small and grey under the sidebar.
+struct ShortcutLegend: View {
+    private static let items: [(keys: String, action: String)] = [
+        ("⌘N", "New task"), ("⌥⌘N", "Subtask"), ("Space", "Done"), ("⌘]  ⌘[", "In / out"),
+        ("⌥⌘1–3", "Priority"), ("⌥⌘M", "Matrix"), ("⌥⌘D  ⌥⌘L", "Today / not"), ("⌥⌘F", "Focus"),
+    ]
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 2) {
+            ForEach(Self.items, id: \.keys) { item in
+                GridRow {
+                    Text(item.keys)
+                        .monospaced()
+                    Text(item.action)
+                }
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .padding(.horizontal, 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Keyboard shortcuts")
+    }
+}
+#endif
 
 #if os(macOS)
 struct SyncFooter: View {

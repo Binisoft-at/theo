@@ -45,7 +45,7 @@ struct TaskDetailView: View {
 
                 subtaskSection
 
-                Section("Priority") {
+                Section {
                     Picker("Priority", selection: priorityBinding) {
                         ForEach(Priority.allCases) { priority in
                             Text(priority == .normal ? "None" : priority.marks).tag(priority)
@@ -53,6 +53,11 @@ struct TaskDetailView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
+                        LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
+                    }
+                } header: {
+                    Text("Importance")
                 }
 
                 Section("Deadline") {
@@ -81,15 +86,15 @@ struct TaskDetailView: View {
                             Label("Time", systemImage: "clock")
                         }
                     }
-                    Toggle(isOn: deferredBinding) {
-                        Label("Hide from Today until…", systemImage: "moon.zzz")
+                    Toggle(isOn: plannedBinding) {
+                        Label("Planned", systemImage: "calendar.badge.plus")
                     }
-                    if let deferred = task.deferredUntil {
+                    if let planned = task.plannedDay {
                         DatePicker(
-                            "Show again on",
+                            "For",
                             selection: Binding(
-                                get: { deferred },
-                                set: { task.deferredUntil = DayBoundary.current.start(of: $0); task.touch() }
+                                get: { planned },
+                                set: { app.store.plan([task], for: $0) }
                             ),
                             displayedComponents: [.date]
                         )
@@ -219,7 +224,11 @@ struct TaskDetailView: View {
     }
 
     private var priorityBinding: Binding<Priority> {
-        Binding(get: { task.priority }, set: { task.priority = $0; task.touch() })
+        Binding(get: { task.priority }, set: { app.store.setPriority([task], $0) })
+    }
+
+    private var importanceLevelBinding: Binding<Int> {
+        Binding(get: { task.importanceLevel }, set: { app.store.setImportance([task], Matrix.importance(forLevel: $0)) })
     }
 
     private var hasDueBinding: Binding<Bool> {
@@ -237,14 +246,8 @@ struct TaskDetailView: View {
         Binding(get: { task.dueDate ?? Date() }, set: { task.dueDate = $0; task.touch() })
     }
 
-    private var deferredBinding: Binding<Bool> {
-        Binding(
-            get: { task.deferredUntil != nil },
-            set: { on in
-                task.deferredUntil = on ? DayBoundary.current.dayStart(byAdding: 1, to: app.dayStart) : nil
-                task.touch()
-            }
-        )
+    private var plannedBinding: Binding<Bool> {
+        Binding(get: { task.plannedDay != nil }, set: { app.store.plan([task], for: $0 ? app.dayStart : nil) })
     }
 
     private var groupBinding: Binding<UUID?> {

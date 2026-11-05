@@ -14,7 +14,8 @@ struct WatchTaskDetailView: View {
     private var groups: [TaskGroup]
 
     private var store: TaskStore { TaskStore(context: context) }
-    private var isDeferred: Bool { (task.deferredUntil ?? .distantPast) > model.dayStart }
+    private var isPlannedToday: Bool { task.isPlanned(for: model.dayStart) }
+    private var tomorrow: Date { DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart) }
 
     var body: some View {
         List {
@@ -41,9 +42,9 @@ struct WatchTaskDetailView: View {
                 }
                 if !task.isDone {
                     Button {
-                        store.deferTasks([task], until: isDeferred ? nil : DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart))
+                        store.plan([task], for: isPlannedToday ? tomorrow : model.dayStart)
                     } label: {
-                        Label(isDeferred ? "Back to Today" : "Not Today", systemImage: isDeferred ? "sun.max" : "moon.zzz")
+                        Label(isPlannedToday ? "Not Today" : "Do Today", systemImage: isPlannedToday ? "moon.zzz" : "sun.max")
                     }
                     Button {
                         store.moveToEdge(task, top: true)

@@ -145,6 +145,8 @@ struct TaskMetaLine: View {
     let today: Date
     let showAge: Bool
 
+    @Environment(AppModel.self) private var app
+
     private var ageDays: Int {
         guard !task.isDone else { return 0 }
         return DayBoundary.current.days(from: task.createdAt, to: today)
@@ -152,7 +154,7 @@ struct TaskMetaLine: View {
 
     private var hasContent: Bool {
         task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
-            || (style.showGroup && task.group != nil) || (style.showDeferred && task.deferredUntil != nil)
+            || (style.showGroup && task.group != nil) || (style.showDeferred && task.plannedDay != nil)
     }
 
     /// "0,5 PH", or "0,2 / 0,5 PH" once focus time has been booked on it.
@@ -184,8 +186,8 @@ struct TaskMetaLine: View {
                     Label(estimateText, systemImage: "timer")
                         .foregroundStyle(task.estimate > 0 && task.focusSeconds / 60 >= task.estimate * PowerHours.minutesPerPH ? Color.green : Color.secondary)
                 }
-                if style.showDeferred, let deferred = task.deferredUntil, deferred > today {
-                    Label(DateText.due(deferred, hasTime: false, today: today), systemImage: "moon.zzz")
+                if style.showDeferred, !task.isDone, let planned = task.plannedDay {
+                    Label(DateText.due(planned, hasTime: false, today: today), systemImage: "calendar.badge.checkmark")
                         .foregroundStyle(.indigo)
                 }
                 if style.showGroup, let group = task.group, group.deletedAt == nil {
@@ -208,13 +210,33 @@ struct TaskMetaLine: View {
         }
     }
 
+    /// Overdue stays calm: "was due Mon" with a tap to move it, ranked at the top anyway.
     @ViewBuilder
     private func dueLabel(_ due: Date) -> some View {
         let delta = DateText.dayDelta(due, today: today)
-        let overdue = !task.isDone && (delta < 0 || (delta == 0 && task.dueHasTime && due < Date()))
-        let color: Color = task.isDone ? .secondary : (overdue ? .red : (delta == 0 ? .orange : .secondary))
-        Label(DateText.due(due, hasTime: task.dueHasTime, today: today), systemImage: overdue ? "exclamationmark.circle" : "calendar")
-            .foregroundStyle(color)
+        if !task.isDone && delta < 0 {
+            Menu {
+                Button("Today") { app.store.postpone([task], days: 0, today: today) }
+                Button("Tomorrow") { app.store.postpone([task], days: 1, today: today) }
+                Button("In 3 Days") { app.store.postpone([task], days: 3, today: today) }
+                Button("Next Week") { app.store.postpone([task], days: 7, today: today) }
+                Divider()
+                Button("No Deadline", role: .destructive) { app.store.setDue([task], nil) }
+            } label: {
+                Label("was due " + DateText.due(due, hasTime: false, today: today), systemImage: "clock.arrow.circlepath")
+                    .foregroundStyle(Color.orange.opacity(0.85))
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityHint("Move the deadline")
+        } else {
+            let lateToday = !task.isDone && delta == 0 && task.dueHasTime && due < Date()
+            let color: Color = task.isDone ? .secondary : (delta == 0 ? .orange : .secondary)
+            Label(DateText.due(due, hasTime: task.dueHasTime, today: today), systemImage: lateToday ? "clock.badge.exclamationmark" : "calendar")
+                .foregroundStyle(color)
+        }
     }
 }
 

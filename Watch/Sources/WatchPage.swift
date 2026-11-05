@@ -19,9 +19,9 @@ struct WatchSection: Identifiable {
 enum WatchPage {
     /// Open tasks per section (Quick Entry, then groups in page order), nested like the page.
     /// Empty sections are left out to save space.
-    static func sections(_ page: [TaskItem], groups: [TaskGroup]) -> [WatchSection] {
+    static func sections(_ page: [TaskItem], groups: [TaskGroup], dayStart: Date) -> [WatchSection] {
         Sections.byGroup(page, groups: groups).compactMap { section -> WatchSection? in
-            let rows = Checklist.displayOrder(section.tasks, showCompleted: true)
+            let rows = Checklist.displayOrder(section.tasks, showCompleted: true, rank: { $0.matrixScore(today: dayStart) })
                 .filter { !$0.item.isDone }
                 .map { WatchRow(task: $0.item, depth: $0.depth) }
             guard !rows.isEmpty else { return nil }

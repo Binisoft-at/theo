@@ -48,6 +48,7 @@ DEFINE SCHEMA
         CD_isDone       INT64,
         CD_modifiedAt   TIMESTAMP,
         CD_notes        STRING,
+        CD_plannedDay   TIMESTAMP,
         CD_priorityRaw  INT64,
         CD_recurrenceRaw STRING,
         CD_remindersRaw STRING,

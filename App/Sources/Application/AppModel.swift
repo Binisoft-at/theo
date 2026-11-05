@@ -4,6 +4,7 @@ import TheoCore
 
 enum SidebarItem: Hashable {
     case today
+    case plan
     case upcoming
     case priority
     case matrix
@@ -12,6 +13,18 @@ enum SidebarItem: Hashable {
     case trash
     case group(UUID)
     case tag(String)
+}
+
+struct IndentRequest: Equatable {
+    let id = UUID()
+    let taskID: UUID
+    /// +1 = subtask of the line above, -1 = out one level.
+    let delta: Int
+}
+
+/// iPhone tab bar.
+enum PhoneTab: Hashable {
+    case today, plan, lists, search
 }
 
 struct Toast: Identifiable, Equatable {
@@ -71,6 +84,7 @@ final class AppModel {
     var detailPath = NavigationPath()
     /// iPhone: a single Notes-style stack (lists → page → day).
     var phonePath = NavigationPath()
+    var phoneTab: PhoneTab = .today
 
     var detailTask: TaskItem?
     var moveBatch: TaskBatch?
@@ -95,6 +109,14 @@ final class AppModel {
     var matrixTask: TaskItem?
     /// Schedules the notifications for timed tasks (not on the tour's practice page).
     let reminders: ReminderScheduler?
+
+    /// The composer's + being dragged over a list (global position), to insert a task there.
+    var insertDragLocation: CGPoint?
+    /// Set by the list on screen: inserts a task where the + was dropped; false if nowhere.
+    @ObservationIgnored var insertHandler: ((CGPoint, ParsedEntry?) -> Bool)?
+    @ObservationIgnored var insertHandlerOwner: UUID?
+    /// Swipe-style indent / outdent requested from the menu bar; the list on screen resolves it.
+    var indentRequest: IndentRequest?
 
     /// Where menu-bar commands act: the practice page during the tour, otherwise this model.
     var commandTarget: AppModel { tourModel ?? self }
@@ -126,10 +148,11 @@ final class AppModel {
         self.reminders = isSandbox || Persistence.isDemo ? nil : ReminderScheduler(container: container)
         guard !isSandbox else { return }
         focus = Self.loadFocus()
+        if !Persistence.isDemo { store.syncImportanceWithPriority() }
         let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []
         collapsedTaskIDs = Set(stored.compactMap(UUID.init(uuidString:)))
         applyLaunchArguments()
-        if let selection { phonePath = NavigationPath([selection]) }
+        if let selection, selection != .today { go(selection) }
         AppModel.shared = self
     }
 
@@ -144,12 +167,40 @@ final class AppModel {
         detailPath = NavigationPath()
         selection = item
         compactColumn = .detail
-        phonePath = NavigationPath([item])
+        switch item {
+        case .today:
+            phoneTab = .today
+        case .plan:
+            phoneTab = .plan
+        default:
+            phoneTab = .lists
+            phonePath = NavigationPath([item])
+        }
+    }
+
+    /// The logical day as stored in `plannedDay` (midnight of that calendar day).
+    var todayKey: Date { Calendar.current.startOfDay(for: dayStart) }
+
+    func plan(_ tasks: [TaskItem], for day: Date?) {
+        let before = tasks.map { (task: $0, day: $0.plannedDay) }
+        store.plan(tasks, for: day)
+        var label = ""
+        if let day {
+            let delta = DateText.dayDelta(day, today: dayStart)
+            label = delta == 0 ? "today" : (delta == 1 ? "tomorrow" : day.formatted(.dateTime.weekday(.wide).day().month()))
+        }
+        let message = day == nil
+            ? (tasks.count == 1 ? "Taken off the plan" : "\(tasks.count) taken off the plan")
+            : (tasks.count == 1 ? "Planned for \(label)" : "\(tasks.count) planned for \(label)")
+        show(message, symbol: "calendar.badge.checkmark") { [weak self] in
+            for item in before { item.task.plannedDay = item.day }
+            self?.store.save()
+        }
     }
 
     func requestQuickEntry() {
         switch selection {
-        case .history, .trash, .upcoming, .priority, .matrix, .tag, .none: go(.today)
+        case .history, .trash, .upcoming, .priority, .matrix, .plan, .tag, .none: go(.today)
         default: if phonePath.isEmpty { go(selection ?? .today) }
         }
         detailPath = NavigationPath()
@@ -250,13 +301,9 @@ final class AppModel {
         tour = nil
     }
 
+    /// "Not Today": onto tomorrow's plan.
     func deferToTomorrow(_ tasks: [TaskItem]) {
-        let boundary = DayBoundary.current
-        let tomorrow = boundary.dayStart(byAdding: 1, to: dayStart)
-        store.deferTasks(tasks, until: tomorrow)
-        show(tasks.count == 1 ? "Moved to tomorrow" : "Moved \(tasks.count) tasks to tomorrow", symbol: "moon.zzz.fill") { [weak self] in
-            self?.store.deferTasks(tasks, until: nil)
-        }
+        plan(tasks, for: DayBoundary.current.dayStart(byAdding: 1, to: dayStart))
     }
 
     var selectedTasks: [TaskItem] {
@@ -277,11 +324,13 @@ final class AppModel {
             case "upcoming": selection = .upcoming
             case "priority": selection = .priority
             case "matrix": selection = .matrix
+            case "plan": selection = .plan
             case "history": selection = .history
             case "quick": selection = .quickEntry
             case "sidebar":
                 selection = nil
                 compactColumn = .sidebar
+                phoneTab = .lists
             default: selection = .today
             }
         }

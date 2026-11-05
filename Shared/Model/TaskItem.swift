@@ -34,9 +34,12 @@ final class TaskItem {
     var estimate: Double = 0
     /// Focus-timer time spent on this task.
     var focusSeconds: Double = 0
-    /// Position on the Eisenhower matrix, 0...1 each.
+    /// Unused since urgency comes from the deadline; kept so older records still sync.
     var urgency: Double = 0.25
+    /// 0.1...1, shown as levels 1–10 (`Matrix`). The priority marks follow it.
     var importance: Double = 0.25
+    /// The day it's planned for (midnight of that calendar day); nil = not planned.
+    var plannedDay: Date?
     /// How the deadline repeats (`Recurrence.raw`); empty = once.
     var recurrenceRaw: String = ""
     /// Notification offsets for timed deadlines (`Reminders` format); empty = at the time.
@@ -93,27 +96,40 @@ extension TaskItem {
         set { remindersRaw = Reminders.raw(for: newValue) }
     }
 
-    /// Importance and urgency as the matrix ranks them: priority adds importance, a close
-    /// deadline adds urgency.
+    /// Importance and urgency as the matrix ranks them; urgency comes from the deadline.
     func matrixPosition(today: Date) -> (urgency: Double, importance: Double) {
-        (Matrix.effectiveUrgency(urgency, due: isDone ? nil : dueDate, today: today), Matrix.effectiveImportance(importance, priority: priority))
+        let days = isDone ? nil : Matrix.daysUntil(dueDate, today: today)
+        return (Matrix.urgency(daysUntilDue: days), importance)
     }
 
     func matrixScore(today: Date) -> Double {
         let position = matrixPosition(today: today)
-        return Matrix.score(urgency: position.urgency, importance: position.importance)
+        return Matrix.score(importance: position.importance, urgency: position.urgency)
     }
 
-    /// Whether the task belongs on the daily page starting at `dayStart`: still open (and not
-    /// hidden with "Not Today" past that day), or completed during that day.
+    var importanceLevel: Int { Matrix.level(forImportance: importance) }
+
+    /// Planned for the logical day starting at `dayStart`.
+    func isPlanned(for dayStart: Date) -> Bool {
+        guard let plannedDay else { return false }
+        return Calendar.current.isDate(plannedDay, inSameDayAs: dayStart)
+    }
+
+    /// Whether the task is on the daily page starting at `dayStart`: planned for that day, or
+    /// finished during it. Nothing lands on a day by itself.
     func isOnPage(of dayStart: Date) -> Bool {
         guard deletedAt == nil else { return false }
         if isDone {
             guard let completedAt else { return false }
-            return completedAt >= dayStart
+            return completedAt >= dayStart && completedAt < dayStart.addingTimeInterval(86_400)
         }
-        if let deferredUntil, deferredUntil > dayStart { return false }
-        return true
+        return isPlanned(for: dayStart)
+    }
+
+    /// Planned for a day before `dayStart` and still open: a candidate to carry over.
+    func isLeftOver(before dayStart: Date) -> Bool {
+        guard deletedAt == nil, !isDone, let plannedDay else { return false }
+        return plannedDay < Calendar.current.startOfDay(for: dayStart)
     }
 }
 

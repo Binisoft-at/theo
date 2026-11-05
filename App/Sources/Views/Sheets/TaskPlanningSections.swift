@@ -177,25 +177,25 @@ struct TaskPlanningSections: View {
     // MARK: - Matrix
 
     private var matrixSection: some View {
-        let effective = task.matrixPosition(today: app.dayStart)
+        let cell = MatrixGeometry.cell(of: task, today: app.dayStart)
         return Section {
-            GeometryReader { geo in
-                ZStack {
-                    MatrixBackground(compact: true)
-                    MatrixDot(urgency: effective.urgency, importance: effective.importance, isSelected: true, size: geo.size)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { location in
-                    let position = MatrixGeometry.position(of: location, in: geo.size)
-                    withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
-                }
+            MatrixBoard(compact: true) { size in
+                MatrixDot(point: MatrixGeometry.center(of: cell, in: size), color: Color.accentColor, isSelected: true)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { location in
+                        let target = MatrixGeometry.cell(at: location, in: size)
+                        withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+                    }
             }
-            .frame(height: 190)
-            LabeledContent("Rank", value: MatrixGeometry.describe(urgency: effective.urgency, importance: effective.importance))
+            .frame(height: 170)
+            .sensoryFeedback(.selection, trigger: cell.key)
+            LabeledContent("Ranked", value: MatrixGeometry.describe(cell))
         } header: {
-            Text("Eisenhower Matrix")
+            Text("Urgency × Importance")
         } footer: {
-            Text("Tap where it belongs. Priority adds importance, a close deadline adds urgency.")
+            Text("Tap a cell: left is due today, right is two weeks out or no date, up is more important. Lists are ranked by it.")
         }
     }
 }

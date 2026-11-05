@@ -178,6 +178,7 @@ extension TaskStore {
             task.priority = parsed.priority
             task.tags = parsed.tags
             task.estimate = parsed.estimate ?? 0
+            task.importance = Matrix.importance(for: parsed.priority, current: Matrix.defaultImportance)
             task.dueDate = parsed.due
             if line.done {
                 task.isDone = true

@@ -15,6 +15,8 @@ struct QuickEntryBar: View {
     /// Where new tasks go when no `@group` is typed (nil = Quick Entry).
     var defaultGroupID: UUID?
     var placeholder = "Add a task"
+    /// New tasks are planned for this day (Today, Plan).
+    var plansFor: Date?
 
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
@@ -30,7 +32,9 @@ struct QuickEntryBar: View {
     /// nil = from the text ("0,5PH"), 0 = none.
     @State private var estimateChoice: Double?
     @State private var recurrenceChoice: RecurrenceChoice = .fromText
-    @State private var matrixChoice: (urgency: Double, importance: Double)?
+    @State private var matrixChoice: MatrixGeometry.Cell?
+    /// 1...10 from holding the ! chip; overrides the priority marks.
+    @State private var importanceChoice: Int?
     @State private var showCustomEstimate = false
     @State private var customEstimateText = ""
     /// The last top-level task added here; "- " lines go under it.
@@ -183,11 +187,7 @@ struct QuickEntryBar: View {
 
     private var field: some View {
         HStack(spacing: 10) {
-            Image(systemName: subtaskParent != nil ? "arrow.turn.down.right" : "plus.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-                .contentTransition(.symbolEffect(.replace))
-                .symbolEffect(.bounce, value: addedCount)
+            insertHandle
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...5)
@@ -198,15 +198,24 @@ struct QuickEntryBar: View {
                 #endif
             matrixHandle
             if !text.isEmpty {
-                Button(action: add) {
+                // Tap adds; hold and slide up picks the Power Hours, letting go adds with them.
+                HoldSlidePicker(options: Self.estimateOptions, onTap: add) { index in
+                    pickEstimate(index)
+                } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.tint)
                 }
-                .buttonStyle(.borderless)
-                .keyboardShortcut(.return, modifiers: .command)
                 .transition(.scale.combined(with: .opacity))
                 .accessibilityLabel(isMultiline ? "Add \(Composer.lines(text).count) Tasks" : "Add Task")
+                .accessibilityHint("Touch and hold, then slide up to set the Power Hours")
+                .accessibilityAddTraits(.isButton)
+                .background {
+                    Button("Add", action: add)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .opacity(0)
+                        .accessibilityHidden(true)
+                }
             }
         }
         .padding(.horizontal, 14)
@@ -231,8 +240,7 @@ struct QuickEntryBar: View {
                     repeatChip
                 }
                 if let matrixChoice {
-                    let quadrant = Matrix.quadrant(urgency: matrixChoice.urgency, importance: matrixChoice.importance)
-                    removableChip(MatrixGeometry.describe(urgency: matrixChoice.urgency, importance: matrixChoice.importance), color: quadrant.color) {
+                    removableChip(MatrixGeometry.describe(matrixChoice), color: .accentColor) {
                         self.matrixChoice = nil
                     }
                 }
@@ -277,27 +285,86 @@ struct QuickEntryBar: View {
         }
     }
 
+    /// Tap steps through ! / !! / !!!; hold and slide picks an importance level 1–10.
     private var priorityChip: some View {
         let level = effectivePriority
-        return Menu {
-            ForEach(Priority.allCases.reversed()) { option in
-                Button {
-                    priorityChoice = option
-                } label: {
-                    Label(option.title, systemImage: option == level ? "checkmark" : option.symbol)
-                }
-            }
-        } label: {
-            chipLabel(level == .normal ? "Priority" : level.marks, symbol: level == .normal ? "exclamationmark" : nil, color: level.color, active: level != .normal)
-        } primaryAction: {
-            priorityChoice = level.next
+        let title: String
+        if let importanceChoice {
+            title = "Importance \(importanceChoice)"
+        } else {
+            title = level == .normal ? "Priority" : level.marks
         }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
+        return HoldSlidePicker(options: (1...Matrix.levels).map(String.init), step: 28) {
+            importanceChoice = nil
+            priorityChoice = level.next
+        } onPick: { index in
+            importanceChoice = index + 1
+        } label: {
+            chipLabel(title, symbol: level == .normal && importanceChoice == nil ? "exclamationmark" : nil,
+                      color: importanceChoice.map { Matrix.priority(forImportance: Matrix.importance(forLevel: $0)).color } ?? level.color,
+                      active: level != .normal || importanceChoice != nil)
+        }
         .accessibilityLabel("Priority")
-        .accessibilityValue(level.title)
-        .accessibilityHint("Tap to raise, touch and hold to choose")
+        .accessibilityValue(importanceChoice.map { "Importance \($0)" } ?? level.title)
+        .accessibilityHint("Tap to raise, touch and hold and slide to pick an importance from 1 to 10")
+    }
+
+    static let estimateOptions = PowerHours.presets.map { PowerHours.number($0) } + ["Custom…"]
+
+    private func pickEstimate(_ index: Int) {
+        guard index < PowerHours.presets.count else {
+            showCustomEstimate = true
+            return
+        }
+        estimateChoice = PowerHours.presets[index]
+        add()
+    }
+
+    /// Hold the + and drag it between two tasks to add one right there (what's typed, or an
+    /// empty line to type into). A tap just starts typing.
+    private var insertHandle: some View {
+        Image(systemName: subtaskParent != nil ? "arrow.turn.down.right" : "plus.circle.fill")
+            .font(.title2)
+            .foregroundStyle(.tint)
+            .contentTransition(.symbolEffect(.replace))
+            .symbolEffect(.bounce, value: addedCount)
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true }
+            .highPriorityGesture(
+                LongPressGesture(minimumDuration: 0.15)
+                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                    .onChanged { value in
+                        guard case .second(true, let drag?) = value else { return }
+                        app.insertDragLocation = drag.location
+                    }
+                    .onEnded { value in
+                        app.insertDragLocation = nil
+                        guard case .second(true, let drag?) = value else { return }
+                        dropBetween(at: drag.location)
+                    }
+            )
+            .sensoryFeedback(.impact(weight: .light), trigger: app.insertDragLocation != nil) { _, new in new }
+            .accessibilityLabel("New task")
+            .accessibilityHint("Touch and hold, then drag between two tasks to add one there")
+    }
+
+    private func dropBetween(at location: CGPoint) {
+        let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var entry: ParsedEntry?
+        if !typed.isEmpty, !isMultiline {
+            var value = parsed
+            value.priority = effectivePriority
+            value.due = effectiveDue?.date
+            value.dueHasTime = effectiveDue?.hasTime ?? false
+            value.estimate = effectiveEstimate > 0 ? effectiveEstimate : nil
+            value.recurrence = effectiveRecurrence
+            entry = value
+        }
+        guard app.insertHandler?(location, entry) == true else { return }
+        if entry != nil {
+            text = ""
+            resetChoices()
+        }
     }
 
     private var dueChip: some View {
@@ -423,12 +490,11 @@ struct QuickEntryBar: View {
         .accessibilityLabel("Repeat")
     }
 
-    /// Drag it onto the full-screen matrix; tapping only explains it, so it never gets in the way.
+    /// Drag it onto the full-screen grid; tapping only explains it, so it never gets in the way.
     private var matrixHandle: some View {
-        let quadrant = matrixChoice.map { Matrix.quadrant(urgency: $0.urgency, importance: $0.importance) }
-        return Image(systemName: "square.grid.2x2")
+        Image(systemName: "square.grid.3x3")
             .font(.body.weight(.medium))
-            .foregroundStyle(quadrant?.color ?? Color.secondary.opacity(0.7))
+            .foregroundStyle(matrixChoice == nil ? Color.secondary.opacity(0.7) : Color.accentColor)
             .frame(width: 30, height: 30)
             .contentShape(Rectangle())
             .gesture(
@@ -442,18 +508,17 @@ struct QuickEntryBar: View {
                     }
             )
             .onTapGesture {
-                app.show("Drag the ⊞ handle onto the matrix to rate urgency and importance", symbol: "square.grid.2x2")
+                app.show("Drag the grid handle to set when it's due and how important it is", symbol: "square.grid.3x3")
             }
-            .accessibilityLabel("Eisenhower matrix")
-            .accessibilityHint("Drag to place the task by urgency and importance")
+            .accessibilityLabel("Urgency and importance")
+            .accessibilityHint("Drag onto the grid to set the deadline and importance")
     }
 
     private func dropOnMatrix(at location: CGPoint) {
         let frame = app.matrixCanvasFrame
         app.matrixDrag = nil
         guard frame.width > 0, frame.contains(location) else { return }
-        let position = MatrixGeometry.position(of: CGPoint(x: location.x - frame.minX, y: location.y - frame.minY), in: frame.size)
-        matrixChoice = (urgency: position.urgency, importance: position.importance)
+        matrixChoice = MatrixGeometry.cell(at: CGPoint(x: location.x - frame.minX, y: location.y - frame.minY), in: frame.size)
         // Dropping a typed task files it right away; without text it sets up the next one.
         if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { add() }
     }
@@ -550,20 +615,30 @@ struct QuickEntryBar: View {
         guard !created.isEmpty else { return }
         for task in created {
             if let group = task.group, group.isCollapsed { app.store.setCollapsed(group, false) }
-            if let matrixChoice { app.store.placeOnMatrix(task, urgency: matrixChoice.urgency, importance: matrixChoice.importance) }
+            if let matrixChoice {
+                app.store.placeOnMatrix(task, days: matrixChoice.days, level: matrixChoice.level, today: app.dayStart)
+            } else if let importanceChoice {
+                app.store.setImportance([task], Matrix.importance(forLevel: importanceChoice))
+            }
+            if let plansFor { app.store.plan([task], for: plansFor) }
         }
         show(Confirmation(message: message, tasks: created))
         addedCount += 1
         text = ""
+        resetChoices()
+        // The group stays picked while adding several tasks; keep the keyboard up for rapid entry.
+        focused = true
+    }
+
+    private func resetChoices() {
         disabled = []
         priorityChoice = nil
+        importanceChoice = nil
         dueChoice = .fromText
         estimateChoice = nil
         recurrenceChoice = .fromText
         matrixChoice = nil
         subtaskOff = false
-        // The group stays picked while adding several tasks; keep the keyboard up for rapid entry.
-        focused = true
     }
 
     /// A pasted list: each line is a task, indented lines become subtasks of the line above.

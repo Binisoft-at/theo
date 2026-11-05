@@ -10,6 +10,8 @@ struct TaskListView<Header: View>: View {
     var allowsReorder = true
     /// Group that receives drops when the page has no headings (single group pages).
     var defaultGroupID: UUID?
+    /// New lines made here are planned for this day (Today).
+    var plansFor: Date?
     @ViewBuilder var header: () -> Header
 
     @Environment(AppModel.self) private var app
@@ -19,6 +21,12 @@ struct TaskListView<Header: View>: View {
     @State private var pendingEditID: String?
     @State private var groupPendingDelete: TaskGroup?
     @State private var lastSplit: (id: String, time: Date)?
+    /// Row frames in global coordinates, for dropping the composer's + between rows.
+    @State private var frames = RowFrames()
+    @State private var insertAfterID: String?
+    @State private var insertBeforeFirst = false
+    @State private var isVisible = false
+    @State private var token = UUID()
 
     private var placement: NewTaskPlacement { NewTaskPlacement(rawValue: placementRaw) ?? .bottom }
 
@@ -30,6 +38,17 @@ struct TaskListView<Header: View>: View {
                 .selectionDisabled()
             ForEach(rows) { row in
                 rowView(row)
+                    .onGeometryChange(for: CGRect.self) { proxy in
+                        proxy.frame(in: .global)
+                    } action: { frame in
+                        frames.byID[row.id] = frame
+                    }
+                    .overlay(alignment: .bottom) {
+                        if insertAfterID == row.id { InsertionLine() }
+                    }
+                    .overlay(alignment: .top) {
+                        if insertBeforeFirst && rows.first?.id == row.id { InsertionLine() }
+                    }
             }
             .onMove(perform: allowsReorder ? move : nil)
         }
@@ -94,6 +113,35 @@ struct TaskListView<Header: View>: View {
         .onChange(of: app.isSelecting) { _, selecting in
             if selecting { focusedID = nil }
         }
+        .onAppear {
+            isVisible = true
+            registerInsertHandler()
+        }
+        .onDisappear {
+            isVisible = false
+            if app.insertHandlerOwner == token {
+                app.insertHandler = nil
+                app.insertHandlerOwner = nil
+            }
+        }
+        .onChange(of: app.insertDragLocation) { _, location in
+            guard isVisible, let location, let point = insertionPoint(at: location) else {
+                insertAfterID = nil
+                insertBeforeFirst = false
+                return
+            }
+            insertAfterID = point.above?.id
+            insertBeforeFirst = point.above == nil
+        }
+        .onChange(of: app.indentRequest) { _, request in
+            guard isVisible, let request, let task = lookupTask("t-" + request.taskID.uuidString) else { return }
+            app.indentRequest = nil
+            if request.delta > 0 {
+                makeSubtaskOfLineAbove(task)
+            } else {
+                withAnimation(.snappy) { app.store.indent(task, by: -1) }
+            }
+        }
         .confirmationDialog(
             "Delete Group",
             isPresented: Binding(get: { groupPendingDelete != nil }, set: { if !$0 { groupPendingDelete = nil } }),
@@ -150,33 +198,34 @@ struct TaskListView<Header: View>: View {
                     app.detailTask = task
                 },
                 onIndent: { delta in
-                    withAnimation(.snappy) { app.store.indent(task, by: delta) }
+                    if delta > 0 {
+                        makeSubtaskOfLineAbove(task)
+                    } else {
+                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                    }
                 },
                 onToggleSubtasks: {
                     withAnimation(.snappy) { app.toggleSubtasks(task) }
                 }
             )
             .moveDisabled(!allowsReorder || task.isDone || isEditing(task))
+            // Swipe right: tuck under the line above (or take a subtask back out).
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button {
-                    withAnimation(.snappy) { app.toggle(task) }
-                } label: {
-                    Label(task.isDone ? "Not Done" : "Done", systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
-                }
-                .tint(.green)
-                if !task.isDone {
+                if let parent = lineAbove(task) {
                     Button {
-                        app.store.setPriority([task], task.priority.next)
+                        withAnimation(.snappy) { app.store.makeSubtask(task, of: parent) }
                     } label: {
-                        Label("Priority", systemImage: task.priority.next == .normal ? "minus" : task.priority.next.symbol)
-                    }
-                    .tint(.orange)
-                    Button {
-                        app.deferToTomorrow([task])
-                    } label: {
-                        Label("Not Today", systemImage: "moon.zzz")
+                        Label("Subtask", systemImage: "arrow.turn.down.right")
                     }
                     .tint(.indigo)
+                }
+                if depth > 0 {
+                    Button {
+                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                    } label: {
+                        Label("Outdent", systemImage: "arrow.turn.up.left")
+                    }
+                    .tint(.gray)
                 }
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -185,18 +234,29 @@ struct TaskListView<Header: View>: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                Button {
-                    app.moveBatch = TaskBatch(tasks: [task])
-                } label: {
-                    Label("Move", systemImage: "folder")
+                if !task.isDone {
+                    Button {
+                        app.deferToTomorrow([task])
+                    } label: {
+                        Label("Tomorrow", systemImage: "moon.zzz")
+                    }
+                    .tint(.indigo)
+                    if let due = task.dueDate, DateText.dayDelta(due, today: app.dayStart) < 0 {
+                        Button {
+                            withAnimation(.snappy) { app.store.postpone([task], days: 1, today: app.dayStart) }
+                        } label: {
+                            Label("+1 Day", systemImage: "calendar.badge.plus")
+                        }
+                        .tint(.orange)
+                    } else {
+                        Button {
+                            app.dateBatch = TaskBatch(tasks: [task])
+                        } label: {
+                            Label("Deadline", systemImage: "calendar")
+                        }
+                        .tint(.orange)
+                    }
                 }
-                .tint(.blue)
-                Button {
-                    app.dateBatch = TaskBatch(tasks: [task])
-                } label: {
-                    Label("Deadline", systemImage: "calendar")
-                }
-                .tint(.orange)
             }
             #if os(iOS)
             .contextMenu {
@@ -298,7 +358,7 @@ struct TaskListView<Header: View>: View {
         }
         .accessibilityLabel("Outdent")
         Button {
-            withAnimation(.snappy) { app.store.indent(task, by: 1) }
+            makeSubtaskOfLineAbove(task)
         } label: {
             Image(systemName: "increase.indent")
         }
@@ -467,6 +527,7 @@ struct TaskListView<Header: View>: View {
             app.store.setCollapsed(group, false)
         }
         let task = app.store.newBlankTask(in: groupID ?? defaultGroupID, placement: placement)
+        if let plansFor { app.store.plan([task], for: plansFor) }
         beginEdit(task)
     }
 
@@ -490,8 +551,11 @@ struct TaskListView<Header: View>: View {
         guard let newIndex = newRows.firstIndex(where: { $0.id == moved.id }) else { return }
         withAnimation(.snappy) {
             switch moved {
-            case .task(let task, _, _):
+            case .task(let task, let depth, _):
                 app.store.drop(task: task, at: newIndex, in: newRows, defaultGroupID: defaultGroupID)
+                // Lists are ranked: the task takes just enough importance to stay where it was put.
+                let neighbours = Self.neighbours(of: newIndex, depth: depth, in: newRows)
+                app.store.rank(task, between: neighbours.above, and: neighbours.below, today: app.dayStart)
             case .header(let info):
                 if case .group(let group) = info.kind {
                     app.store.drop(group: group, at: newIndex, in: newRows)
@@ -500,6 +564,121 @@ struct TaskListView<Header: View>: View {
                 break
             }
         }
+    }
+
+    /// The nearest task rows at the same depth above and below `index`, within its section.
+    private static func neighbours(of index: Int, depth: Int, in rows: [ListRow]) -> (above: TaskItem?, below: TaskItem?) {
+        func scan(_ indices: [Int]) -> TaskItem? {
+            for i in indices {
+                switch rows[i] {
+                case .header: return nil
+                case .placeholder: continue
+                case .task(let task, let d, _):
+                    if d < depth { return nil }
+                    if d == depth && !task.isDone { return task }
+                }
+            }
+            return nil
+        }
+        let above = scan(Array((0..<index).reversed()))
+        let below = index + 1 < rows.count ? scan(Array((index + 1)..<rows.count)) : nil
+        return (above, below)
+    }
+
+    /// The line a swipe right tucks this task under: the closest line above at the same level,
+    /// in the same group.
+    private func lineAbove(_ task: TaskItem) -> TaskItem? {
+        guard let index = rows.firstIndex(where: { $0.id == task.rowID }), case .task(_, let depth, _) = rows[index] else { return nil }
+        var j = index - 1
+        while j >= 0 {
+            switch rows[j] {
+            case .header:
+                return nil
+            case .placeholder:
+                break
+            case .task(let other, let d, _):
+                if d < depth { return nil }
+                if d == depth { return other.groupID == task.groupID && !other.isDone ? other : nil }
+            }
+            j -= 1
+        }
+        return nil
+    }
+
+    private func makeSubtaskOfLineAbove(_ task: TaskItem) {
+        if let parent = lineAbove(task) {
+            withAnimation(.snappy) { app.store.makeSubtask(task, of: parent) }
+        } else {
+            app.show("Nothing above it to tuck it under", symbol: "arrow.turn.down.right")
+        }
+    }
+
+    // MARK: - Inserting between rows
+
+    /// Where a drop at `location` (global) lands: between `above` and `below` rows.
+    private func insertionPoint(at location: CGPoint) -> (above: ListRow?, below: ListRow?)? {
+        let visible = rows.compactMap { row in frames.byID[row.id].map { (row: row, frame: $0) } }
+        guard let first = visible.first, let last = visible.last else { return nil }
+        let span = first.frame.union(last.frame).insetBy(dx: 0, dy: -30)
+        guard location.x >= span.minX, location.x <= span.maxX, location.y >= span.minY, location.y <= span.maxY else { return nil }
+        guard let index = visible.firstIndex(where: { location.y < $0.frame.midY }) else {
+            return (last.row, nil)
+        }
+        return (index > 0 ? visible[index - 1].row : nil, visible[index].row)
+    }
+
+    private func registerInsertHandler() {
+        let owner = token
+        app.insertHandlerOwner = owner
+        app.insertHandler = { location, entry in
+            insertTask(at: location, entry: entry)
+        }
+    }
+
+    /// Drops a new task between two rows. It takes the average importance and urgency of its
+    /// neighbours, unless what was typed says otherwise.
+    private func insertTask(at location: CGPoint, entry: ParsedEntry?) -> Bool {
+        insertAfterID = nil
+        insertBeforeFirst = false
+        guard isVisible, let point = insertionPoint(at: location) else { return false }
+        let aboveTask = point.above?.task
+        let belowTask = point.below?.task
+        let title = entry?.title ?? ""
+        let new: TaskItem
+        if let aboveTask, let belowTask, belowTask.groupID == aboveTask.groupID, Self.isChild(belowTask, of: aboveTask, in: rows) {
+            new = app.store.addSubtask(ParsedEntry(title: title), to: aboveTask)
+        } else if let aboveTask {
+            new = app.store.insertSibling(after: aboveTask, title: title)
+        } else if case .header(let info)? = point.above, info.kind.acceptsTasks {
+            new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: info.kind.groupID, placement: .top)
+        } else if let belowTask {
+            new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: belowTask.groupID, placement: .top)
+        } else {
+            new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: defaultGroupID, placement: .bottom)
+        }
+        let typedRank = entry.map { $0.priority != .normal || $0.due != nil } ?? false
+        if !typedRank, let value = Matrix.between(aboveTask?.matrixPosition(today: app.dayStart), belowTask?.matrixPosition(today: app.dayStart)) {
+            app.store.applyRank(new, importance: value.importance, urgency: value.urgency, today: app.dayStart)
+        }
+        if let entry {
+            if entry.priority != .normal { app.store.setPriority([new], entry.priority) }
+            if let due = entry.due { app.store.setDue([new], due, hasTime: entry.dueHasTime) }
+            new.tags = entry.tags
+            new.estimate = entry.estimate ?? 0
+            new.recurrence = entry.recurrence
+            app.store.save()
+        }
+        if let plansFor { app.store.plan([new], for: plansFor) }
+        if entry == nil { beginEdit(new) }
+        return true
+    }
+
+    private static func isChild(_ task: TaskItem, of parent: TaskItem, in rows: [ListRow]) -> Bool {
+        guard let parentIndex = rows.firstIndex(where: { $0.id == parent.rowID }),
+              case .task(_, let parentDepth, _) = rows[parentIndex],
+              parentIndex + 1 < rows.count,
+              case .task(let next, let nextDepth, _) = rows[parentIndex + 1] else { return false }
+        return next === task && nextDepth > parentDepth
     }
 
     // MARK: - Lookup
@@ -523,11 +702,35 @@ struct TaskListView<Header: View>: View {
 }
 
 extension TaskListView where Header == EmptyView {
-    init(rows: [ListRow], allowsReorder: Bool = true, defaultGroupID: UUID? = nil) {
+    init(rows: [ListRow], allowsReorder: Bool = true, defaultGroupID: UUID? = nil, plansFor: Date? = nil) {
         self.rows = rows
         self.allowsReorder = allowsReorder
         self.defaultGroupID = defaultGroupID
+        self.plansFor = plansFor
         self.header = { EmptyView() }
+    }
+}
+
+/// Row frames, kept outside SwiftUI state so scrolling doesn't re-render the list.
+final class RowFrames {
+    var byID: [String: CGRect] = [:]
+}
+
+/// Where a dragged-in task will land.
+struct InsertionLine: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Circle()
+                .strokeBorder(.tint, lineWidth: 2)
+                .frame(width: 10, height: 10)
+            Rectangle()
+                .fill(.tint)
+                .frame(height: 2)
+        }
+        .padding(.leading, 6)
+        .offset(y: 5)
+        .allowsHitTesting(false)
+        .transition(.opacity)
     }
 }
 

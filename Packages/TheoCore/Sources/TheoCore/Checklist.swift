@@ -31,10 +31,11 @@ public enum Checklist {
         return end
     }
 
-    /// Display order: manual order, nested, with completed lines (and their subtasks) after the
-    /// open ones of the same level, most recently completed first. With `showCompleted == false`
+    /// Display order: nested, open lines ranked by `rank` (highest first, manual order breaks ties;
+    /// manual order only without a rank), completed lines (and their subtasks) after the open
+    /// ones of the same level, most recently completed first. With `showCompleted == false`
     /// completed lines are left out together with their subtasks.
-    public static func displayOrder<Item: ChecklistItem>(_ items: [Item], showCompleted: Bool) -> [(item: Item, depth: Int)] {
+    public static func displayOrder<Item: ChecklistItem>(_ items: [Item], showCompleted: Bool, rank: ((Item) -> Double)? = nil) -> [(item: Item, depth: Int)] {
         let sorted = items.sorted { $0.sortOrder < $1.sortOrder }
         let levels = Self.depths(of: sorted)
 
@@ -48,7 +49,11 @@ public enum Checklist {
         var output: [(item: Item, depth: Int)] = []
         func visit(_ parent: Int?) {
             let siblings = children(of: parent)
-            let open = siblings.filter { !sorted[$0].isDone }
+            var open = siblings.filter { !sorted[$0].isDone }
+            if let rank {
+                let scores = Dictionary(uniqueKeysWithValues: open.map { ($0, rank(sorted[$0])) })
+                open.sort { (scores[$0] ?? 0, -$0) > (scores[$1] ?? 0, -$1) }
+            }
             let done = siblings.filter { sorted[$0].isDone }
                 .sorted { (sorted[$0].completedAt ?? .distantPast) > (sorted[$1].completedAt ?? .distantPast) }
             for index in open {

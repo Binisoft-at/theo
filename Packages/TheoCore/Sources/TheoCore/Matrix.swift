@@ -1,91 +1,117 @@
 import Foundation
 
-/// The Eisenhower matrix: every task has an urgency and an importance between 0 and 1, set by
-/// where it was dropped on the canvas. Priority raises importance and a close deadline raises
-/// urgency. Tasks are ranked by a score that weighs importance above urgency.
+/// The urgency × importance grid every task gets ranked by. It isn't a separate view of the
+/// tasks: where a task sits decides where it shows up in every list.
+///
+/// - Urgency comes from the deadline, in days: today (or overdue) is the most urgent, 14 days out
+///   is the far edge, and no deadline (or a later one) means no urgency.
+/// - Importance has 10 levels. The `!` / `!!` / `!!!` marks are a coarse view of it.
+/// - The score weighs importance above urgency, so "important, not urgent" outranks "urgent,
+///   not important", the Eisenhower order.
 public enum Matrix {
-    /// New tasks sit in the middle of "not urgent, not important".
-    public static let defaultUrgency = 0.25
-    public static let defaultImportance = 0.25
-
-    public enum Quadrant: Int, CaseIterable, Identifiable, Sendable {
-        case doFirst
-        case schedule
-        case delegate
-        case later
-
-        public var id: Int { rawValue }
-
-        public var title: String {
-            switch self {
-            case .doFirst: "Do First"
-            case .schedule: "Schedule"
-            case .delegate: "Delegate"
-            case .later: "Later"
-            }
-        }
-
-        public var subtitle: String {
-            switch self {
-            case .doFirst: "Urgent · Important"
-            case .schedule: "Important · Not urgent"
-            case .delegate: "Urgent · Not important"
-            case .later: "Not urgent · Not important"
-            }
-        }
-
-        public var symbol: String {
-            switch self {
-            case .doFirst: "flame"
-            case .schedule: "calendar"
-            case .delegate: "person.2"
-            case .later: "tray"
-            }
-        }
-    }
+    /// Days from today that still count as urgent (the grid's columns are 0...horizonDays).
+    public static let horizonDays = 14
+    public static let levels = 10
+    /// New tasks: not important, an average amount of it (level 3 of 10).
+    public static let defaultImportance = 0.3
 
     public static func clamp(_ value: Double) -> Double { min(1, max(0, value)) }
 
-    public static func quadrant(urgency: Double, importance: Double) -> Quadrant {
-        switch (urgency >= 0.5, importance >= 0.5) {
-        case (true, true): .doFirst
-        case (false, true): .schedule
-        case (true, false): .delegate
-        case (false, false): .later
+    // MARK: - Importance levels
+
+    /// 1...10.
+    public static func level(forImportance importance: Double) -> Int {
+        min(levels, max(1, Int((clamp(importance) * Double(levels)).rounded())))
+    }
+
+    public static func importance(forLevel level: Int) -> Double {
+        Double(min(levels, max(1, level))) / Double(levels)
+    }
+
+    /// The marks shown for an importance: levels 9–10 `!!!`, 7–8 `!!`, 5–6 `!`.
+    public static func priority(forImportance importance: Double) -> Priority {
+        switch level(forImportance: importance) {
+        case 9...: .high
+        case 7...8: .medium
+        case 5...6: .low
+        default: .normal
         }
     }
 
-    /// 0...1, importance weighted above urgency, so "important, not urgent" outranks
-    /// "urgent, not important" (the Eisenhower order), and distance inside a quadrant counts.
-    public static func score(urgency: Double, importance: Double) -> Double {
+    /// Importance after setting a priority mark. A level already inside that mark's band is kept.
+    public static func importance(for priority: Priority, current: Double) -> Double {
+        if self.priority(forImportance: current) == priority { return current }
+        switch priority {
+        case .normal: return defaultImportance
+        case .low: return importance(forLevel: 6)
+        case .medium: return importance(forLevel: 8)
+        case .high: return importance(forLevel: 10)
+        }
+    }
+
+    // MARK: - Urgency from the deadline
+
+    /// Whole days from today to `due` (negative when overdue), nil without a deadline.
+    public static func daysUntil(_ due: Date?, today: Date, calendar: Calendar = .current) -> Int? {
+        due.map { DateText.dayDelta($0, today: today, calendar: calendar) }
+    }
+
+    /// 1 for today or overdue, falling to almost 0 at 14 days; 0 later or without a deadline.
+    public static func urgency(daysUntilDue days: Int?) -> Double {
+        guard let days else { return 0 }
+        if days <= 0 { return 1 }
+        if days > horizonDays { return 0 }
+        return 1 - Double(days) / Double(horizonDays + 1)
+    }
+
+    /// The deadline (in days from today) an urgency stands for; nil means no urgency.
+    public static func days(forUrgency urgency: Double) -> Int? {
+        guard urgency > 0.0001 else { return nil }
+        if urgency >= 1 { return 0 }
+        let days = Int(((1 - urgency) * Double(horizonDays + 1)).rounded())
+        return days > horizonDays ? nil : max(0, days)
+    }
+
+    // MARK: - Ranking
+
+    public static func score(importance: Double, urgency: Double) -> Double {
         0.6 * clamp(importance) + 0.4 * clamp(urgency)
     }
 
-    /// Each priority level adds importance.
-    public static func effectiveImportance(_ importance: Double, priority: Priority) -> Double {
-        clamp(importance + 0.15 * Double(priority.rawValue))
+    public static func score(importance: Double, due: Date?, today: Date, calendar: Calendar = .current) -> Double {
+        score(importance: importance, urgency: urgency(daysUntilDue: daysUntil(due, today: today, calendar: calendar)))
     }
 
-    /// How urgent a deadline alone makes a task (0 when there's none or it's far away).
-    public static func deadlineUrgency(due: Date?, today: Date, calendar: Calendar = .current) -> Double {
-        guard let due else { return 0 }
-        switch DateText.dayDelta(due, today: today, calendar: calendar) {
-        case ..<0: return 1
-        case 0: return 0.85
-        case 1: return 0.72
-        case 2...3: return 0.6
-        case 4...7: return 0.45
-        default: return 0
+    /// The importance that gives a task with `urgency` the score `target`, for dropping it
+    /// between two others. Kept within level 1...10.
+    public static func importance(toReach target: Double, urgency: Double) -> Double {
+        min(1, max(0.1, (target - 0.4 * clamp(urgency)) / 0.6))
+    }
+
+    /// A new task between two others gets the average of both (or the one neighbour's values).
+    public static func between(_ above: (importance: Double, urgency: Double)?, _ below: (importance: Double, urgency: Double)?)
+        -> (importance: Double, urgency: Double)? {
+        switch (above, below) {
+        case let (a?, b?): return ((a.importance + b.importance) / 2, (a.urgency + b.urgency) / 2)
+        case let (a?, nil): return a
+        case let (nil, b?): return b
+        case (nil, nil): return nil
         }
     }
 
-    public static func effectiveUrgency(_ urgency: Double, due: Date?, today: Date, calendar: Calendar = .current) -> Double {
-        max(clamp(urgency), deadlineUrgency(due: due, today: today, calendar: calendar))
+    // MARK: - Grid
+
+    /// Columns: today ... +14 days, then one "no date" column.
+    public static var columns: Int { horizonDays + 2 }
+
+    /// The column for a deadline: 0 = today/overdue ... 14, and 15 for none or later.
+    public static func column(forDays days: Int?) -> Int {
+        guard let days, days <= horizonDays else { return horizonDays + 1 }
+        return max(0, days)
     }
 
-    /// The stored position that makes a task show up where it was dropped: the priority's
-    /// importance boost is taken back out. (A close deadline still keeps it at least that urgent.)
-    public static func storedPosition(forDrop urgency: Double, importance: Double, priority: Priority) -> (urgency: Double, importance: Double) {
-        (clamp(urgency), clamp(importance - 0.15 * Double(priority.rawValue)))
+    /// Days for a column; nil for the "no date" column.
+    public static func days(forColumn column: Int) -> Int? {
+        column > horizonDays ? nil : max(0, column)
     }
 }

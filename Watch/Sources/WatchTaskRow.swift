@@ -49,7 +49,7 @@ struct WatchTaskRow: View {
                 }
                 .tint(.green)
                 Button {
-                    withAnimation { store.deferTasks([task], until: DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart)) }
+                    withAnimation { store.plan([task], for: DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart)) }
                 } label: {
                     Label("Not Today", systemImage: "moon.zzz")
                 }
@@ -124,8 +124,8 @@ struct WatchTaskMeta: View {
             let label = DateText.due(due, hasTime: task.dueHasTime, today: today)
             parts.append(Text("\(Image(systemName: "calendar")) \(label)").foregroundStyle(color))
         }
-        if !task.isDone, let deferred = task.deferredUntil, deferred > today {
-            parts.append(Text("\(Image(systemName: "moon.zzz")) \(DateText.shortDay(deferred))").foregroundStyle(Color.indigo))
+        if !task.isDone, let planned = task.plannedDay, planned > today {
+            parts.append(Text("\(Image(systemName: "calendar.badge.plus")) \(DateText.shortDay(planned))").foregroundStyle(Color.indigo))
         }
         if showGroup, let group = task.group, group.deletedAt == nil {
             parts.append(Text(group.displayName).foregroundStyle(group.color.color))
@@ -145,6 +145,8 @@ struct WatchTaskMeta: View {
 /// ("tomorrow 5pm", "!!", "#tag", "@group").
 struct WatchAddTaskRow: View {
     let groupID: UUID?
+    /// On Today, new tasks are planned for today.
+    var plansFor: Date?
 
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
@@ -165,7 +167,9 @@ struct WatchAddTaskRow: View {
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom
         withAnimation {
-            _ = TaskStore(context: context).addTask(entry, defaultGroupID: groupID, placement: placement)
+            let store = TaskStore(context: context)
+            let task = store.addTask(entry, defaultGroupID: groupID, placement: placement)
+            if let plansFor { store.plan([task], for: plansFor) }
         }
     }
 }

@@ -92,7 +92,9 @@ struct MenuBarView: View {
         let raw = text.trimmingCharacters(in: .whitespaces)
         guard !raw.isEmpty else { return }
         let entry = QuickParser.parse(raw, groups: groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) })
-        app.store.addTask(entry, defaultGroupID: nil, placement: NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom)
+        let task = app.store.addTask(entry, defaultGroupID: nil, placement: NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom)
+        // The menu bar shows today, so what's added there is planned for today.
+        app.store.plan([task], for: app.dayStart)
         text = ""
     }
 }

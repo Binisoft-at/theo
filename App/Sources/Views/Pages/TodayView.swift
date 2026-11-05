@@ -2,9 +2,8 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// The daily page — the heart of Theo. Like a daily note in Apple Notes: Quick Entry on top,
-/// group headings below, checked items sink to the bottom. Unfinished tasks roll over to the
-/// next day automatically; finished ones move to History.
+/// The daily page: only what was planned for today, ranked by importance and urgency, with
+/// finished tasks sinking to the bottom. Nothing lands here by itself; Plan picks the tasks.
 struct TodayView: View {
     let dayStart: Date
 
@@ -15,7 +14,7 @@ struct TodayView: View {
 
     @AppStorage(Prefs.completedMode) private var completedRaw = CompletedMode.bottom.rawValue
     @AppStorage(Prefs.quickEntryCollapsed) private var quickCollapsed = false
-    @AppStorage(Prefs.todayGrouping) private var groupingRaw = TodayGrouping.groups.rawValue
+    @AppStorage(Prefs.todayGrouping) private var groupingRaw = TodayGrouping.ranked.rawValue
     @State private var filter: TaskFilter = .all
     @State private var search = ""
 
@@ -32,7 +31,7 @@ struct TodayView: View {
     }
 
     private var completed: CompletedMode { CompletedMode(rawValue: completedRaw) ?? .bottom }
-    private var grouping: TodayGrouping { TodayGrouping(rawValue: groupingRaw) ?? .groups }
+    private var grouping: TodayGrouping { TodayGrouping(rawValue: groupingRaw) ?? .ranked }
 
     private var visible: [TaskItem] {
         tasks.filter { PageBuilder.isOnToday($0, dayStart: dayStart) }
@@ -41,23 +40,20 @@ struct TodayView: View {
     private func rows(for visible: [TaskItem]) -> [ListRow] {
         let filtered = visible.filter { filter.matches($0, today: dayStart) }
         switch grouping {
+        case .ranked:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), collapsedTasks: app.collapsedTaskIDs, rankDay: dayStart)
+            return PageBuilder.rankedRows(filtered, options: options)
         case .groups:
-            var options = PageBuilder.Options(completed: completed, collapsedTasks: app.collapsedTaskIDs)
+            var options = PageBuilder.Options(completed: completed, collapsedTasks: app.collapsedTaskIDs, rankDay: dayStart)
             if filter != .all {
                 options.showEmptyPlaceholders = false
                 let rows = PageBuilder.page(tasks: filtered, groups: groups, quickEntryCollapsed: false, options: options)
                 return Self.droppingEmptySections(rows)
             }
             return PageBuilder.page(tasks: filtered, groups: groups, quickEntryCollapsed: quickCollapsed, options: options)
-        case .priority:
-            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
-            return PageBuilder.labeled(Sections.byPriority(filtered, groups: groups, includeNone: true), options: options)
         case .deadline:
             let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
             return PageBuilder.labeled(Sections.byDeadline(filtered, groups: groups, today: dayStart, includeNone: true), options: options)
-        case .matrix:
-            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
-            return PageBuilder.labeled(Sections.byMatrix(filtered, today: dayStart), options: options)
         }
     }
 
@@ -70,7 +66,7 @@ struct TodayView: View {
 
         Group {
             if search.isEmpty {
-                TaskListView(rows: rows, allowsReorder: grouping == .groups && filter == .all) {
+                TaskListView(rows: rows, allowsReorder: grouping != .deadline && filter == .all, plansFor: dayStart) {
                     TodayHeader(
                         date: dayStart,
                         open: open,
@@ -80,6 +76,9 @@ struct TodayView: View {
                         filter: $filter,
                         tags: Sections.tags(in: visible.filter { !$0.isDone })
                     )
+                    if visible.isEmpty {
+                        PlanPrompt(dayStart: dayStart)
+                    }
                 }
             } else {
                 SearchResultsView(query: search)
@@ -95,6 +94,13 @@ struct TodayView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    app.go(.plan)
+                } label: {
+                    Label("Plan", systemImage: "calendar.badge.plus")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
                     app.groupEditor = .new
                 } label: {
                     Label("New Group", systemImage: "folder.badge.plus")
@@ -106,7 +112,7 @@ struct TodayView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if !app.isSelecting && search.isEmpty {
-                QuickEntryBar(defaultGroupID: nil)
+                QuickEntryBar(defaultGroupID: nil, placeholder: "Add a task for today", plansFor: dayStart)
             }
         }
     }
@@ -220,7 +226,7 @@ struct TodayHeader: View {
     private var total: Int { open + done }
 
     private var summary: String {
-        if total == 0 { return "A fresh page. Type below to start." }
+        if total == 0 { return "Nothing planned yet." }
         if open == 0 { return "All done — enjoy your day ✨" }
         return "\(open) to do · \(done) done"
     }
@@ -278,6 +284,61 @@ struct TodayHeader: View {
 
     private func toggle(_ value: TaskFilter) {
         filter = filter == value ? .all : value
+    }
+}
+
+/// Today with nothing planned: start planning, or bring over what's left from earlier days.
+struct PlanPrompt: View {
+    let dayStart: Date
+
+    @Environment(AppModel.self) private var app
+    @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
+    private var openTasks: [TaskItem]
+
+    var body: some View {
+        let leftOver = openTasks.filter { $0.isLeftOver(before: dayStart) }
+        let due = openTasks.filter { task in
+            guard let date = task.dueDate, task.plannedDay == nil else { return false }
+            return DateText.dayDelta(date, today: dayStart) <= 0
+        }
+        VStack(spacing: 14) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 40))
+                .foregroundStyle(.tint)
+            Text("Pick what today is for")
+                .font(.headline)
+            Text("Today only shows the tasks you plan for it. Choose them in Plan, or add one below.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button {
+                app.go(.plan)
+            } label: {
+                Label("Plan Today", systemImage: "calendar.badge.plus")
+                    .frame(minWidth: 160)
+            }
+            .buttonStyle(.glassProminent)
+            if !leftOver.isEmpty {
+                Button {
+                    withAnimation(.snappy) { app.plan(leftOver, for: dayStart) }
+                } label: {
+                    Label(leftOver.count == 1 ? "Bring Over 1 Unfinished Task" : "Bring Over \(leftOver.count) Unfinished Tasks",
+                          systemImage: "arrow.uturn.forward")
+                }
+                .buttonStyle(.glass)
+            }
+            if !due.isEmpty {
+                Button {
+                    withAnimation(.snappy) { app.plan(due, for: dayStart) }
+                } label: {
+                    Label(due.count == 1 ? "Add 1 Task Due Today" : "Add \(due.count) Tasks Due by Today", systemImage: "calendar")
+                }
+                .buttonStyle(.glass)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
+        .listRowSeparator(.hidden)
     }
 }
 

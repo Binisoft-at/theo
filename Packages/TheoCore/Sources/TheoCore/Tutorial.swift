@@ -21,6 +21,7 @@ public enum TutorialGoal: String, Sendable, CaseIterable {
     case startFocus
     case addReminder
     case addSubproject
+    case planTask
 }
 
 /// A summary of the practice page, taken after every change.
@@ -45,6 +46,8 @@ public struct TutorialSnapshot: Equatable, Sendable {
     /// Tasks whose deadline has a time (and so a reminder).
     public var timedCount = 0
     public var subgroupCount = 0
+    /// Tasks planned for today.
+    public var plannedCount = 0
 
     public init() {}
 }
@@ -127,6 +130,8 @@ public struct TutorialTracker: Sendable {
             return now.timedCount > base.timedCount
         case .addSubproject:
             return now.subgroupCount > base.subgroupCount
+        case .planTask:
+            return now.plannedCount > base.plannedCount
         }
     }
 }
@@ -134,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 2
+    public static let version = 3
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -182,7 +187,7 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "priority", since: 1, symbol: "exclamationmark.3",
             title: "Priority in one tap",
-            body: "Touch and hold a task and tap ! , !! or !!!. Or swipe right and tap Priority. While typing a line, \u{201C}!!\u{201D} at the end works too.",
+            body: "Touch and hold a task and tap ! , !! or !!!. In the bottom bar, hold the ! chip and slide to an importance from 1 to 10. While typing a line, \u{201C}!!\u{201D} at the end works too.",
             macBody: "Right-click a task and click ! , !! or !!!, or select it and press ⌥⌘1, 2 or 3. Typing \u{201C}!!\u{201D} at the end of a line works too.",
             goal: .prioritize
         ),
@@ -203,15 +208,15 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "reorder", since: 1, symbol: "arrow.up.arrow.down",
             title: "Higher means more important",
-            body: "Touch and hold a task, then drag it up. Like in your Notes, position on the page is priority.",
-            macBody: "Drag a task higher, or select it and press ⌥⌘↑. Like in your Notes, position on the page is priority.",
+            body: "Lists are ranked by importance and urgency. Touch and hold a task and drag it up: Theo raises its importance so it stays where you put it.",
+            macBody: "Lists are ranked by importance and urgency. Drag a task higher: Theo raises its importance so it stays where you put it.",
             goal: .reorder
         ),
         TutorialStep(
             id: "not-today", since: 1, symbol: "moon.zzz",
             title: "Not today",
-            body: "Swipe right on a task and tap Not Today. It disappears until tomorrow, then comes back on its own.",
-            macBody: "Right-click a task and choose Not Today (⌥⌘L). It comes back tomorrow on its own.",
+            body: "Swipe left on a task and tap Tomorrow. It moves to tomorrow's plan.",
+            macBody: "Right-click a task and choose Not Today (⌥⌘L). It moves to tomorrow's plan.",
             goal: .deferTask
         ),
         TutorialStep(
@@ -243,10 +248,10 @@ public enum TutorialCatalog {
             goal: .estimate
         ),
         TutorialStep(
-            id: "matrix", since: 2, symbol: "square.grid.2x2",
-            title: "Urgent or important?",
-            body: "Drag the ⊞ handle at the right of the bottom bar onto the matrix and let go: where you drop it sets how urgent and important it is. For an existing task: touch and hold → Place in Matrix.",
-            macBody: "Drag the ⊞ handle at the right of the bottom bar onto the matrix and let go: where you drop it sets how urgent and important it is. For an existing task: right-click → Place in Matrix (⌥⌘M).",
+            id: "matrix", since: 3, symbol: "square.grid.3x3",
+            title: "Urgent and important",
+            body: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: touch and hold → Place in Matrix.",
+            macBody: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: right-click → Place in Matrix (⌥⌘M).",
             goal: .placeInMatrix
         ),
         TutorialStep(
@@ -270,10 +275,43 @@ public enum TutorialCatalog {
             goal: .addSubproject
         ),
         TutorialStep(
+            id: "plan", since: 3, symbol: "calendar.badge.plus",
+            title: "Plan your day",
+            body: "Today only shows what you picked for it. Open Plan, choose a day and tap tasks to add them: unfinished ones from earlier days and anything due are suggested first.",
+            macBody: "Today only shows what you picked for it. Open Plan (⌘2), choose a day and click tasks to add them: unfinished ones from earlier days and anything due are suggested first.",
+            goal: .planTask
+        ),
+        TutorialStep(
+            id: "insert", since: 3, symbol: "plus.square.dashed",
+            title: "Drop a task in between",
+            body: "Hold the + at the left of the bottom bar and drag it between two tasks. A new line opens right there, ranked between its neighbours.",
+            goal: .addTask
+        ),
+        TutorialStep(
+            id: "swipe-subtask", since: 3, symbol: "arrow.turn.down.right",
+            title: "Swipe right for a subtask",
+            body: "Swipe right on a task to tuck it under the task above it. Swipe right again on a subtask to take it back out.",
+            macBody: "Swipe right on a task (two fingers on the trackpad) to tuck it under the task above it, or select it and press ⌘].",
+            goal: .addSubtask
+        ),
+        TutorialStep(
+            id: "hold-estimate", since: 3, symbol: "hand.point.up.left",
+            title: "Hold and slide",
+            body: "Hold the send button ↑ and slide up to pick 0,1 to 4 Power Hours, then let go to add the task. Holding works on the ! chip too, for importance.",
+            goal: .estimate
+        ),
+        TutorialStep(
+            id: "overdue", since: 3, symbol: "calendar.badge.clock",
+            title: "Late is fine",
+            body: "Overdue tasks rise to the top with a calm \u{201C}was due …\u{201D}. Tap it to move the date, or swipe left → +1 Day.",
+            macBody: "Overdue tasks rise to the top with a calm \u{201C}was due …\u{201D}. Click it to move the date.",
+            goal: .none
+        ),
+        TutorialStep(
             id: "everywhere", since: 1, symbol: "applewatch",
             title: "Everywhere you are",
-            body: "Upcoming, Priority, the Matrix, History and each group are one tap back. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
-            macBody: "Upcoming, Priority, the Matrix, History and each group are in the sidebar (⌘1–7). ⇧⌘F opens the focus timer. The menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            body: "Today, Plan, Lists and Search are in the tab bar; Upcoming, the Matrix, History and each group are under Lists. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            macBody: "Today, Plan, Upcoming, the Matrix, History and each group are in the sidebar (⌘1–7), with their shortcuts in grey. ⇧⌘F opens the focus timer. The menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
             goal: .none
         ),
         finish,

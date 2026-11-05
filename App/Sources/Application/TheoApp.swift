@@ -77,18 +77,20 @@ struct TheoCommands: Commands {
         CommandMenu("Go") {
             Button("Today") { app.go(.today) }
                 .keyboardShortcut("1")
-            Button("Upcoming") { app.go(.upcoming) }
+            Button("Plan") { app.go(.plan) }
                 .keyboardShortcut("2")
-            Button("Priority") { app.go(.priority) }
+            Button("Upcoming") { app.go(.upcoming) }
                 .keyboardShortcut("3")
-            Button("Quick Entry") { app.go(.quickEntry) }
-                .keyboardShortcut("4")
-            Button("History") { app.go(.history) }
-                .keyboardShortcut("5")
-            Button("Recently Deleted") { app.go(.trash) }
-                .keyboardShortcut("6")
             Button("Matrix") { app.go(.matrix) }
+                .keyboardShortcut("4")
+            Button("Quick Entry") { app.go(.quickEntry) }
+                .keyboardShortcut("5")
+            Button("History") { app.go(.history) }
+                .keyboardShortcut("6")
+            Button("Recently Deleted") { app.go(.trash) }
                 .keyboardShortcut("7")
+            Button("Priority") { app.go(.priority) }
+                .keyboardShortcut("8")
             Divider()
             Button("Focus Timer") { app.commandTarget.showFocus = true }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
@@ -121,12 +123,12 @@ struct TheoCommands: Commands {
                 if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.move(task, .down) } }
             }
             .keyboardShortcut(.downArrow, modifiers: [.command, .option])
-            Button("Indent") {
-                if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.indent(task, by: 1) } }
+            Button("Make Subtask of Line Above") {
+                if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: 1) }
             }
             .keyboardShortcut("]")
             Button("Outdent") {
-                if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.indent(task, by: -1) } }
+                if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: -1) }
             }
             .keyboardShortcut("[")
             Divider()
@@ -162,6 +164,8 @@ struct TheoCommands: Commands {
                 .keyboardShortcut("t", modifiers: [.command, .option])
             Button("Due Tomorrow") { target.store.setDue(target.selectedTasks, QuickDate.tomorrow.date(from: target.dayStart)) }
                 .keyboardShortcut("t", modifiers: [.command, .option, .shift])
+            Button("Do Today") { target.plan(target.selectedTasks, for: target.dayStart) }
+                .keyboardShortcut("d", modifiers: [.command, .option])
             Button("Not Today") { target.deferToTomorrow(target.selectedTasks) }
                 .keyboardShortcut("l", modifiers: [.command, .option])
             Button("Move to…") {

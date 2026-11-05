@@ -2,103 +2,152 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// Classic Eisenhower layout: urgent on the left, important at the top.
+/// The grid: one column per day from today (left) to 14 days out, then "no date"; ten
+/// importance rows, most important on top. Positions snap to cells.
 enum MatrixGeometry {
-    static func point(urgency: Double, importance: Double, in size: CGSize) -> CGPoint {
-        CGPoint(x: (1 - Matrix.clamp(urgency)) * size.width, y: (1 - Matrix.clamp(importance)) * size.height)
+    struct Cell: Equatable {
+        var column: Int
+        var level: Int
+
+        var days: Int? { Matrix.days(forColumn: column) }
+        var key: Int { column * 100 + level }
     }
 
-    static func position(of point: CGPoint, in size: CGSize) -> (urgency: Double, importance: Double) {
-        (Matrix.clamp(1 - point.x / max(size.width, 1)), Matrix.clamp(1 - point.y / max(size.height, 1)))
+    static func cell(at point: CGPoint, in size: CGSize) -> Cell {
+        let width = max(size.width, 1) / CGFloat(Matrix.columns)
+        let height = max(size.height, 1) / CGFloat(Matrix.levels)
+        let column = min(Matrix.columns - 1, max(0, Int(point.x / width)))
+        let level = min(Matrix.levels, max(1, Matrix.levels - Int(point.y / height)))
+        return Cell(column: column, level: level)
     }
 
-    /// "Do First · 82" — quadrant and score (0–100).
-    static func describe(urgency: Double, importance: Double) -> String {
-        let quadrant = Matrix.quadrant(urgency: urgency, importance: importance)
-        return "\(quadrant.title) · \(Int((Matrix.score(urgency: urgency, importance: importance) * 100).rounded()))"
+    static func center(of cell: Cell, in size: CGSize) -> CGPoint {
+        let width = size.width / CGFloat(Matrix.columns)
+        let height = size.height / CGFloat(Matrix.levels)
+        return CGPoint(x: (CGFloat(cell.column) + 0.5) * width, y: (CGFloat(Matrix.levels - cell.level) + 0.5) * height)
+    }
+
+    static func cell(of task: TaskItem, today: Date) -> Cell {
+        let days = task.isDone ? nil : Matrix.daysUntil(task.dueDate, today: today)
+        return Cell(column: Matrix.column(forDays: days), level: task.importanceLevel)
+    }
+
+    static func dayLabel(_ days: Int?) -> String {
+        switch days {
+        case nil: "No date"
+        case 0?: "Today"
+        case 1?: "Tomorrow"
+        case let days?: "In \(days) days"
+        }
+    }
+
+    /// "Tomorrow · importance 7".
+    static func describe(_ cell: Cell) -> String {
+        "\(dayLabel(cell.days)) · importance \(cell.level)"
     }
 }
 
-/// The four quadrants, labelled.
-struct MatrixBackground: View {
+/// The heat-shaded grid, with axis labels around it.
+struct MatrixBoard<Content: View>: View {
     var compact = false
+    /// Drawn on top of the grid, in the grid's own coordinates.
+    @ViewBuilder var content: (CGSize) -> Content
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 2) {
-                cell(.doFirst)
-                cell(.schedule)
-            }
-            HStack(spacing: 2) {
-                cell(.delegate)
-                cell(.later)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: compact ? 14 : 22, style: .continuous))
-        .overlay(alignment: .bottom) {
-            if !compact {
-                Text("← more urgent")
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                if !compact {
+                    VStack {
+                        Text("10")
+                        Spacer()
+                        Text("Importance")
+                            .rotationEffect(.degrees(-90))
+                            .fixedSize()
+                        Spacer()
+                        Text("1")
+                    }
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .padding(.bottom, 4)
-            }
-        }
-    }
-
-    private func cell(_ quadrant: Matrix.Quadrant) -> some View {
-        ZStack(alignment: .topLeading) {
-            Rectangle().fill(quadrant.color.opacity(0.12))
-            VStack(alignment: .leading, spacing: 1) {
-                Label(quadrant.title, systemImage: quadrant.symbol)
-                    .font((compact ? Font.caption2 : Font.caption).weight(.bold))
-                    .foregroundStyle(quadrant.color)
-                if !compact {
-                    Text(quadrant.subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                }
+                GeometryReader { geo in
+                    ZStack {
+                        Canvas { context, size in
+                            let width = size.width / CGFloat(Matrix.columns)
+                            let height = size.height / CGFloat(Matrix.levels)
+                            for column in 0..<Matrix.columns {
+                                let urgency = Matrix.urgency(daysUntilDue: Matrix.days(forColumn: column))
+                                let noDate = column > Matrix.horizonDays
+                                for level in 1...Matrix.levels {
+                                    let score = Matrix.score(importance: Matrix.importance(forLevel: level), urgency: urgency)
+                                    let rect = CGRect(
+                                        x: CGFloat(column) * width + (noDate ? 3 : 0),
+                                        y: CGFloat(Matrix.levels - level) * height,
+                                        width: width - (noDate ? 3 : 0),
+                                        height: height
+                                    ).insetBy(dx: 0.6, dy: 0.6)
+                                    context.fill(
+                                        Path(roundedRect: rect, cornerRadius: 3),
+                                        with: .color(Matrix.color(forScore: score).opacity(noDate ? 0.12 : 0.28))
+                                    )
+                                }
+                            }
+                        }
+                        content(geo.size)
+                    }
                 }
             }
-            .padding(compact ? 6 : 10)
+            if !compact {
+                HStack {
+                    Text("Today")
+                    Spacer()
+                    Text("1 week")
+                    Spacer()
+                    Text("2 weeks")
+                    Spacer()
+                    Text("No date")
+                }
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 20)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-/// A task on the canvas, drawn where it ranks (priority and deadline included).
+/// A task on the grid.
 struct MatrixDot: View {
-    let urgency: Double
-    let importance: Double
+    let point: CGPoint
+    let color: Color
     var title: String?
     var isSelected = false
-    let size: CGSize
+    var size: CGFloat = 14
 
     var body: some View {
-        let point = MatrixGeometry.point(urgency: urgency, importance: importance, in: size)
-        let quadrant = Matrix.quadrant(urgency: urgency, importance: importance)
         ZStack {
             Circle()
-                .fill(quadrant.color)
-                .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: isSelected ? 3 : 1.5))
-                .frame(width: isSelected ? 20 : 14, height: isSelected ? 20 : 14)
-                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                .fill(color)
+                .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: isSelected ? 3 : 1.5))
+                .frame(width: isSelected ? size + 8 : size, height: isSelected ? size + 8 : size)
+                .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
                 .position(point)
             if let title {
                 Text(title)
                     .font(.caption2.weight(isSelected ? .bold : .medium))
                     .lineLimit(1)
-                    .frame(maxWidth: 120)
-                    .padding(.horizontal, 5)
+                    .frame(maxWidth: 130)
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(.thinMaterial, in: Capsule())
-                    .position(x: min(max(point.x + 50, 60), size.width - 60), y: max(point.y - 14, 10))
+                    .position(x: point.x, y: max(point.y - 18, 10))
             }
         }
         .allowsHitTesting(false)
     }
 }
 
-/// Full-screen canvas while a task is dragged from the composer's handle. The drag itself
-/// belongs to the handle; this only draws where the task would land.
+/// Full-screen grid while a task is dragged from the composer's handle. The drag belongs to
+/// the handle; this shows where it would land, snapping cell by cell.
 struct MatrixDropOverlay: View {
     let drag: MatrixDrag
     @Environment(AppModel.self) private var app
@@ -109,37 +158,36 @@ struct MatrixDropOverlay: View {
                 .fill(.ultraThinMaterial)
                 .ignoresSafeArea()
             VStack(spacing: 12) {
-                Text(drag.title.isEmpty ? "Drop to set urgency and importance" : drag.title)
+                Text(drag.title.isEmpty ? "Drop to set when it's due and how important it is" : drag.title)
                     .font(.headline)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
-                GeometryReader { geo in
-                    let frame = geo.frame(in: .global)
-                    let local = CGPoint(x: drag.location.x - frame.minX, y: drag.location.y - frame.minY)
-                    let inside = frame.contains(drag.location)
-                    let position = MatrixGeometry.position(of: local, in: geo.size)
-                    ZStack {
-                        MatrixBackground()
-                        if inside {
-                            Circle()
-                                .fill(Matrix.quadrant(urgency: position.urgency, importance: position.importance).color)
-                                .frame(width: 26, height: 26)
-                                .overlay(Circle().strokeBorder(.white, lineWidth: 3))
-                                .shadow(radius: 4)
-                                .position(local)
-                            Text(MatrixGeometry.describe(urgency: position.urgency, importance: position.importance))
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.regularMaterial, in: Capsule())
-                                .position(x: min(max(local.x, 70), geo.size.width - 70), y: max(local.y - 34, 14))
+                MatrixBoard { size in
+                    GeometryReader { geo in
+                        let frame = geo.frame(in: .global)
+                        let inside = frame.contains(drag.location)
+                        let cell = MatrixGeometry.cell(at: CGPoint(x: drag.location.x - frame.minX, y: drag.location.y - frame.minY), in: size)
+                        ZStack {
+                            if inside {
+                                let center = MatrixGeometry.center(of: cell, in: size)
+                                MatrixDot(point: center, color: Color.accentColor, isSelected: true, size: 18)
+                                    .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
+                                Text(MatrixGeometry.describe(cell))
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.regularMaterial, in: Capsule())
+                                    .position(x: min(max(center.x, 80), size.width - 80), y: max(center.y - 36, 14))
+                                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: cell.key)
+                            }
                         }
+                        .sensoryFeedback(.selection, trigger: inside ? cell.key : -1)
+                        .onAppear { app.matrixCanvasFrame = frame }
+                        .onChange(of: frame) { _, newFrame in app.matrixCanvasFrame = newFrame }
                     }
-                    .onAppear { app.matrixCanvasFrame = frame }
-                    .onChange(of: frame) { _, newFrame in app.matrixCanvasFrame = newFrame }
                 }
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 560)
+                .aspectRatio(1.1, contentMode: .fit)
+                .frame(maxWidth: 620)
                 Text("Let go outside to cancel")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -151,11 +199,11 @@ struct MatrixDropOverlay: View {
     }
 }
 
-/// Places an existing task: tap or drag on the canvas, it saves when you let go.
+/// Places an existing task: touch, slide to the right cell, let go.
 struct MatrixPlacementOverlay: View {
     let task: TaskItem
     @Environment(AppModel.self) private var app
-    @State private var point: CGPoint?
+    @State private var cell: MatrixGeometry.Cell?
 
     var body: some View {
         ZStack {
@@ -168,30 +216,33 @@ struct MatrixPlacementOverlay: View {
                     Text(task.trimmedTitle.isEmpty ? "Task" : task.trimmedTitle)
                         .font(.headline)
                         .lineLimit(2)
-                    Text("Tap or drag where it belongs")
+                    Text(MatrixGeometry.describe(cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
                 }
                 .multilineTextAlignment(.center)
-                GeometryReader { geo in
-                    let current = point.map { MatrixGeometry.position(of: $0, in: geo.size) } ?? task.matrixPosition(today: app.dayStart)
-                    ZStack {
-                        MatrixBackground()
-                        MatrixDot(urgency: current.urgency, importance: current.importance, isSelected: true, size: geo.size)
-                    }
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in point = value.location }
-                            .onEnded { value in
-                                let position = MatrixGeometry.position(of: value.location, in: geo.size)
-                                app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance)
-                                close()
-                            }
-                    )
+                MatrixBoard { size in
+                    let current = cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)
+                    MatrixDot(point: MatrixGeometry.center(of: current, in: size), color: Color.accentColor, isSelected: true, size: 18)
+                        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: current.key)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in cell = MatrixGeometry.cell(at: value.location, in: size) }
+                                .onEnded { value in
+                                    let target = MatrixGeometry.cell(at: value.location, in: size)
+                                    withAnimation(.snappy) {
+                                        app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
+                                    }
+                                    close()
+                                }
+                        )
                 }
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 560)
+                .sensoryFeedback(.selection, trigger: cell?.key)
+                .aspectRatio(1.1, contentMode: .fit)
+                .frame(maxWidth: 620)
                 Button("Cancel") { close() }
                     .buttonStyle(.glass)
             }
@@ -205,32 +256,29 @@ struct MatrixPlacementOverlay: View {
     }
 }
 
-/// The Matrix page: open tasks as dots you can drag, a strip of tasks to drop in, and the
-/// ranked list (highest score first) below.
+/// The Matrix page: every task on the grid (drag a dot to move it, or drop a task from the
+/// strip), and below it the list in rank order.
 struct MatrixPageView: View {
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false }, sort: \TaskItem.sortOrder)
     private var openTasks: [TaskItem]
-    @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
-    private var groups: [TaskGroup]
-    @AppStorage("matrixScope") private var onlyToday = true
+    @AppStorage("matrixScope") private var onlyToday = false
     @State private var selectedID: UUID?
-    @State private var dragging: (id: UUID, point: CGPoint)?
+    @State private var dragging: (id: UUID, cell: MatrixGeometry.Cell)?
 
     private var scoped: [TaskItem] {
         onlyToday ? openTasks.filter { $0.isOnPage(of: app.dayStart) } : openTasks
     }
 
     var body: some View {
-        let tasks = scoped
-        let ranked = tasks.sorted { $0.matrixScore(today: app.dayStart) > $1.matrixScore(today: app.dayStart) }
+        let tasks = scoped.sorted { $0.matrixScore(today: app.dayStart) > $1.matrixScore(today: app.dayStart) }
         VStack(spacing: 0) {
-            canvas(tasks: ranked)
+            grid(tasks: tasks)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-            tray(tasks: ranked)
+            tray(tasks: tasks)
             TaskListView(
-                rows: PageBuilder.labeled(Sections.byMatrix(tasks, today: app.dayStart), options: PageBuilder.Options(style: RowStyle(showGroup: true))),
+                rows: PageBuilder.rankedRows(tasks, options: PageBuilder.Options(style: RowStyle(showGroup: true), rankDay: app.dayStart)),
                 allowsReorder: false
             )
         }
@@ -247,80 +295,78 @@ struct MatrixPageView: View {
         }
     }
 
-    private func canvas(tasks: [TaskItem]) -> some View {
-        GeometryReader { geo in
-            ZStack {
-                MatrixBackground()
-                ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
-                    let isDragging = dragging?.id == task.uuid
-                    let shown: (urgency: Double, importance: Double) = isDragging
-                        ? MatrixGeometry.position(of: dragging?.point ?? .zero, in: geo.size)
-                        : task.matrixPosition(today: app.dayStart)
-                    MatrixDot(
-                        urgency: shown.urgency,
-                        importance: shown.importance,
-                        title: index < 5 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
-                        isSelected: selectedID == task.uuid || isDragging,
-                        size: geo.size
-                    )
+    private func grid(tasks: [TaskItem]) -> some View {
+        MatrixBoard { size in
+            // Tasks sharing a cell fan out a little so each stays visible.
+            let cells = Dictionary(grouping: tasks.indices, by: { MatrixGeometry.cell(of: tasks[$0], today: app.dayStart).key })
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { location in
+                    // With a task picked in the strip, a tap places it.
+                    guard let id = selectedID, let task = tasks.first(where: { $0.uuid == id }) else { return }
+                    let target = MatrixGeometry.cell(at: location, in: size)
+                    withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
                 }
-                // One invisible hit target per dot, so dots can be dragged and tapped.
-                ForEach(tasks, id: \.uuid) { task in
-                    let shown = task.matrixPosition(today: app.dayStart)
-                    let point = MatrixGeometry.point(urgency: shown.urgency, importance: shown.importance, in: geo.size)
-                    Circle()
-                        .fill(Color.white.opacity(0.001))
-                        .frame(width: 34, height: 34)
-                        .position(point)
-                        .gesture(
-                            DragGesture(minimumDistance: 2, coordinateSpace: .named("matrix"))
-                                .onChanged { value in dragging = (task.uuid, value.location) }
-                                .onEnded { value in
-                                    let position = MatrixGeometry.position(of: value.location, in: geo.size)
-                                    withAnimation(.snappy) {
-                                        app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance)
-                                    }
-                                    dragging = nil
-                                    selectedID = task.uuid
+                .dropDestination(for: String.self) { items, location in
+                    guard let id = items.first.flatMap(UUID.init(uuidString:)), let task = app.store.task(id: id) else { return false }
+                    let target = MatrixGeometry.cell(at: location, in: size)
+                    withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+                    selectedID = id
+                    return true
+                }
+            ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
+                let isDragging = dragging?.id == task.uuid
+                let cell = isDragging ? (dragging?.cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)) : MatrixGeometry.cell(of: task, today: app.dayStart)
+                let siblings = cells[cell.key] ?? []
+                let slot = siblings.firstIndex(of: index) ?? 0
+                let base = MatrixGeometry.center(of: cell, in: size)
+                let point = isDragging ? base : CGPoint(x: base.x + CGFloat(slot % 3 - 1) * 5, y: base.y + CGFloat(slot / 3) * 5)
+                MatrixDot(
+                    point: point,
+                    color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
+                    title: index < 5 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
+                    isSelected: selectedID == task.uuid || isDragging
+                )
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: cell.key)
+                Circle()
+                    .fill(Color.white.opacity(0.001))
+                    .frame(width: 30, height: 30)
+                    .position(point)
+                    .gesture(
+                        DragGesture(minimumDistance: 2)
+                            .onChanged { value in dragging = (task.uuid, MatrixGeometry.cell(at: value.location, in: size)) }
+                            .onEnded { value in
+                                let target = MatrixGeometry.cell(at: value.location, in: size)
+                                withAnimation(.snappy) {
+                                    app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
                                 }
-                        )
-                        .simultaneousGesture(TapGesture().onEnded { selectedID = selectedID == task.uuid ? nil : task.uuid })
-                        .accessibilityElement()
-                        .accessibilityLabel(task.trimmedTitle)
-                        .accessibilityValue(MatrixGeometry.describe(urgency: shown.urgency, importance: shown.importance))
-                }
-            }
-            .coordinateSpace(.named("matrix"))
-            .contentShape(Rectangle())
-            .onTapGesture { location in
-                // With a task picked in the strip below, a tap places it.
-                guard let id = selectedID, let task = tasks.first(where: { $0.uuid == id }) else { return }
-                let position = MatrixGeometry.position(of: location, in: geo.size)
-                withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
-            }
-            .dropDestination(for: String.self) { items, location in
-                guard let id = items.first.flatMap(UUID.init(uuidString:)), let task = app.store.task(id: id) else { return false }
-                let position = MatrixGeometry.position(of: location, in: geo.size)
-                withAnimation(.snappy) { app.store.placeOnMatrix(task, urgency: position.urgency, importance: position.importance) }
-                selectedID = id
-                return true
+                                dragging = nil
+                                selectedID = task.uuid
+                            }
+                    )
+                    .simultaneousGesture(TapGesture().onEnded { selectedID = selectedID == task.uuid ? nil : task.uuid })
+                    .accessibilityElement()
+                    .accessibilityLabel(task.trimmedTitle)
+                    .accessibilityValue(MatrixGeometry.describe(cell))
             }
         }
-        .aspectRatio(1.25, contentMode: .fit)
-        .frame(maxWidth: 640, maxHeight: 360)
+        .sensoryFeedback(.selection, trigger: dragging?.cell.key)
+        .aspectRatio(1.3, contentMode: .fit)
+        .frame(maxWidth: 680, maxHeight: 380)
     }
 
-    /// Tasks to pick (tap, then tap the matrix) or drag onto the matrix.
+    /// Tasks to pick (tap, then tap the grid) or drag onto the grid.
     private func tray(tasks: [TaskItem]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(tasks.prefix(40), id: \.uuid) { task in
-                    let quadrant = Matrix.quadrant(urgency: task.matrixPosition(today: app.dayStart).urgency, importance: task.matrixPosition(today: app.dayStart).importance)
                     Button {
                         selectedID = selectedID == task.uuid ? nil : task.uuid
                     } label: {
                         HStack(spacing: 4) {
-                            Circle().fill(quadrant.color).frame(width: 7, height: 7)
+                            Circle()
+                                .fill(Matrix.color(forScore: task.matrixScore(today: app.dayStart)))
+                                .frame(width: 7, height: 7)
                             Text(task.trimmedTitle)
                                 .lineLimit(1)
                                 .frame(maxWidth: 160)
@@ -328,7 +374,7 @@ struct MatrixPageView: View {
                         .font(.caption.weight(.medium))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(selectedID == task.uuid ? quadrant.color.opacity(0.25) : Color.secondary.opacity(0.12)))
+                        .background(Capsule().fill(selectedID == task.uuid ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12)))
                     }
                     .buttonStyle(.plain)
                     .draggable(task.uuid.uuidString)

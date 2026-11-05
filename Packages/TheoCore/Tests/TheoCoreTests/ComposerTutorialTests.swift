@@ -73,11 +73,12 @@ struct TutorialTests {
     }
 
     @Test func earlierTourGetsWhatsNew() {
-        let steps = TutorialCatalog.steps(newerThan: 1)
+        let steps = TutorialCatalog.steps(newerThan: 2)
         #expect(steps.first?.id == "whats-new")
         #expect(steps.last?.id == "finish")
-        #expect(steps.dropFirst().dropLast().allSatisfy { $0.since == 2 })
+        #expect(steps.dropFirst().dropLast().allSatisfy { $0.since == 3 })
         #expect(steps.count > 2)
+        #expect(TutorialCatalog.steps(newerThan: 1).count > steps.count)
     }
 
     @Test func upToDateGetsNothing() {

@@ -41,7 +41,7 @@ struct GroupPageView: View {
             groupID: groupID,
             tasks: mine,
             groups: groups,
-            options: PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs)
+            options: PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs, rankDay: app.dayStart)
         )
         let open = mine.filter { !$0.isDone }.count
         let name = group?.displayName ?? "Quick Entry"

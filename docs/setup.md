@@ -73,8 +73,8 @@ on first launch (`Persistence.initializeCloudKitSchemaIfNeeded`).
 
 ### Schema changes
 
-Whenever `cloudkit/schema.ckdb` gains fields (like the estimates, matrix, reminders and
-subprojects fields), run step 4 again (CloudKit schema workflow → Deploy Schema Changes) before
+Whenever `cloudkit/schema.ckdb` gains fields (like the estimates, matrix, reminders,
+subprojects and planned-day fields), run step 4 again (CloudKit schema workflow → Deploy Schema Changes) before
 installing a build that uses them. Otherwise the new fields can't sync in Production.
 
 ## 5. Release

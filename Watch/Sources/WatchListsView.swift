@@ -30,7 +30,7 @@ struct WatchListsView: View {
     }
 
     private var upcomingCount: Int {
-        openTasks.filter { $0.dueDate != nil || ($0.deferredUntil ?? .distantPast) > model.dayStart }.count
+        openTasks.filter { $0.dueDate != nil || ($0.plannedDay ?? .distantPast) > model.dayStart }.count
     }
 
     private func link(_ route: WatchRoute, title: String, symbol: String, color: Color, count: Int) -> some View {

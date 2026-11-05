@@ -17,22 +17,12 @@ struct RootView: View {
     private var appearance: AppearanceChoice { AppearanceChoice(rawValue: appearanceRaw) ?? .system }
     private var accent: AccentChoice { AccentChoice(rawValue: accentRaw) ?? .notes }
 
-    /// iPhone gets a single Notes-style stack (lists → page); iPad and Mac get a split view.
+    /// iPhone gets a tab bar (Today, Plan, Lists, Search); iPad and Mac get a split view.
     @ViewBuilder
     private var navigation: some View {
-        @Bindable var app = app
         #if os(iOS)
         if sizeClass == .compact {
-            NavigationStack(path: $app.phonePath) {
-                SidebarView(usesSelection: false)
-                    .navigationDestination(for: SidebarItem.self) { item in
-                        DetailRouter(selection: item, dayStart: app.dayStart)
-                            .onAppear { app.selection = item }
-                    }
-                    .navigationDestination(for: DayRef.self) { day in
-                        DayPageView(day: day)
-                    }
-            }
+            phoneTabs
         } else {
             splitView
         }
@@ -40,6 +30,45 @@ struct RootView: View {
         splitView
         #endif
     }
+
+    #if os(iOS)
+    private var phoneTabs: some View {
+        @Bindable var app = app
+        return TabView(selection: $app.phoneTab) {
+            Tab("Today", systemImage: "sun.max.fill", value: PhoneTab.today) {
+                NavigationStack {
+                    TodayView(dayStart: app.dayStart)
+                        .navigationDestination(for: DayRef.self) { day in
+                            DayPageView(day: day)
+                        }
+                }
+            }
+            Tab("Plan", systemImage: "calendar.badge.plus", value: PhoneTab.plan) {
+                NavigationStack {
+                    PlanView()
+                }
+            }
+            Tab("Lists", systemImage: "list.bullet", value: PhoneTab.lists) {
+                NavigationStack(path: $app.phonePath) {
+                    SidebarView(usesSelection: false, showsDayPages: false)
+                        .navigationDestination(for: SidebarItem.self) { item in
+                            DetailRouter(selection: item, dayStart: app.dayStart)
+                                .onAppear { app.selection = item }
+                        }
+                        .navigationDestination(for: DayRef.self) { day in
+                            DayPageView(day: day)
+                        }
+                }
+            }
+            Tab(value: PhoneTab.search, role: .search) {
+                NavigationStack {
+                    SearchPage()
+                }
+            }
+        }
+        .tabBarMinimizeBehavior(.onScrollDown)
+    }
+    #endif
 
     private var splitView: some View {
         @Bindable var app = app
@@ -178,6 +207,8 @@ struct DetailRouter: View {
         switch selection {
         case .today, .none:
             TodayView(dayStart: dayStart)
+        case .plan:
+            PlanView()
         case .upcoming:
             UpcomingView()
         case .priority:
@@ -197,6 +228,23 @@ struct DetailRouter: View {
         case .trash:
             TrashView()
         }
+    }
+}
+
+/// The Search tab: everything, including History.
+struct SearchPage: View {
+    @State private var query = ""
+
+    var body: some View {
+        Group {
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                ContentUnavailableView("Search Theo", systemImage: "magnifyingglass", description: Text("Titles, notes and tags, including finished tasks."))
+            } else {
+                SearchResultsView(query: query)
+            }
+        }
+        .navigationTitle("Search")
+        .searchable(text: $query, prompt: "Search all tasks")
     }
 }
 

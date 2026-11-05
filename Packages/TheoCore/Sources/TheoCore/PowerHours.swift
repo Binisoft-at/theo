@@ -8,8 +8,8 @@ public protocol Estimated {
 /// Time estimates in Power Hours (PH): one PH is 50 minutes of focused work.
 public enum PowerHours {
     public static let minutesPerPH = 50.0
-    /// Quick picks wherever an estimate is set.
-    public static let presets: [Double] = [0.25, 0.5, 0.75, 1, 2]
+    /// Quick picks wherever an estimate is set (also the steps of the hold-and-slide picker).
+    public static let presets: [Double] = [0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4]
 
     /// "0,25" (in the user's locale) without the unit.
     public static func number(_ value: Double, locale: Locale = .current) -> String {
