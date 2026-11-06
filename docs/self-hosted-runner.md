@@ -10,6 +10,10 @@ The Mac is set up **once for the whole organisation**. Every private Binisoft re
 then use it. Each app only needs the small workflow changes listed under
 [Per app](#per-app-workflow-changes).
 
+**Public repositories don't need this.** GitHub's Macs are free for them, so Theo (which is
+public) stays on `macos-26`. Never point a public repository at the self-hosted Mac: anyone's
+pull request could then run code on it.
+
 ## What the Mac needs
 
 - macOS with the current **Xcode** from the Mac App Store (26 or newer), opened once.
@@ -103,10 +107,11 @@ The runner only runs while the runner account is logged in. After a restart, log
 
 ## Switching back to GitHub's Macs
 
-Each repository can go back to GitHub-hosted Macs for a while, for example when the
+Each private repository can go back to GitHub-hosted Macs for a while, for example when the
 allowance has reset and your Mac is away. Set the repository variable `MAC_RUNNER` to
 `"macos-26"`, including the quotes: Settings → Secrets and variables → Actions →
-**Variables**. Delete the variable to use your own Mac again.
+**Variables**. Delete the variable to use your own Mac again. (Theo's workflows default to
+`"macos-26"` because it's public.)
 
 ## Per app: workflow changes
 

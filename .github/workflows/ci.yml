@@ -1,8 +1,8 @@
 name: CI
 
-# Runs on the Binisoft self-hosted Mac (docs/self-hosted-runner.md). To use GitHub's Macs
-# instead, set the repository variable MAC_RUNNER to "macos-26" (with the quotes); their
-# minutes count 10x on private repos, so build only main and PRs and cancel superseded runs.
+# Theo is public, so GitHub's Macs are free. Never point a public repository at a self-hosted
+# runner (anyone's pull request could run code on it). Build only main and PRs and cancel
+# superseded runs. The repository variable MAC_RUNNER overrides the runner (docs/self-hosted-runner.md).
 # Every run publishes its status (and errors / screenshots) to the `ci-output` branch.
 # Screenshots: run manually, or put "[screenshots]" in the commit message.
 on:
@@ -33,7 +33,7 @@ env:
 jobs:
   build:
     name: Test + build iOS / watchOS / macOS
-    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '["self-hosted", "macOS"]') }}
+    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '"macos-26"') }}
     timeout-minutes: 50
     env:
       SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || contains(github.event.head_commit.message, '[screenshots]') }}

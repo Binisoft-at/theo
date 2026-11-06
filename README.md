@@ -79,7 +79,7 @@ To run on a device or with iCloud from Xcode, copy `Config/Local.xcconfig.exampl
 
 ### CI / TestFlight
 
-- All Mac jobs run on the Binisoft self-hosted Mac, free and private. Setup and the per-app checklist are in [docs/self-hosted-runner.md](docs/self-hosted-runner.md). The repository variable `MAC_RUNNER` = `"macos-26"` switches back to GitHub's Macs.
+- The repository is public, so GitHub's Mac runners are free. The workflows also run on a self-hosted Mac through the repository variable `MAC_RUNNER`. Don't do that while the repository is public. For private Binisoft apps, see [docs/self-hosted-runner.md](docs/self-hosted-runner.md).
 - `CI` runs on pushes to `main` and on PRs, and cancels superseded runs. It runs the TheoCore unit tests and builds iOS (with the watch app) and macOS. It publishes its status to the `ci-output` branch. Running it manually, or `[screenshots]` in the commit message, also captures iPhone and Watch screenshots, plus a Mac screenshot on GitHub's Macs.
 - `TestFlight` (manual or a `v*` tag) archives and uploads iOS and macOS builds with automatic signing through the App Store Connect API key. No certificates or profiles are in the repo, and the build number is the run number. It needs the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (team key "Binisoft CI").
 - `CloudKit schema` (manual, one click) imports the schema into Development, then you deploy it to Production in the CloudKit Console. It needs `CLOUDKIT_MANAGEMENT_TOKEN`.

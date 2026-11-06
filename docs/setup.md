@@ -84,9 +84,9 @@ installing a build that uses them. Otherwise the new fields can't sync in Produc
   number is the workflow run number, and the iOS build carries the watch app. The builds show up
   in TestFlight about 10–20 minutes after the run finishes.
 - Once they're there, delete the old record (section 2, step 4).
-- The workflows run on the Binisoft self-hosted Mac ([self-hosted-runner.md](self-hosted-runner.md)),
-  which keeps one development certificate in its keychain. On GitHub's Macs
-  (`MAC_RUNNER` = `"macos-26"`), each run revokes the throwaway certificate it created instead.
+- Each run on GitHub's Macs revokes the throwaway development certificate it created, because
+  fresh runners can't keep one. A self-hosted Mac ([self-hosted-runner.md](self-hosted-runner.md))
+  keeps a single certificate instead.
   If a run still fails with "maximum number of certificates", revoke the leftover CI
   certificates once: https://developer.apple.com/account/resources/certificates/list → each
   **Development** certificate created by the API key (not your personal ones) → **Revoke**.

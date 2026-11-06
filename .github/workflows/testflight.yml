@@ -2,8 +2,8 @@ name: TestFlight
 
 # Automatic signing with the App Store Connect API key ("Binisoft CI", Admin):
 # no certificates or profiles live in the repo. Build number = workflow run number.
-# Runs on the Binisoft self-hosted Mac; repository variable MAC_RUNNER = "macos-26" switches
-# back to GitHub's Macs (see docs/self-hosted-runner.md).
+# Runs on GitHub's Macs (free for public repositories); the repository variable MAC_RUNNER
+# overrides the runner (docs/self-hosted-runner.md).
 on:
   workflow_dispatch:
     inputs:
@@ -29,7 +29,7 @@ env:
 jobs:
   upload:
     name: Archive & upload
-    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '["self-hosted", "macOS"]') }}
+    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '"macos-26"') }}
     timeout-minutes: 60
     # Repository secrets (org secrets don't reach private repos on GitHub Free).
     env:
