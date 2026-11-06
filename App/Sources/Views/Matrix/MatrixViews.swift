@@ -303,6 +303,7 @@ struct MatrixPageView: View {
         MatrixBoard { size in
             // Tasks sharing a cell fan out a little so each stays visible.
             let cells = Dictionary(grouping: tasks.indices, by: { MatrixGeometry.cell(of: tasks[$0], today: app.dayStart).key })
+            let labeled = labelIDs(tasks, cells: cells, size: size)
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { location in
@@ -328,7 +329,7 @@ struct MatrixPageView: View {
                 MatrixDot(
                     point: point,
                     color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
-                    title: index < 5 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
+                    title: labeled.contains(task.uuid) || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
                     isSelected: selectedID == task.uuid || isDragging,
                     labelOnRight: point.x < size.width * 0.55
                 )
@@ -358,6 +359,26 @@ struct MatrixPageView: View {
         .sensoryFeedback(.selection, trigger: dragging?.cell.key)
         .aspectRatio(1.3, contentMode: .fit)
         .frame(maxWidth: 680, maxHeight: 380)
+    }
+
+    /// Up to five of the top-ranked tasks get their title beside the dot, skipping any whose title
+    /// would cover one already placed (the higher-ranked one wins).
+    private func labelIDs(_ tasks: [TaskItem], cells: [Int: [Int]], size: CGSize) -> Set<UUID> {
+        var placed: [CGRect] = []
+        var ids = Set<UUID>()
+        for (index, task) in tasks.enumerated().prefix(12) where ids.count < 5 {
+            let cell = MatrixGeometry.cell(of: task, today: app.dayStart)
+            let slot = cells[cell.key]?.firstIndex(of: index) ?? 0
+            let base = MatrixGeometry.center(of: cell, in: size)
+            let point = CGPoint(x: base.x + CGFloat(slot % 3 - 1) * 5, y: base.y + CGFloat(slot / 3) * 5)
+            let width = min(142, CGFloat(task.trimmedTitle.count) * 6 + 12)
+            let onRight = point.x < size.width * 0.55
+            let rect = CGRect(x: onRight ? point.x + 11 : point.x - 11 - width, y: point.y - 9, width: width, height: 18)
+            if placed.contains(where: { $0.intersects(rect.insetBy(dx: -2, dy: -1)) }) { continue }
+            placed.append(rect)
+            ids.insert(task.uuid)
+        }
+        return ids
     }
 
     /// Tasks to pick (tap, then tap the grid) or drag onto the grid.
