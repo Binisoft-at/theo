@@ -119,34 +119,40 @@ struct MatrixBoard<Content: View>: View {
 struct MatrixDot: View {
     let point: CGPoint
     let color: Color
-    var title: String?
     var isSelected = false
     var size: CGFloat = 14
-    /// The title sits beside the dot, on the side with room (right in the left part of the grid).
-    var labelOnRight = true
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color)
-                .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: isSelected ? 3 : 1.5))
-                .frame(width: isSelected ? size + 8 : size, height: isSelected ? size + 8 : size)
-                .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
-                .position(point)
-            if let title {
-                let gap = (isSelected ? size + 8 : size) / 2 + 4
-                Text(title)
-                    .font(.caption2.weight(isSelected ? .bold : .medium))
-                    .lineLimit(1)
-                    .frame(maxWidth: 130)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.thinMaterial, in: Capsule())
-                    .frame(width: 144, alignment: labelOnRight ? .leading : .trailing)
-                    .position(x: labelOnRight ? point.x + gap + 72 : point.x - gap - 72, y: point.y)
-            }
-        }
-        .allowsHitTesting(false)
+        Circle()
+            .fill(color)
+            .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: isSelected ? 3 : 1.5))
+            .frame(width: isSelected ? size + 8 : size, height: isSelected ? size + 8 : size)
+            .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+            .position(point)
+            .allowsHitTesting(false)
+    }
+}
+
+/// A task's title beside its dot. Drawn above every dot so no dot covers a title.
+struct MatrixLabel: View {
+    let point: CGPoint
+    let title: String
+    var isSelected = false
+    var dotSize: CGFloat = 14
+    var onRight = true
+
+    var body: some View {
+        let gap = (isSelected ? dotSize + 8 : dotSize) / 2 + 4
+        Text(title)
+            .font(.caption2.weight(isSelected ? .bold : .medium))
+            .lineLimit(1)
+            .frame(maxWidth: 130)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.thinMaterial, in: Capsule())
+            .frame(width: 144, alignment: onRight ? .leading : .trailing)
+            .position(x: onRight ? point.x + gap + 72 : point.x - gap - 72, y: point.y)
+            .allowsHitTesting(false)
     }
 }
 
@@ -301,9 +307,8 @@ struct MatrixPageView: View {
 
     private func grid(tasks: [TaskItem]) -> some View {
         MatrixBoard { size in
-            // Tasks sharing a cell fan out a little so each stays visible.
-            let cells = Dictionary(grouping: tasks.indices, by: { MatrixGeometry.cell(of: tasks[$0], today: app.dayStart).key })
-            let labeled = labelIDs(tasks, cells: cells, size: size)
+            let points = restingPoints(tasks, size: size)
+            let sides = labelSides(tasks, points: points, size: size)
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { location in
@@ -320,20 +325,13 @@ struct MatrixPageView: View {
                     return true
                 }
             ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
-                let isDragging = dragging?.id == task.uuid
-                let cell = isDragging ? (dragging?.cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)) : MatrixGeometry.cell(of: task, today: app.dayStart)
-                let siblings = cells[cell.key] ?? []
-                let slot = siblings.firstIndex(of: index) ?? 0
-                let base = MatrixGeometry.center(of: cell, in: size)
-                let point = isDragging ? base : CGPoint(x: base.x + CGFloat(slot % 3 - 1) * 5, y: base.y + CGFloat(slot / 3) * 5)
+                let point = shownPoint(task, resting: points[index], size: size)
                 MatrixDot(
                     point: point,
                     color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
-                    title: labeled.contains(task.uuid) || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
-                    isSelected: selectedID == task.uuid || isDragging,
-                    labelOnRight: point.x < size.width * 0.55
+                    isSelected: selectedID == task.uuid || dragging?.id == task.uuid
                 )
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: cell.key)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: shownCell(task).key)
                 Circle()
                     .fill(Color.white.opacity(0.001))
                     .frame(width: 30, height: 30)
@@ -353,7 +351,17 @@ struct MatrixPageView: View {
                     .simultaneousGesture(TapGesture().onEnded { selectedID = selectedID == task.uuid ? nil : task.uuid })
                     .accessibilityElement()
                     .accessibilityLabel(task.trimmedTitle)
-                    .accessibilityValue(MatrixGeometry.describe(cell))
+                    .accessibilityValue(MatrixGeometry.describe(shownCell(task)))
+            }
+            ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
+                let isActive = selectedID == task.uuid || dragging?.id == task.uuid
+                let point = shownPoint(task, resting: points[index], size: size)
+                // Picked or dragged tasks always show their title; the others only when it fits.
+                let side: Bool? = isActive ? (sides[task.uuid] ?? (point.x < size.width * 0.55)) : sides[task.uuid]
+                if let onRight = side {
+                    MatrixLabel(point: point, title: task.trimmedTitle, isSelected: isActive, onRight: onRight)
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: shownCell(task).key)
+                }
             }
         }
         .sensoryFeedback(.selection, trigger: dragging?.cell.key)
@@ -361,24 +369,54 @@ struct MatrixPageView: View {
         .frame(maxWidth: 680, maxHeight: 380)
     }
 
-    /// Up to five of the top-ranked tasks get their title beside the dot, skipping any whose title
-    /// would cover one already placed (the higher-ranked one wins).
-    private func labelIDs(_ tasks: [TaskItem], cells: [Int: [Int]], size: CGSize) -> Set<UUID> {
-        var placed: [CGRect] = []
-        var ids = Set<UUID>()
-        for (index, task) in tasks.enumerated().prefix(12) where ids.count < 5 {
-            let cell = MatrixGeometry.cell(of: task, today: app.dayStart)
+    /// The cell a task shows in: where it's being dragged, else where it ranks.
+    private func shownCell(_ task: TaskItem) -> MatrixGeometry.Cell {
+        if let dragging, dragging.id == task.uuid { return dragging.cell }
+        return MatrixGeometry.cell(of: task, today: app.dayStart)
+    }
+
+    private func shownPoint(_ task: TaskItem, resting: CGPoint, size: CGSize) -> CGPoint {
+        if let dragging, dragging.id == task.uuid { return MatrixGeometry.center(of: dragging.cell, in: size) }
+        return resting
+    }
+
+    /// Where each dot sits; tasks sharing a cell fan out a little so each stays visible.
+    private func restingPoints(_ tasks: [TaskItem], size: CGSize) -> [CGPoint] {
+        let cells = Dictionary(grouping: tasks.indices, by: { MatrixGeometry.cell(of: tasks[$0], today: app.dayStart).key })
+        return tasks.indices.map { index in
+            let cell = MatrixGeometry.cell(of: tasks[index], today: app.dayStart)
             let slot = cells[cell.key]?.firstIndex(of: index) ?? 0
             let base = MatrixGeometry.center(of: cell, in: size)
-            let point = CGPoint(x: base.x + CGFloat(slot % 3 - 1) * 5, y: base.y + CGFloat(slot / 3) * 5)
-            let width = min(142, CGFloat(task.trimmedTitle.count) * 6 + 12)
-            let onRight = point.x < size.width * 0.55
-            let rect = CGRect(x: onRight ? point.x + 11 : point.x - 11 - width, y: point.y - 9, width: width, height: 18)
-            if placed.contains(where: { $0.intersects(rect.insetBy(dx: -2, dy: -1)) }) { continue }
-            placed.append(rect)
-            ids.insert(task.uuid)
+            return CGPoint(x: base.x + CGFloat(slot % 3 - 1) * 5, y: base.y + CGFloat(slot / 3) * 5)
         }
-        return ids
+    }
+
+    /// Up to five of the top-ranked tasks get their title beside the dot, on whichever side fits
+    /// inside the grid without covering another title or another task's dot. Higher-ranked tasks
+    /// pick first; a title that fits nowhere is left out. The value is true for the right side.
+    private func labelSides(_ tasks: [TaskItem], points: [CGPoint], size: CGSize) -> [UUID: Bool] {
+        var placed: [CGRect] = []
+        var sides: [UUID: Bool] = [:]
+        for (index, task) in tasks.enumerated().prefix(12) where sides.count < 5 {
+            let point = points[index]
+            let width = min(142, CGFloat(task.trimmedTitle.count) * 6 + 12)
+            let preferRight = point.x < size.width * 0.55
+            for onRight in [preferRight, !preferRight] {
+                let rect = CGRect(x: onRight ? point.x + 11 : point.x - 11 - width, y: point.y - 9, width: width, height: 18)
+                guard rect.minX >= 0, rect.maxX <= size.width else { continue }
+                let coversTitle = placed.contains { $0.intersects(rect.insetBy(dx: -2, dy: -1)) }
+                // Dots fanned out in the same cell (a few points away) don't count.
+                let coversDot = points.contains { other in
+                    abs(other.x - point.x) + abs(other.y - point.y) > 12
+                        && rect.intersects(CGRect(x: other.x - 7, y: other.y - 7, width: 14, height: 14))
+                }
+                guard !coversTitle, !coversDot else { continue }
+                placed.append(rect)
+                sides[task.uuid] = onRight
+                break
+            }
+        }
+        return sides
     }
 
     /// Tasks to pick (tap, then tap the grid) or drag onto the grid.
