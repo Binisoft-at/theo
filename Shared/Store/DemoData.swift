@@ -84,10 +84,19 @@ enum DemoData {
             (9, 0.5, true), (6, 1, true), (4, 0.25, true), (2, 0, false), (7, 0.75, true),
             (5, 2, false), (8, 0.25, true), (3, 0, true), (10, 1, true), (4, 0.5, false),
         ]
+        // Sorted by title so every launch (and every screenshot) gets the same values. The level
+        // stays within the band of the priority each task was written with above.
         let todayKey = cal.startOfDay(for: today)
-        for (index, task) in store.liveTasks().filter({ !$0.isDone }).enumerated() {
+        let open = store.liveTasks().filter { !$0.isDone }.sorted { $0.title < $1.title }
+        for (index, task) in open.enumerated() {
             let sample = samples[index % samples.count]
-            task.importance = Matrix.importance(forLevel: sample.level)
+            let level = switch task.priority {
+            case .high: 9 + index % 2
+            case .medium: 7 + index % 2
+            case .low: 5 + index % 2
+            case .normal: 2 + index % 3
+            }
+            task.importance = Matrix.importance(forLevel: level)
             task.priority = Matrix.priority(forImportance: task.importance)
             task.estimate = sample.estimate
             task.plannedDay = sample.planned ? todayKey : nil

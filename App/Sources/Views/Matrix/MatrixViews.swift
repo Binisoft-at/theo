@@ -122,6 +122,8 @@ struct MatrixDot: View {
     var title: String?
     var isSelected = false
     var size: CGFloat = 14
+    /// The title sits beside the dot, on the side with room (right in the left part of the grid).
+    var labelOnRight = true
 
     var body: some View {
         ZStack {
@@ -132,6 +134,7 @@ struct MatrixDot: View {
                 .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
                 .position(point)
             if let title {
+                let gap = (isSelected ? size + 8 : size) / 2 + 4
                 Text(title)
                     .font(.caption2.weight(isSelected ? .bold : .medium))
                     .lineLimit(1)
@@ -139,7 +142,8 @@ struct MatrixDot: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(.thinMaterial, in: Capsule())
-                    .position(x: point.x, y: max(point.y - 18, 10))
+                    .frame(width: 144, alignment: labelOnRight ? .leading : .trailing)
+                    .position(x: labelOnRight ? point.x + gap + 72 : point.x - gap - 72, y: point.y)
             }
         }
         .allowsHitTesting(false)
@@ -325,7 +329,8 @@ struct MatrixPageView: View {
                     point: point,
                     color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
                     title: index < 5 || selectedID == task.uuid || isDragging ? task.trimmedTitle : nil,
-                    isSelected: selectedID == task.uuid || isDragging
+                    isSelected: selectedID == task.uuid || isDragging,
+                    labelOnRight: point.x < size.width * 0.55
                 )
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: cell.key)
                 Circle()

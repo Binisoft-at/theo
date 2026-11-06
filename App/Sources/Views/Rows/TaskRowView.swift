@@ -154,7 +154,14 @@ struct TaskMetaLine: View {
 
     private var hasContent: Bool {
         task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
-            || (style.showGroup && task.group != nil) || (style.showDeferred && task.plannedDay != nil)
+            || (style.showGroup && task.group != nil) || plannedToShow != nil
+    }
+
+    /// The day it's planned for, unless that's also the deadline's day (the deadline says it).
+    private var plannedToShow: Date? {
+        guard style.showDeferred, !task.isDone, let planned = task.plannedDay else { return nil }
+        if let due = task.dueDate, DateText.dayDelta(due, today: planned) == 0 { return nil }
+        return planned
     }
 
     /// "0,5 PH", or "0,2 / 0,5 PH" once focus time has been booked on it.
@@ -186,9 +193,17 @@ struct TaskMetaLine: View {
                     Label(estimateText, systemImage: "timer")
                         .foregroundStyle(task.estimate > 0 && task.focusSeconds / 60 >= task.estimate * PowerHours.minutesPerPH ? Color.green : Color.secondary)
                 }
-                if style.showDeferred, !task.isDone, let planned = task.plannedDay {
-                    Label(DateText.due(planned, hasTime: false, today: today), systemImage: "calendar.badge.checkmark")
-                        .foregroundStyle(.indigo)
+                if let planned = plannedToShow {
+                    if DateText.dayDelta(planned, today: today) == 0 {
+                        // Planned for today: just the sun, the word would only crowd the line.
+                        Image(systemName: "sun.max.fill")
+                            .foregroundStyle(.indigo)
+                            .accessibilityLabel("Planned for today")
+                    } else {
+                        Label(DateText.due(planned, hasTime: false, today: today), systemImage: "calendar.badge.checkmark")
+                            .foregroundStyle(.indigo)
+                            .accessibilityLabel("Planned for " + DateText.due(planned, hasTime: false, today: today))
+                    }
                 }
                 if style.showGroup, let group = task.group, group.deletedAt == nil {
                     Label(group.displayName, systemImage: group.symbol)
