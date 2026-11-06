@@ -1,0 +1,793 @@
+Timestamp               Ty Process[PID:TID]
+2026-11-06 11:23:35.244 A  Theo[28907:14e52] (libsystem_info.dylib) Retrieve User by ID
+2026-11-06 11:23:35.244 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x102b06270] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:23:35.244 Df Theo[28907:14e69] [com.apple.xpc:connection] [0x102b073b0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-06 11:23:35.342 A  Theo[28907:14e52] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-06 11:23:35.869 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c500] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-06 11:23:35.870 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c640] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-06 11:23:35.871 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c780] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-06 11:23:35.877 Df Theo[28907:14e52] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-06 11:23:35.879 A  Theo[28907:14e52] (TCC) TCCAccessRequest() IPC
+2026-11-06 11:23:35.879 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-06 11:23:35.884 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] invalidated after the last release of the connection object
+2026-11-06 11:23:35.885 Df Theo[28907:14e52] [com.apple.SkyLight:default] server port 0x0000350f, session port 0x0000350f
+2026-11-06 11:23:35.894 Df Theo[28907:14e52] [com.apple.SkyLight:default] New connection 0x54b33 main
+2026-11-06 11:23:35.897 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] CHECKIN: pid=28907
+2026-11-06 11:23:35.903 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=28907 asn=0x0-0x33033 foreground=1
+2026-11-06 11:23:35.903 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:35.903 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] Connection returned listener port: 0x5003
+2026-11-06 11:23:35.906 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-06 11:23:35.906 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] Registered, pid=28907 ASN=0x0,0x33033
+2026-11-06 11:23:35.908 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922ca00] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-06 11:23:35.910 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] Connection returned listener port: 0x5003
+2026-11-06 11:23:35.910 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] BringForward: pid=28907 asn=0x0-0x33033 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-06 11:23:35.910 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=28907 asn=0x0-0x33033 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-06 11:23:35.910 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] BringForward: pid=28907 asn=0x0-0x33033
+2026-11-06 11:23:35.910 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x33033 options=0
+2026-11-06 11:23:35.916 Df Theo[28907:14e69] [com.apple.xpc:connection] [0x7f8d9c300] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x7f922c8c0.peer[127].0x7f8d9c300
+2026-11-06 11:23:35.957 Df Theo[28907:14e52] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-06 11:23:35.977 Df Theo[28907:14e52] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-06 11:23:35.991 Df Theo[28907:14e52] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-06 11:23:36.015 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] Connection returned listener port: 0x5003
+2026-11-06 11:23:36.043 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922cdc0] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:23:36.082 Df Theo[28907:14e52] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-06 11:23:36.186 Df Theo[28907:14e52] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-06 11:23:36.192 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-06 11:23:36.192 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-06 11:23:36.193 Df Theo[28907:14e52] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:23:36.193 Df Theo[28907:14e52] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:23:36.193 Df Theo[28907:14e6b] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:23:36.193 Df Theo[28907:14e6b] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:23:36.193 Df Theo[28907:14e6b] [com.apple.xpc:connection] [0x7f922cf00] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:23:36.193 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] Connection returned listener port: 0x5003
+2026-11-06 11:23:36.212 A  Theo[28907:14e6a] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:36.241 Df Theo[28907:14e6b] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:23:36.241 Df Theo[28907:14e6b] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.theo.3023857.3029637(501)>
+2026-11-06 11:23:36.383 A  Theo[28907:14e9a] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:36.488 A  Theo[28907:14e9c] (AppIntents) appintents:register process
+2026-11-06 11:23:36.488 Df Theo[28907:14e52] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:23:36.489 Df Theo[28907:14e52] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:36.489 Df Theo[28907:14e52] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:36.489 Df Theo[28907:14e52] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:36.490 Df Theo[28907:14e9c] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.490 Df Theo[28907:14e9c] [com.apple.xpc:connection] [0x7f922d180] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:36.490 Df Theo[28907:14e9c] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:36.491 Df Theo[28907:14e9c] [com.apple.xpc:connection] [0x7f922d040] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:36.494 Df Theo[28907:14e9c] [com.apple.xpc:connection] [0x7f922d040] Connection returned listener port: 0x8303
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d180] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.497 A  Theo[28907:14e9a] (AppIntents) appintents:register process
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.497 E  Theo[28907:14e9c] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d400] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:36.497 E  Theo[28907:14e9c] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:36.497 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d040] Connection returned listener port: 0x8303
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.xpc:connection] [0x7f922d400] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:36.498 E  Theo[28907:14e9a] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.498 A  Theo[28907:14e6b] (AppIntents) appintents:register process
+2026-11-06 11:23:36.498 E  Theo[28907:14e9a] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.xpc:connection] [0x7f922d680] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:36.498 Df Theo[28907:14e6b] [com.apple.xpc:connection] [0x7f922d040] Connection returned listener port: 0x8303
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d680] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.499 A  Theo[28907:14e9a] (AppIntents) appintents:register process
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d900] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:36.499 E  Theo[28907:14e6b] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.499 E  Theo[28907:14e6b] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:36.499 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922d040] Connection returned listener port: 0x8303
+2026-11-06 11:23:36.500 Df Theo[28907:14e6b] [com.apple.xpc:connection] [0x7f922d900] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:36.500 Df Theo[28907:14e6b] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:36.500 E  Theo[28907:14e6b] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-06 11:23:36.500 E  Theo[28907:14e9a] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.500 E  Theo[28907:14e9a] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:36.747 Df Theo[28907:14e6a] [com.apple.CoreAnalytics:client] Received configuration update from daemon (initial)
+2026-11-06 11:23:37.206 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:37.212 Df Theo[28907:14e52] (libMobileGestalt.dylib) couldn't load support library
+2026-11-06 11:23:37.212 Df Theo[28907:14e52] (libMobileGestalt.dylib) called dummy function!
+2026-11-06 11:23:37.216 Df Theo[28907:14e52] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-06 11:23:37.216 Df Theo[28907:14e52] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-06 11:23:37.216 Df Theo[28907:14e52] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-06 11:23:37.216 Df Theo[28907:14e52] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-06 11:23:37.221 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:37.283 Df Theo[28907:14e52] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0x7f907d220
+ (
+    "<NSAquaAppearance: 0x7f907d2c0>",
+    "<NSSystemAppearance: 0x7f907cbe0>"
+)>
+2026-11-06 11:23:37.306 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:37.307 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:37.363 Df Theo[28907:14e69] [com.apple.xpc:connection] [0x7f922de00] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-06 11:23:37.395 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922df40] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-06 11:23:37.483 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e080] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-06 11:23:37.485 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e1c0] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-06 11:23:37.486 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922c8c0] Connection returned listener port: 0x5003
+2026-11-06 11:23:37.486 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] SignalReady: pid=28907 asn=0x0-0x33033
+2026-11-06 11:23:37.486 Df Theo[28907:14e52] [com.apple.processmanager:front-35286506] SIGNAL: pid=28907 asn=0x0x-0x33033
+2026-11-06 11:23:37.488 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:37.495 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e580] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-06 11:23:37.511 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e440] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:37.512 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e300] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:37.512 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e300] Connection returned listener port: 0xf303
+2026-11-06 11:23:37.515 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e580] invalidated after the last release of the connection object
+2026-11-06 11:23:37.517 Df Theo[28907:14e52] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-06 11:23:37.542 Df Theo[28907:14e52] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-06 11:23:37.543 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e580] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-06 11:23:37.543 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e580] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-06 11:23:37.545 Df Theo[28907:14e52] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-06 11:23:37.561 Df Theo[28907:14e69] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-06 11:23:37.561 A  Theo[28907:14e69] (CoreSpotlight) delete-domains
+2026-11-06 11:23:37.561 Df Theo[28907:14e69] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:37.561 Df Theo[28907:14e69] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-06 11:23:37.561 Df Theo[28907:14e69] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-06 11:23:37.561 Df Theo[28907:14e69] [com.apple.xpc:connection] [0x7f922e580] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-06 11:23:37.563 Df Theo[28907:14e52] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.controlcenter.statusitems
+2026-11-06 11:23:37.563 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922e6c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:37.563 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] FBSWorkspace registering source: <private>
+2026-11-06 11:23:37.571 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <private>
+2026-11-06 11:23:37.571 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x7f96a0640 <private>> attempting immediate handshake from activate
+2026-11-06 11:23:37.571 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x7f96a0640 <private>> sent handshake
+2026-11-06 11:23:37.572 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemSceneHostSettings__ on FBSSceneSettings
+2026-11-06 11:23:37.576 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemSceneClientSettings__ on FBSSceneClientSettings
+2026-11-06 11:23:37.579 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:23:37.584 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:23:37.589 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] Requesting scene <FBSScene: 0x7f96a0960; com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE> from com.apple.controlcenter.statusitems
+2026-11-06 11:23:37.617 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:23:37.623 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSHostedViewSceneSettings__ on FBSSceneSettings
+2026-11-06 11:23:37.624 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSClientHostedViewSceneSettings__ on FBSSceneClientSettings
+2026-11-06 11:23:37.626 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemAuxiliaryViewSceneSettings__ on FBSSceneSettings
+2026-11-06 11:23:37.626 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSClientStatusItemAuxiliaryViewSceneSettings__ on FBSSceneClientSettings
+2026-11-06 11:23:37.626 Df Theo[28907:14e52] [com.apple.FrontBoard:Common] Requesting scene <FBSScene: 0x7f96a0b40; com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView> from com.apple.controlcenter.statusitems
+2026-11-06 11:23:37.634 A  Theo[28907:14e9c] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:37.635 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:37.635 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Dropping transition context because the scene is reconnecting
+2026-11-06 11:23:37.660 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:37.660 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Dropping transition context because the scene is reconnecting
+2026-11-06 11:23:37.678 Df Theo[28907:14e6b] [com.apple.FrontBoard:Common] Request for <FBSScene: 0x7f96a0960; com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE> complete!
+2026-11-06 11:23:37.688 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:37.688 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Dropping transition context because the scene is reconnecting
+2026-11-06 11:23:37.691 Df Theo[28907:14e9c] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x7f96a0640 <private>> Reconnecting scene com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE
+2026-11-06 11:23:37.695 Df Theo[28907:14e9a] [com.apple.FrontBoard:Common] Request for <FBSScene: 0x7f96a0b40; com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView> complete!
+2026-11-06 11:23:37.726 Df Theo[28907:14e9a] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x7f96a0640 <private>> Reconnecting scene com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView
+2026-11-06 11:23:37.928 Df Theo[28907:14e9a] [com.apple.BoardServices:XPCErrors] [C:2] Alloc <private>
+2026-11-06 11:23:37.928 Df Theo[28907:14e9a] [com.apple.xpc:connection] [0x7f922e940] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:37.990 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:37.991 Df Theo[28907:14e52] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-06 11:23:37.991 Df Theo[28907:14e52] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-06 11:23:38.001 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f922ebc0] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-06 11:23:38.054 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:38.058 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:38.094 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:38.095 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:38.098 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE-Aux[1]-NSStatusItemView] Received action(s) in scene-update: NSSceneFenceAction
+2026-11-06 11:23:38.102 A  Theo[28907:14e6b] (CoreSpotlight) end-index-batch
+2026-11-06 11:23:38.103 Df Theo[28907:14e6b] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-06 11:23:38.105 A  Theo[28907:14e6b] (CoreSpotlight) index-items
+2026-11-06 11:23:38.106 Df Theo[28907:14e6b] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:38.107 Df Theo[28907:14e9a] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:38.365 A  Theo[28907:14e52] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:38.522 A  Theo[28907:14e52] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-06 11:23:39.192 Df Theo[28907:14e52] [com.apple.extensionkit:NSExtension] Class EXGetExtensionClass(void) returning EXConcreteExtension
+2026-11-06 11:23:39.194 Df Theo[28907:14e52] [com.apple.xpc:connection] [0x7f99f6d00] activating connection: mach=true listener=false peer=false name=com.apple.pluginkit.pkd
+2026-11-06 11:23:39.195 A  Theo[28907:14e52] (PlugInKit) continuous-discovery
+2026-11-06 11:23:39.195 Df Theo[28907:14e52] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x7f9b0a820> created discovery driver
+2026-11-06 11:23:39.195 Df Theo[28907:14e52] [com.apple.PlugInKit:discovery] [d <private>] <PKHost:0x7f81ec7c0> Beginning discovery for flags: 0, point: multiple
+2026-11-06 11:23:39.214 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.222 Df Theo[28907:14e9a] [com.apple.PlugInKit:discovery] [d <private>] <PKHost:0x7f81ec7c0> Completed discovery. Final # of matches: 21
+2026-11-06 11:23:39.222 Df Theo[28907:14e69] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x7f9b0a820> delivering update to host (21 plugins)
+2026-11-06 11:23:39.222 A  Theo[28907:14e69] (ExtensionFoundation) discovering extensions
+2026-11-06 11:23:39.225 Df Theo[28907:14e69] [com.apple.extensionkit:NSExtension] discovered extensions: attributes <private>, extensionSet {(
+    <EXConcreteExtension: 0x7f9802ae0> {id = com.apple.iBooksX.SharingExtension},
+    <EXConcreteExtension: 0x7f9802bc0> {id = com.apple.messages.ReplyExtension},
+    <EXConcreteExtension: 0x7f9802ca0> {id = com.apple.Notes.SharingExtension},
+    <EXConcreteExtension: 0x7f9802d80> {id = com.apple.CloudSharingUI.CreateiCloudLinkExtension},
+    <EXConcreteExtension: 0x7f9802e60> {id = com.apple.share.System.add-to-safari-reading-list},
+    <EXConcreteExtension: 0x7f9802f40> {id = com.apple.CloudSharingUI.CopyLink},
+    <EXConcreteExtension: 0x7f9803020> {id = com.apple.share.Mail.compose},
+    <EXConcreteExtension: 0x7f9803100> {id = com.apple.share.Messages.window},
+    <EXConcreteExtension: 0x7f98031e0> {id = com.apple.share.System.set-desktop-image},
+    <EXConcreteExtension: 0x7f98032c0> {id = com.apple.freeform.sharingextension},
+    <EXConcreteExtension: 0x7f9803480> {id = com.apple.share.Mail.compose-back-to-sender},
+    <EXConcreteExtension: 0x7f9803560> {id = com.apple.reminders.shari
+2026-11-06 11:23:39.226 Df Theo[28907:14e9a] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x7f9b0a820> installing watchers for continuous discovery
+2026-11-06 11:23:39.226 Df Theo[28907:14e9a] [com.apple.launchservices:appinstallation] registering for distributed notification com.apple.LaunchServices.pluginsregistered in this process
+2026-11-06 11:23:39.226 Df Theo[28907:14e9a] [com.apple.launchservices:appinstallation] registering for distributed notification com.apple.LaunchServices.pluginsunregistered in this process
+2026-11-06 11:23:39.777 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.883 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.885 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.890 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.892 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.899 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.900 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.908 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.910 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.912 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.916 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.919 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.922 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.925 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.935 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.936 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.939 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.941 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.945 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.987 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:39.991 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.162 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.163 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.165 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.166 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.168 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.169 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.175 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.176 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.186 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.190 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.197 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.199 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.200 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.202 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.208 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.209 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.210 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.216 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.218 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.270 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.305 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.336 Df Theo[28907:14e52] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-06 11:23:40.359 Df Theo[28907:14e69] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:23:40.359 Df Theo[28907:14e69] [com.apple.xpc:session] [0x7f7baedf0] Session created.
+2026-11-06 11:23:40.359 Df Theo[28907:14e69] [com.apple.xpc:session] [0x7f7baedf0] Session created from connection [0x7fa51ed00]
+2026-11-06 11:23:40.359 Df Theo[28907:14e69] [com.apple.xpc:connection] [0x7fa51ed00] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:23:40.359 Df Theo[28907:14e69] [com.apple.xpc:session] [0x7f7baedf0] Session activated
+2026-11-06 11:23:40.459 Df Theo[28907:14e6a] [com.apple.UIIntelligenceSupport:xpc] Connection established with agent PID: 29152
+2026-11-06 11:23:40.459 Df Theo[28907:14e6a] [com.apple.UIIntelligenceSupport:xpc] Received agent launch notification with agent PID: 29152
+2026-11-06 11:23:40.512 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.539 Df Theo[28907:14e52] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:40.554 Df Theo[28907:14e52] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:0A3BBF19-7A66-48AD-B177-E08945B021EE] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:23:40.630 A  Theo[28907:14e6a] (CoreSpotlight) end-index-batch
+2026-11-06 11:23:40.630 A  Theo[28907:14e6a] (CoreSpotlight) index-items
+2026-11-06 11:23:40.631 Df Theo[28907:14e6a] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:40.634 Df Theo[28907:14e69] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:40.762 A  Theo[28907:14e6a] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:42.351 Df Theo[28907:14e52] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-06 11:23:45.191 Df Theo[28907:14e69] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(user.uid.501.com.apple.LaunchServices.database) fired for session key <private>
+2026-11-06 11:23:48.291 Df Theo[28907:14e9a] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
+2026-11-06 11:23:57.806 A  Theo[29852:157d1] (libsystem_info.dylib) Retrieve User by ID
+2026-11-06 11:23:57.808 A  Theo[29852:157d1] (libsystem_info.dylib) Resolve user group list
+2026-11-06 11:23:57.808 A  Theo[29852:157d1] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-06 11:23:57.970 A  Theo[29852:157d3] (libsystem_info.dylib) Retrieve User by ID
+2026-11-06 11:23:57.972 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x10090e2b0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:23:57.972 Df Theo[29852:157d5] [com.apple.xpc:connection] [0x10090f3f0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-06 11:23:58.000 A  Theo[29852:157d3] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-06 11:23:58.276 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c500] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-06 11:23:58.277 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c640] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-06 11:23:58.278 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c780] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-06 11:23:58.292 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-06 11:23:58.295 A  Theo[29852:157d3] (TCC) TCCAccessRequest() IPC
+2026-11-06 11:23:58.296 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-06 11:23:58.303 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] invalidated after the last release of the connection object
+2026-11-06 11:23:58.304 Df Theo[29852:157d3] [com.apple.SkyLight:default] server port 0x0000360b, session port 0x0000360b
+2026-11-06 11:23:58.316 Df Theo[29852:157d3] [com.apple.SkyLight:default] New connection 0x3e29b main
+2026-11-06 11:23:58.320 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] CHECKIN: pid=29852
+2026-11-06 11:23:58.326 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=29852 asn=0x0-0x34034 foreground=1
+2026-11-06 11:23:58.327 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:58.327 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] Connection returned listener port: 0x5103
+2026-11-06 11:23:58.327 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x804da0300] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x80522c8c0.peer[127].0x804da0300
+2026-11-06 11:23:58.329 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-06 11:23:58.329 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] Registered, pid=29852 ASN=0x0,0x34034
+2026-11-06 11:23:58.330 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522ca00] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-06 11:23:58.332 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] Connection returned listener port: 0x5103
+2026-11-06 11:23:58.332 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] BringForward: pid=29852 asn=0x0-0x34034 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-06 11:23:58.332 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=29852 asn=0x0-0x34034 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-06 11:23:58.332 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] BringForward: pid=29852 asn=0x0-0x34034
+2026-11-06 11:23:58.332 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x34034 options=0
+2026-11-06 11:23:58.361 Df Theo[29852:157d3] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-06 11:23:58.378 Df Theo[29852:157d3] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-06 11:23:58.381 Df Theo[29852:157d3] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-06 11:23:58.393 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] Connection returned listener port: 0x5103
+2026-11-06 11:23:58.402 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522cdc0] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:23:58.407 Df Theo[29852:157d3] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-06 11:23:58.410 Df Theo[29852:157d3] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-06 11:23:58.417 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-06 11:23:58.417 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-06 11:23:58.418 Df Theo[29852:157d3] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:23:58.418 Df Theo[29852:157d3] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:23:58.418 Df Theo[29852:157d5] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:23:58.418 Df Theo[29852:157d5] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:23:58.418 Df Theo[29852:157d5] [com.apple.xpc:connection] [0x80522cf00] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:23:58.418 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] Connection returned listener port: 0x5103
+2026-11-06 11:23:58.419 A  Theo[29852:157e2] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:58.419 Df Theo[29852:157d5] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:23:58.419 Df Theo[29852:157d5] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.theo.3023857.3029637(501)>
+2026-11-06 11:23:58.434 A  Theo[29852:157d5] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:58.450 A  Theo[29852:157e3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:58.450 Df Theo[29852:157d3] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:23:58.451 Df Theo[29852:157d3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:58.451 Df Theo[29852:157d3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:58.451 Df Theo[29852:157d3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:58.545 A  Theo[29852:157d6] (AppIntents) appintents:register process
+2026-11-06 11:23:58.827 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:58.829 Df Theo[29852:157d3] (libMobileGestalt.dylib) couldn't load support library
+2026-11-06 11:23:58.829 Df Theo[29852:157d3] (libMobileGestalt.dylib) called dummy function!
+2026-11-06 11:23:58.831 Df Theo[29852:157d3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-06 11:23:58.831 Df Theo[29852:157d3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-06 11:23:58.831 Df Theo[29852:157d3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-06 11:23:58.831 Df Theo[29852:157d3] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-06 11:23:58.837 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:58.851 Df Theo[29852:157d3] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0x80507d040
+ (
+    "<NSAquaAppearance: 0x80507d0e0>",
+    "<NSSystemAppearance: 0x80507cbe0>"
+)>
+2026-11-06 11:23:58.866 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:58.867 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:58.895 Df Theo[29852:157e9] [com.apple.xpc:connection] [0x80522d540] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-06 11:23:58.901 Df Theo[29852:157d6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:58.901 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522d400] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:58.903 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522d7c0] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-06 11:23:58.917 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522d900] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-06 11:23:58.917 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522da40] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-06 11:23:58.918 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522c8c0] Connection returned listener port: 0x5103
+2026-11-06 11:23:58.919 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] SignalReady: pid=29852 asn=0x0-0x34034
+2026-11-06 11:23:58.919 Df Theo[29852:157d3] [com.apple.processmanager:front-35286506] SIGNAL: pid=29852 asn=0x0x-0x34034
+2026-11-06 11:23:58.920 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:58.945 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522dcc0] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-06 11:23:58.961 Df Theo[29852:157d6] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:58.963 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522d680] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:58.964 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522db80] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:58.964 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522db80] Connection returned listener port: 0xf503
+2026-11-06 11:23:58.965 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522dcc0] invalidated after the last release of the connection object
+2026-11-06 11:23:58.966 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522de00] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-06 11:23:58.968 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-06 11:23:58.975 Df Theo[29852:157d3] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-06 11:23:58.975 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522dcc0] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-06 11:23:58.976 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522dcc0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-06 11:23:58.990 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:59.048 Df Theo[29852:157d3] [com.apple.BoardServices:XPCErrors] [C:1] Alloc <private>
+2026-11-06 11:23:59.048 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x80522e300] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:59.080 A  Theo[29852:157d3] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-06 11:23:59.082 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522de00] Connection returned listener port: 0xb703
+2026-11-06 11:23:59.093 A  Theo[29852:157d3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x80522d400] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.094 A  Theo[29852:157e3] (AppIntents) appintents:register process
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x80522ea80] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:59.094 E  Theo[29852:157d6] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:59.094 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x80522de00] Connection returned listener port: 0xb703
+2026-11-06 11:23:59.131 E  Theo[29852:157d6] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-06 11:23:59.131 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522ea80] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:59.131 Df Theo[29852:157d6] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:59.142 Df Theo[29852:157d6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.142 A  Theo[29852:157d6] (AppIntents) appintents:register process
+2026-11-06 11:23:59.144 Df Theo[29852:157d6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.144 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522ed00] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:59.144 E  Theo[29852:157e3] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.144 E  Theo[29852:157e3] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.145 Df Theo[29852:157d6] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:59.145 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522de00] Connection returned listener port: 0xb703
+2026-11-06 11:23:59.197 Df Theo[29852:157e3] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-06 11:23:59.197 A  Theo[29852:157e3] (CoreSpotlight) delete-domains
+2026-11-06 11:23:59.198 Df Theo[29852:157e3] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:23:59.198 Df Theo[29852:157e3] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-06 11:23:59.198 Df Theo[29852:157e3] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-06 11:23:59.198 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x80522e580] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-06 11:23:59.285 Df Theo[29852:157e2] [com.apple.xpc:connection] [0x80522ed00] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:59.285 Df Theo[29852:157e2] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:59.285 Df Theo[29852:157e2] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.285 A  Theo[29852:157e2] (AppIntents) appintents:register process
+2026-11-06 11:23:59.285 Df Theo[29852:157e2] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-06 11:23:59.285 Df Theo[29852:157e2] [com.apple.xpc:connection] [0x80522f5c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-06 11:23:59.286 E  Theo[29852:157d6] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.286 E  Theo[29852:157d6] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.286 Df Theo[29852:157e2] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-06 11:23:59.286 Df Theo[29852:157e2] [com.apple.xpc:connection] [0x80522de00] Connection returned listener port: 0xb703
+2026-11-06 11:23:59.289 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x80522f5c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-06 11:23:59.289 Df Theo[29852:157d6] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-06 11:23:59.289 E  Theo[29852:157d6] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-06 11:23:59.289 E  Theo[29852:157e2] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.289 E  Theo[29852:157e2] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-06 11:23:59.582 A  Theo[29852:157d3] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-06 11:23:59.883 Df Theo[29852:157d3] [com.apple.extensionkit:NSExtension] Class EXGetExtensionClass(void) returning EXConcreteExtension
+2026-11-06 11:23:59.884 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x8060d4000] activating connection: mach=true listener=false peer=false name=com.apple.pluginkit.pkd
+2026-11-06 11:23:59.884 A  Theo[29852:157d3] (PlugInKit) continuous-discovery
+2026-11-06 11:23:59.884 Df Theo[29852:157d3] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x805b3a7c0> created discovery driver
+2026-11-06 11:23:59.884 Df Theo[29852:157d3] [com.apple.PlugInKit:discovery] [d <private>] <PKHost:0x8040416c0> Beginning discovery for flags: 0, point: multiple
+2026-11-06 11:23:59.886 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:23:59.906 Df Theo[29852:157ed] [com.apple.PlugInKit:discovery] [d <private>] <PKHost:0x8040416c0> Completed discovery. Final # of matches: 21
+2026-11-06 11:23:59.906 Df Theo[29852:157e9] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x805b3a7c0> delivering update to host (21 plugins)
+2026-11-06 11:23:59.906 A  Theo[29852:157e9] (ExtensionFoundation) discovering extensions
+2026-11-06 11:23:59.911 Df Theo[29852:157e9] [com.apple.extensionkit:NSExtension] discovered extensions: attributes <private>, extensionSet {(
+    <EXConcreteExtension: 0x8060e9180> {id = com.apple.iBooksX.SharingExtension},
+    <EXConcreteExtension: 0x8060e9260> {id = com.apple.messages.ReplyExtension},
+    <EXConcreteExtension: 0x8060e9340> {id = com.apple.Notes.SharingExtension},
+    <EXConcreteExtension: 0x8060e9420> {id = com.apple.CloudSharingUI.CreateiCloudLinkExtension},
+    <EXConcreteExtension: 0x8060e9500> {id = com.apple.share.System.add-to-safari-reading-list},
+    <EXConcreteExtension: 0x8060e95e0> {id = com.apple.CloudSharingUI.CopyLink},
+    <EXConcreteExtension: 0x8060e96c0> {id = com.apple.share.Mail.compose},
+    <EXConcreteExtension: 0x8060e97a0> {id = com.apple.share.Messages.window},
+    <EXConcreteExtension: 0x8060e9880> {id = com.apple.share.System.set-desktop-image},
+    <EXConcreteExtension: 0x8060e9960> {id = com.apple.freeform.sharingextension},
+    <EXConcreteExtension: 0x8060e9a40> {id = com.apple.share.Mail.compose-back-to-sender},
+    <EXConcreteExtension: 0x8060e9b20> {id = com.apple.reminders.shari
+2026-11-06 11:23:59.911 Df Theo[29852:157ed] [com.apple.PlugInKit:discovery] <PKDiscoveryDriver:0x805b3a7c0> installing watchers for continuous discovery
+2026-11-06 11:23:59.912 Df Theo[29852:157ed] [com.apple.launchservices:appinstallation] registering for distributed notification com.apple.LaunchServices.pluginsregistered in this process
+2026-11-06 11:23:59.912 Df Theo[29852:157ed] [com.apple.launchservices:appinstallation] registering for distributed notification com.apple.LaunchServices.pluginsunregistered in this process
+2026-11-06 11:24:00.183 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:00.229 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:00.236 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-06 11:24:00.240 Df Theo[29852:157ed] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:24:00.240 Df Theo[29852:157ed] [com.apple.xpc:session] [0x803c44550] Session created.
+2026-11-06 11:24:00.240 Df Theo[29852:157ed] [com.apple.xpc:session] [0x803c44550] Session created from connection [0x8060d66c0]
+2026-11-06 11:24:00.240 Df Theo[29852:157ed] [com.apple.xpc:connection] [0x8060d66c0] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:24:00.240 Df Theo[29852:157ed] [com.apple.xpc:session] [0x803c44550] Session activated
+2026-11-06 11:24:00.253 Df Theo[29852:157e9] [com.apple.UIIntelligenceSupport:xpc] Connection established with agent PID: 29152
+2026-11-06 11:24:00.752 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:00.753 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:00.762 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-06 11:24:00.766 Df Theo[29852:157d3] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.controlcenter.statusitems
+2026-11-06 11:24:00.766 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x8068bdf40] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:00.766 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] FBSWorkspace registering source: <private>
+2026-11-06 11:24:00.769 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <private>
+2026-11-06 11:24:00.770 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x80669f660 <private>> attempting immediate handshake from activate
+2026-11-06 11:24:00.770 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x80669f660 <private>> sent handshake
+2026-11-06 11:24:00.770 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemSceneHostSettings__ on FBSSceneSettings
+2026-11-06 11:24:00.770 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemSceneClientSettings__ on FBSSceneClientSettings
+2026-11-06 11:24:00.771 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:24:00.772 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:24:00.772 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] Requesting scene <FBSScene: 0x80669f3e0; com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC> from com.apple.controlcenter.statusitems
+2026-11-06 11:24:00.773 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:24:00.774 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSHostedViewSceneSettings__ on FBSSceneSettings
+2026-11-06 11:24:00.774 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSClientHostedViewSceneSettings__ on FBSSceneClientSettings
+2026-11-06 11:24:00.774 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSStatusItemAuxiliaryViewSceneSettings__ on FBSSceneSettings
+2026-11-06 11:24:00.774 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension __NSClientStatusItemAuxiliaryViewSceneSettings__ on FBSSceneClientSettings
+2026-11-06 11:24:00.775 Df Theo[29852:157d3] [com.apple.FrontBoard:Common] Requesting scene <FBSScene: 0x80669f340; com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView> from com.apple.controlcenter.statusitems
+2026-11-06 11:24:00.776 A  Theo[29852:157d6] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:24:00.776 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:00.776 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Dropping transition context because the scene is reconnecting
+2026-11-06 11:24:00.777 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:00.777 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Dropping transition context because the scene is reconnecting
+2026-11-06 11:24:00.779 Df Theo[29852:157d6] [com.apple.FrontBoard:Common] Request for <FBSScene: 0x80669f3e0; com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC> complete!
+2026-11-06 11:24:00.779 Df Theo[29852:157d6] [com.apple.FrontBoard:Common] Request for <FBSScene: 0x80669f340; com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView> complete!
+2026-11-06 11:24:00.780 Df Theo[29852:157d6] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x80669f660 <private>> Reconnecting scene com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC
+2026-11-06 11:24:00.782 Df Theo[29852:157e9] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x80669f660 <private>> Reconnecting scene com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView
+2026-11-06 11:24:00.782 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:00.944 E  Theo[29852:157d3] [com.apple.AppKit:WarnOnce] It's not legal to call -layoutSubtreeIfNeeded on a view which is already being laid out.  If you are implementing the view's -layout method, you can call -[super layout] instead.  Break on void _NSDetectedLayoutRecursion(void) to debug.  This will be logged only once.  This may break in the future.
+2026-11-06 11:24:01.454 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.461 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.483 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.485 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.494 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.500 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.503 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.543 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.544 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.548 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.549 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.558 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.560 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.569 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.573 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.577 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.579 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.580 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.581 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.582 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.583 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.589 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.590 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.591 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.593 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.617 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.619 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.620 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.622 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.623 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.624 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.631 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.633 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.639 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.641 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.650 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.654 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.656 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.660 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.677 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.681 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.684 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.692 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.693 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.716 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.751 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.783 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:01.921 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:02.027 E  Theo[29852:157ed] (Metal) unable to find air64_v27 slice or a compatible one in binary archive '<private>' 
+ available slices: <private>
+2026-11-06 11:24:02.027 E  Theo[29852:157ed] (Metal) unable to find air64_v27 slice or a compatible one in binary archive '<private>' 
+ available slices: <private>
+2026-11-06 11:24:02.029 E  Theo[29852:157ed] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-06 11:24:02.029 Df Theo[29852:157ed] (libCoreFSCache.dylib) Invalidating cache
+2026-11-06 11:24:02.029 Df Theo[29852:157ed] [com.apple.xpc:connection] [0x806b91900] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-06 11:24:02.030 Df Theo[29852:157ed] [com.apple.xpc:connection] [0x806b91a40] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-06 11:24:02.030 A  Theo[29852:157d6] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.362 A  Theo[29852:157d6] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.366 E  Theo[29852:157d3] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-06 11:24:02.366 Df Theo[29852:157d3] (libCoreFSCache.dylib) Invalidating cache
+2026-11-06 11:24:02.366 A  Theo[29852:157ed] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.414 A  Theo[29852:157d6] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.423 A  Theo[29852:157ed] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.436 A  Theo[29852:157e3] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.438 A  Theo[29852:157ed] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.441 A  Theo[29852:157d6] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.446 A  Theo[29852:157ed] (Metal) Metal Compiling Shader
+2026-11-06 11:24:02.464 Df Theo[29852:157d3] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-06 11:24:02.464 Df Theo[29852:157d3] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-06 11:24:02.520 A  Theo[29852:157d6] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:24:02.680 Df Theo[29852:157d3] [com.apple.inputmethodkitClient:Client] +[IMKClient subclass]: chose IMKClient_Modern
+2026-11-06 11:24:02.683 Df Theo[29852:157d3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-06 11:24:02.695 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92580] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-06 11:24:02.705 Df Theo[29852:157d3] [com.apple.BoardServices:XPCErrors] [C:3] Alloc com.apple.backboard.hid-services.xpc
+2026-11-06 11:24:02.705 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92800] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:02.707 E  Theo[29852:157e3] [com.apple.BaseBoard:Common] Unable to obtain a task name port right for pid 160: (os/kern) failure (0x5)
+2026-11-06 11:24:02.709 Df Theo[29852:157d6] [com.apple.xpc:connection] [0x806b926c0] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService
+2026-11-06 11:24:02.710 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x806b926c0] invalidated after the last release of the connection object
+2026-11-06 11:24:02.724 Df Theo[29852:157d3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-06 11:24:02.816 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:03.064 Df Theo[29852:157d3] [com.apple.sharekit:Framework] SHKSharingServicePicker: initialized with items (
+	Swift.__StringStorage
+)
+2026-11-06 11:24:03.156 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92940] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:03.156 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b91f40] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-06 11:24:03.157 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b921c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:03.158 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b91f40] invalidated after the last release of the connection object
+2026-11-06 11:24:03.160 A  Theo[29852:157d6] (CoreSpotlight) end-index-batch
+2026-11-06 11:24:03.160 Df Theo[29852:157d6] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-06 11:24:03.161 A  Theo[29852:157d6] (CoreSpotlight) index-items
+2026-11-06 11:24:03.162 Df Theo[29852:157d6] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:24:03.162 Df Theo[29852:157ed] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-06 11:24:03.166 Df Theo[29852:157ed] [com.apple.xpc:connection] [0x806b91f40] activating connection: mach=false listener=false peer=false name=com.apple.SafariPlatformSupport.Helper
+2026-11-06 11:24:03.289 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:03.300 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:03.334 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:03.338 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC] Sending action(s) in update: NSSceneFenceAction
+2026-11-06 11:24:03.339 Df Theo[29852:157d3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController
+2026-11-06 11:24:03.340 Df Theo[29852:157d3] [com.apple.ViewBridge:miscellany] WARNING: <private> determined it was necessary to configure <private> to support remote view vibrancy
+2026-11-06 11:24:03.414 Df Theo[29852:157d3] [com.apple.FrontBoard:SceneClient] [com.apple.controlcenter:88E1C032-18F5-4D19-9B0F-7B982E3848FC-Aux[1]-NSStatusItemView] Received action(s) in scene-update: NSSceneFenceAction
+2026-11-06 11:24:03.896 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-06 11:24:04.250 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92440] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:04.251 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b926c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:24:04.251 Df Theo[29852:157eb] [com.apple.xpc:connection] [0x806b91f40] invalidated after the last release of the connection object
+2026-11-06 11:24:05.945 Df Theo[29852:157e3] [com.apple.inputAnalytics.client:IASignalAnalytics] channel:<private> signal:<private> sessionID:<private> timestamp:<private> payload:<private>
+2026-11-06 11:24:05.945 Df Theo[29852:157e3] [com.apple.xpc:connection] [0x806b91f40] activating connection: mach=true listener=false peer=false name=com.apple.inputanalyticsd
+2026-11-06 11:24:06.022 Df Theo[29852:157e3] [com.apple.inputAnalytics.client:IASignalAnalytics] channel:<private> signal:<private> sessionID:<private> timestamp:<private> payload:<private>
+2026-11-06 11:24:06.022 Df Theo[29852:157e3] [com.apple.inputAnalytics.client:IASignalAnalytics] channel:<private> signal:<private> sessionID:<private> timestamp:<private> payload:<private>
+2026-11-06 11:24:06.022 Df Theo[29852:157e3] [com.apple.inputAnalytics.client:IASignalAnalytics] channel:<private> signal:<private> sessionID:<private> timestamp:<private> payload:<private>
+2026-11-06 11:24:06.121 Df Theo[29852:157e2] [com.apple.CoreAnalytics:client] Received configuration update from daemon (initial)
+2026-11-06 11:24:16.111 A  Theo[29852:157d3] (TCC) TCCAccessRequest() IPC
+2026-11-06 11:24:16.111 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92a80] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-06 11:24:16.113 Df Theo[29852:157d3] [com.apple.xpc:connection] [0x806b92a80] invalidated after the last release of the connection object
+2026-11-06 11:24:16.123 Df Theo[29852:157d3] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) NSAccessibility Request Received
+2026-11-06 11:24:16.295 Df Theo[29852:157e2] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.

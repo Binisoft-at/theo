@@ -1,0 +1,808 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-06 11:22:27.728 Df TheoWatch[26183:132b9] [com.apple.xpc:connection] [0x10145d7c0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:22:28.309 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] WKApplicationExtensionMain:127: applicationDelegateClassName=SwiftUI.ExtensionDelegate
+2026-11-06 11:22:28.319 Df TheoWatch[26183:132b9] [com.apple.xpc:connection] [0x10145f480] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:22:28.333 A  TheoWatch[26183:132dd] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:22:28.343 Df TheoWatch[26183:132e8] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-06 11:22:28.343 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:SaltUICore] SaltUICore was linked successfully!
+2026-11-06 11:22:28.348 Df TheoWatch[26183:132ee] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:22:28.349 Df TheoWatch[26183:132e8] [com.apple.xpc:connection] [0x10145fd40] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:22:28.353 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-06 11:22:28.355 Df TheoWatch[26183:132b9] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:22:28.355 Df TheoWatch[26183:132b9] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:22:28.356 Df TheoWatch[26183:132ed] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:22:28.357 Df TheoWatch[26183:132b9] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-06 11:22:28.360 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-06 11:22:28.361 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-06 11:22:28.362 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x1016472f0>
+2026-11-06 11:22:28.362 Df TheoWatch[26183:132e9] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:22:28.362 Df TheoWatch[26183:132e9] [com.apple.xpc:connection] [0x101450000] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:22:28.367 Df TheoWatch[26183:132ed] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:22:28.367 Df TheoWatch[26183:132ed] [com.apple.runningboard:connection] Identity resolved as app<at.binisoft.theo.watchkitapp((null))>
+2026-11-06 11:22:28.367 A  TheoWatch[26183:132dd] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:22:28.367 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x1016472f0>
+2026-11-06 11:22:28.368 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x101643600>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1127 (elapsed = 0).
+2026-11-06 11:22:28.369 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-06 11:22:28.372 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplication init]:58: Inited
+2026-11-06 11:22:28.375 Df TheoWatch[26183:132b9] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-06 11:22:28.376 Df TheoWatch[26183:132b9] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-06 11:22:28.377 Df TheoWatch[26183:132b9] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x10169e860; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-06 11:22:28.377 Df TheoWatch[26183:132b9] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1015a9900 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-06 11:22:28.377 Df TheoWatch[26183:132b9] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1015a9900 com.apple.frontboard.systemappservices> sent handshake
+2026-11-06 11:22:28.378 Df TheoWatch[26183:132b9] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x10166a260>
+2026-11-06 11:22:28.383 Df TheoWatch[26183:132b9] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:22:28.384 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:28.384 Df TheoWatch[26183:132b9] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:28.385 Df TheoWatch[26183:132b9] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:28.385 Df TheoWatch[26183:132b9] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:28.388 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-06 11:22:28.390 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:28.393 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:22:28.394 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x101450140> for initial
+2026-11-06 11:22:28.394 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x101450140> for CADisplay KVO
+2026-11-06 11:22:28.395 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:22:28.396 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:22:28.399 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:28.399 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-06 11:22:28.400 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-06 11:22:28.403 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-06 11:22:28.403 Df TheoWatch[26183:132b9] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-06 11:22:28.403 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:28.404 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-06 11:22:28.407 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-06 11:22:28.411 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:28.411 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-06 11:22:28.413 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-06 11:22:28.414 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-06 11:22:28.414 Df TheoWatch[26183:132e9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:28.416 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CUISWatchKitApplicationSceneTransitionContext> on FBSSceneTransitionContext
+2026-11-06 11:22:28.417 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneSettings setting counterpart class: PUICMutableApplicationSceneSettings
+2026-11-06 11:22:28.417 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:28.426 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:22:28.429 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneClientSettings setting counterpart class: PUICMutableApplicationSceneClientSettings
+2026-11-06 11:22:28.429 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:22:28.436 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:22:28.439 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <PUICApplicationSceneTransitionContextInterface> on FBSSceneTransitionContext
+2026-11-06 11:22:28.439 Df TheoWatch[26183:132ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:22:28.492 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:didFinishLaunchingSuspendedWithOptions:]:780: launched suspended
+2026-11-06 11:22:28.495 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:353: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.495 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] setMainExtensionAndApplicationBundles:24: extensionBundle: /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app, appBundle /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app
+2026-11-06 11:22:28.495 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] +[SPRemoteInterface startRemoteInterfaceWithBundle:]:308: startRemoteInterfaceWithBundle:NSBundle </Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app> (loaded)
+2026-11-06 11:22:28.495 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3862: SwiftUI.ExtensionDelegate
+2026-11-06 11:22:28.501 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3876: Created WKExtensionDelegate of class SwiftUI.ExtensionDelegate
+2026-11-06 11:22:28.506 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _extensionDelegateDidChange]:3883: delegate <SwiftUI.ExtensionDelegate: 0x1016c2760> _handlesBGTasks=1
+2026-11-06 11:22:28.507 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] +[SPRemoteInterface _remoteIdentifier]_block_invoke:344: ComF:->ComD Gizmo app identifier at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.507 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPRemoteInterface setApplicationConnection:]:4091: connection=<SPExtensionConnection: 0x101451a40>
+2026-11-06 11:22:28.507 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3951: did begin using
+2026-11-06 11:22:28.507 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3970: no complication implemented so not instantiating complication server.
+2026-11-06 11:22:28.507 Df TheoWatch[26183:132b9] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:378: Set up native app for at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.514 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke:873: Got applicationRootInterfaceControllerClass SwiftUI.InterfaceController from extensionDelegate
+2026-11-06 11:22:28.514 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:933: self.hasReceivedNonClockKitEvent == NO
+2026-11-06 11:22:28.515 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-06 11:22:28.535 Df TheoWatch[26183:132b9] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-06 11:22:28.535 Df TheoWatch[26183:132b9] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-06 11:22:28.535 Df TheoWatch[26183:132b9] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-06 11:22:28.555 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate didReceiveNonClockKitEvent]:3358: firstNonClockKitEvent=1
+2026-11-06 11:22:28.561 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:282: connecting to gizmoappd for serverIdentifier=at.binisoft.theo.watchkitapp clientIdentifier=66470001
+2026-11-06 11:22:28.561 Df TheoWatch[26183:132b9] [com.apple.xpc:connection] [0x101450dc0] activating connection: mach=true listener=false peer=false name=com.apple.gizmoappd
+2026-11-06 11:22:28.562 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:291: Began suspended launch
+2026-11-06 11:22:28.562 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:945: root view controller hasn't loaded yet
+2026-11-06 11:22:28.562 A  TheoWatch[26183:132b9] (PepperUICore) Scene didInitializeWithEvent
+2026-11-06 11:22:28.564 Df TheoWatch[26183:132b9] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-06 11:22:28.569 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:configurationForConnectingSceneSession:options:]:1511: connectingSceneSession.role=UIWindowSceneSessionRoleApplication, connectingSceneSession.persistentIdentifier=at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.569 E  TheoWatch[26183:132b9] [com.apple.UIKit:SceneConfiguration] Info.plist contained no UIScene configuration dictionary (looking for configuration named "Default Configuration")
+2026-11-06 11:22:28.570 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:configurationForConnectingSceneSession:options:]:1516: Returning configuration.delegateClass=SPApplicationSceneDelegate
+2026-11-06 11:22:28.570 Df TheoWatch[26183:132b9] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1eb0826d0>
+2026-11-06 11:22:28.571 Df TheoWatch[26183:132b9] [com.apple.UIKit:BackgroundTask] Reusing background assertion <BKSProcessAssertion: 0x1016472f0>
+2026-11-06 11:22:28.571 Df TheoWatch[26183:132b9] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x1016472f0>
+2026-11-06 11:22:28.572 Df TheoWatch[26183:132b9] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x101705f40>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1127 (elapsed = 0).
+2026-11-06 11:22:28.573 Df TheoWatch[26183:132b9] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 2 -> 2, <UIWindowScene: 0x1016f2e00> (at.binisoft.theo.watchkitapp)
+2026-11-06 11:22:28.576 Df TheoWatch[26183:132b9] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomWatch to LastOneWins
+2026-11-06 11:22:28.578 Df TheoWatch[26183:132b9] [com.apple.UIKit:EventDeferring] [0x1016f9b20] Initialized with scene: <UIWindowScene: 0x1016f2e00>; behavior: <_UIEventDeferringBehavior_Default: 0x10508c260>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-06 11:22:28.579 Df TheoWatch[26183:132b9] [com.apple.BacklightServices:scenes] 0x1016ade00 setDelegate:<0x1016adc20 _UIBacklightEnvironment> hasDelegate:YES for environment:at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.580 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101452300; >
+2026-11-06 11:22:28.580 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101452580; >
+2026-11-06 11:22:28.581 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x1014526c0; >
+2026-11-06 11:22:28.585 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:28.585 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:28.590 Df TheoWatch[26183:132b9] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101452300; >
+2026-11-06 11:22:28.600 Df TheoWatch[26183:132b9] [com.apple.xpc:connection] [0x101451f40] activating connection: mach=true listener=false peer=false name=com.apple.Carousel.CSLSDetentService
+2026-11-06 11:22:28.601 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke_2:973: Calling applicationDidFinishLaunching on <SwiftUI.ExtensionDelegate: 0x1016c2760>
+2026-11-06 11:22:28.602 Df TheoWatch[26183:132e9] [com.apple.Carousel:detents] received preferences
+2026-11-06 11:22:28.602 Df TheoWatch[26183:132e9] [com.apple.Carousel:detents] CSLSDetentServiceConnection: service com.apple.Carousel.CSLSDetentService connected
+2026-11-06 11:22:28.602 Df TheoWatch[26183:132e9] [com.apple.Carousel:detents] received detents, mapped by type {
+}
+2026-11-06 11:22:28.620 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewController:createCompanionControllerClass:properties:initializationContextID:info:gestureDescriptions:interfaceControllerCreationCompletion:]:1753: GizF:<-GizApp controllerClass=SwiftUI.InterfaceController
+2026-11-06 11:22:28.621 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface createViewController:className:properties:contextID:info:gestureDescriptions:clientIdentifier:interfaceControllerCreationCompletion:]_block_invoke_3:3149: !!! Create controller - clientIdentifier:66470001, viewControllerIdentifier:66470002, className:SwiftUI.InterfaceController
+2026-11-06 11:22:28.621 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:28.622 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2439: registering controller <SwiftUI.InterfaceController: 0x101570a80> with id 66470002 and clientIdentifier 66470001
+2026-11-06 11:22:28.622 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2452: _interfaceControllers={
+    66470002 = "<SwiftUI.InterfaceController: 0x101570a80>";
+}
+2026-11-06 11:22:28.622 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2462: Found 0 pending blocks for view controller with ID 66470002. Executing them now.
+2026-11-06 11:22:28.622 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:28.648 Df TheoWatch[26183:132ef] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(com.apple.LaunchServices.database) fired for session key LSSessionKey(system: 0 uid: 501)
+2026-11-06 11:22:28.707 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:28.717 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:28.718 Df TheoWatch[26183:132b9] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-06 11:22:28.718 Df TheoWatch[26183:132b9] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x1016f2e00: Window became key in scene: UIWindow: 0x10157a800; contextId: 0xF9074174: reason: UIWindowScene: 0x1016f2e00: Window requested to become key in scene: 0x10157a800
+2026-11-06 11:22:28.718 Df TheoWatch[26183:132b9] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x1016f2e00; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x10157a800; reason: UIWindowScene: 0x1016f2e00: Window requested to become key in scene: 0x10157a800
+2026-11-06 11:22:28.718 Df TheoWatch[26183:132b9] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x10157a800; contextId: 0xF9074174; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.719 Df TheoWatch[26183:132b9] [com.apple.UIKit:EventDeferring] [0x1016f9b20] Begin local event deferring requested for token: 0x1016c22e0; environments: 1; reason: UIWindowScene: 0x1016f2e00: Begin event deferring in keyboardFocus for window: 0x10157a800
+2026-11-06 11:22:28.720 Df TheoWatch[26183:132b9] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-06 11:22:28.720 Df TheoWatch[26183:132b9] [com.apple.xpc:connection] [0x10145ea80] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:22:28.722 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureNegativeInteraction: 0x1016277a0>) installed: NO -> YES
+2026-11-06 11:22:28.723 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUICrownPressDismissGestureInteraction: 0x1016b6080>) installed: NO -> YES
+2026-11-06 11:22:28.724 Df TheoWatch[26183:132e9] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-06 11:22:28.724 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureNegativeInteraction: 0x1016277a0> -> <UIWindow: 0x10157a800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1016ddf60>; backgroundColor = <UIDynamicSystemColor: 0x101640940; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x101643e40>>
+2026-11-06 11:22:28.725 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] didMoveToView: <WAGUICrownPressDismissGestureInteraction: 0x1016b6080> -> <UIWindow: 0x10157a800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1050c7460>; backgroundColor = <UIDynamicSystemColor: 0x101640940; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x101643e40>>
+2026-11-06 11:22:28.725 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:WatchGesturesApplication] Enabled default watch gesture pinch interactions for key window: <UIWindow: 0x10157a800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1050c7460>; backgroundColor = <UIDynamicSystemColor: 0x101640940; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x101643e40>>
+2026-11-06 11:22:28.727 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:677: isSuspended=1, isSuspendedUnderLock=0, isSuspendedEventsOnly=0
+2026-11-06 11:22:28.731 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface forwardDidEnterForegroundToScenesInViewController:]:3567: viewControllerID=66470002
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:705: Updating appState
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 1 to 0
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 1 to 0
+2026-11-06 11:22:28.732 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]:1023: Updating appState
+2026-11-06 11:22:28.733 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:22:28.733 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:22:28.733 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 0 to 0
+2026-11-06 11:22:28.733 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 0 to 0
+2026-11-06 11:22:28.733 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1041: creating os_transaction appActive-4F911C79-0884-4150-BBA9-415C13B05214
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1047: Calling applicationDidBecomeActive on <SwiftUI.ExtensionDelegate: 0x1016c2760>
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewControllerActivate:]:1771: GizF:<-GizApp vcID=66470002
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _createActiveViewControllerTransaction:]:4729: created os_transaction activeVC-66470002-1414211A-6D97-4CFC-AAFE-8EC4DCCB0DC0, _activeViewControllerTransactions={
+    66470002 = "<OS_os_transaction: activeVC-66470002-1414211A-6D97-4CFC-AAFE-8EC4DCCB0DC0>";
+}
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] +[SPRemoteInterface setControllerActive:]:1140: after setting 66470002 active, __controllerActive={
+    66470002 = 1;
+}
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface _activateViewController:clientIdentifier:]:3273: Calling willActivate for 66470002
+2026-11-06 11:22:28.734 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:28.737 Df TheoWatch[26183:132b9] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:28.738 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2048 -> 6144; animating application lifecycle event: 0
+2026-11-06 11:22:28.738 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6144 -> 4096; animating application lifecycle event: 0
+2026-11-06 11:22:28.738 Df TheoWatch[26183:132b9] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4096 -> 0; animating application lifecycle event: 0
+2026-11-06 11:22:28.739 Df TheoWatch[26183:132b9] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-06 11:22:28.743 Df TheoWatch[26183:132e9] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:22:28.745 Df TheoWatch[26183:132e9] [com.apple.xpc:session] [0x101626a80] Session created.
+2026-11-06 11:22:28.745 Df TheoWatch[26183:132e9] [com.apple.xpc:session] [0x101626a80] Session created from connection [0x101460780]
+2026-11-06 11:22:28.746 Df TheoWatch[26183:132e9] [com.apple.xpc:connection] [0x101460780] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:22:28.746 Df TheoWatch[26183:132e9] [com.apple.xpc:session] [0x101626a80] Session activated
+2026-11-06 11:22:28.812 Df TheoWatch[26183:132ef] [com.apple.watchkit:default] -[SPExtensionConnection setExtensionIsDebugging:]:1014: for at.binisoft.theo.watchkitapp, extensionIsDebugging=0
+2026-11-06 11:22:29.095 Df TheoWatch[26183:132ef] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 2
+2026-11-06 11:22:29.095 Df TheoWatch[26183:132ef] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x101705f40>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1127 (elapsed = 1), _expireHandler: <__NSGlobalBlock__: 0x1eb0826d0>
+2026-11-06 11:22:29.096 Df TheoWatch[26183:132ef] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x1016472f0> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x101705f40>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1127 (elapsed = 1))
+2026-11-06 11:22:29.118 Df TheoWatch[26183:132b9] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-06 11:22:29.120 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x1014666c0>) installed: NO -> YES
+2026-11-06 11:22:29.123 Df TheoWatch[26183:132b9] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x1014666c0> -> <SwiftUI.UpdateCoalescingCollectionView: 0x105248e00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x10530dac0>; layer = <CALayer: 0x105273ea0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x10526d880>; dataSource: (null)>
+2026-11-06 11:22:29.261 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.262 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.280 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.281 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.328 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.329 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.418 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-06 11:22:29.418 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x101643600>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1127 (elapsed = 1), _expireHandler: (null)
+2026-11-06 11:22:29.418 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x1016472f0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x101643600>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1127 (elapsed = 1))
+2026-11-06 11:22:29.419 Df TheoWatch[26183:132e9] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x1016472f0> for task identifier: 1
+2026-11-06 11:22:29.526 A  TheoWatch[26183:132e9] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:22:29.620 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.621 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.632 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface finishActivatingVCWithID:completion:]:3396: interfaceViewControllerId is active, calling block immediately = 66470002
+2026-11-06 11:22:29.632 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:29.632 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] -[SPRemoteInterface didAppearViewController:clientIdentifier:]_block_invoke_4:3340: Calling didAppear for 66470002
+2026-11-06 11:22:29.632 Df TheoWatch[26183:132b9] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:29.633 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.633 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.633 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:29.634 Df TheoWatch[26183:132b9] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:29.634 Df TheoWatch[26183:132b9] [com.apple.UIKit:ExternalGestureCollector] Active external gesture recognizers did change: <_UIExternalGestureCollection: 0x1055dd360; active gestures: "doubleTap, flick">
+2026-11-06 11:22:29.637 Df TheoWatch[26183:132b9] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-06 11:22:29.640 Df TheoWatch[26183:132b9] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:29.681 Df TheoWatch[26183:132b9] [com.apple.network:activity] Unsetting the global parent activity (null)
+2026-11-06 11:22:29.681 Df TheoWatch[26183:132b9] [com.apple.network:activity] Unset the global parent activity
+2026-11-06 11:22:29.681 Df TheoWatch[26183:132b9] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-06 11:22:30.010 A  TheoWatch[26183:132ef] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:22:48.335 Df TheoWatch[26493:1371a] [com.apple.xpc:connection] [0x105c5d7c0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:22:48.598 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] WKApplicationExtensionMain:127: applicationDelegateClassName=SwiftUI.ExtensionDelegate
+2026-11-06 11:22:48.600 Df TheoWatch[26493:1371a] [com.apple.xpc:connection] [0x105c5f200] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:22:48.606 A  TheoWatch[26493:1371e] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:22:48.609 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:SaltUICore] SaltUICore was linked successfully!
+2026-11-06 11:22:48.610 Df TheoWatch[26493:13724] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:22:48.620 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-06 11:22:48.652 Df TheoWatch[26493:1371a] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:22:48.652 Df TheoWatch[26493:1371a] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:22:48.653 Df TheoWatch[26493:1371a] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-06 11:22:48.653 Df TheoWatch[26493:1371f] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-06 11:22:48.653 Df TheoWatch[26493:1371f] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-06 11:22:48.653 Df TheoWatch[26493:1371f] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x105e65630>
+2026-11-06 11:22:48.654 Df TheoWatch[26493:1371f] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:22:48.654 Df TheoWatch[26493:1371f] [com.apple.xpc:connection] [0x105c5fe80] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:22:48.654 Df TheoWatch[26493:13722] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-06 11:22:48.654 Df TheoWatch[26493:13721] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:22:48.655 Df TheoWatch[26493:13722] [com.apple.xpc:connection] [0x105c50140] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:22:48.656 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplication init]:58: Inited
+2026-11-06 11:22:48.656 Df TheoWatch[26493:1371a] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-06 11:22:48.657 Df TheoWatch[26493:13721] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:22:48.657 A  TheoWatch[26493:1371d] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:22:48.657 Df TheoWatch[26493:13721] [com.apple.runningboard:connection] Identity resolved as app<at.binisoft.theo.watchkitapp((null))>
+2026-11-06 11:22:48.657 Df TheoWatch[26493:1371a] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371f] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x105e65630>
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371f] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x105eac0c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1147 (elapsed = 0).
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371a] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x105e98be0; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371a] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x105da95e0 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-06 11:22:48.658 Df TheoWatch[26493:1371a] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x105da95e0 com.apple.frontboard.systemappservices> sent handshake
+2026-11-06 11:22:48.659 Df TheoWatch[26493:1371a] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x105ea54a0>
+2026-11-06 11:22:48.659 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:48.659 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:48.660 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:22:48.660 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:22:48.661 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:22:48.661 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:48.661 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-06 11:22:48.661 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-06 11:22:48.662 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-06 11:22:48.662 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:48.662 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-06 11:22:48.663 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-06 11:22:48.663 Df TheoWatch[26493:1371a] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:22:48.664 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:48.664 Df TheoWatch[26493:1371a] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:48.665 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-06 11:22:48.665 Df TheoWatch[26493:1371a] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:48.665 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-06 11:22:48.665 Df TheoWatch[26493:1371a] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:22:48.665 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-06 11:22:48.666 Df TheoWatch[26493:1371f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:22:48.667 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CUISWatchKitApplicationSceneTransitionContext> on FBSSceneTransitionContext
+2026-11-06 11:22:48.667 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneSettings setting counterpart class: PUICMutableApplicationSceneSettings
+2026-11-06 11:22:48.667 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneSettingsExtension on FBSSceneSettings
+2026-11-06 11:22:48.668 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-06 11:22:48.668 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:22:48.669 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneClientSettings setting counterpart class: PUICMutableApplicationSceneClientSettings
+2026-11-06 11:22:48.669 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:22:48.669 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:22:48.671 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <PUICApplicationSceneTransitionContextInterface> on FBSSceneTransitionContext
+2026-11-06 11:22:48.672 Df TheoWatch[26493:1371e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:22:48.672 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x105c50640> for initial
+2026-11-06 11:22:48.672 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x105c50640> for CADisplay KVO
+2026-11-06 11:22:48.677 Df TheoWatch[26493:1371a] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-06 11:22:48.699 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate application:didFinishLaunchingSuspendedWithOptions:]:780: launched suspended
+2026-11-06 11:22:48.699 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:353: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.700 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] setMainExtensionAndApplicationBundles:24: extensionBundle: /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app, appBundle /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] +[SPRemoteInterface startRemoteInterfaceWithBundle:]:308: startRemoteInterfaceWithBundle:NSBundle </Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app> (loaded)
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3862: SwiftUI.ExtensionDelegate
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3876: Created WKExtensionDelegate of class SwiftUI.ExtensionDelegate
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _extensionDelegateDidChange]:3883: delegate <SwiftUI.ExtensionDelegate: 0x105eda9a0> _handlesBGTasks=1
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] +[SPRemoteInterface _remoteIdentifier]_block_invoke:344: ComF:->ComD Gizmo app identifier at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPRemoteInterface setApplicationConnection:]:4091: connection=<SPExtensionConnection: 0x105c51b80>
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3951: did begin using
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3970: no complication implemented so not instantiating complication server.
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:378: Set up native app for at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.701 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke:873: Got applicationRootInterfaceControllerClass SwiftUI.InterfaceController from extensionDelegate
+2026-11-06 11:22:48.702 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:933: self.hasReceivedNonClockKitEvent == NO
+2026-11-06 11:22:48.702 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-06 11:22:48.703 Df TheoWatch[26493:1371a] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-06 11:22:48.703 Df TheoWatch[26493:1371a] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-06 11:22:48.703 Df TheoWatch[26493:1371a] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-06 11:22:48.704 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate didReceiveNonClockKitEvent]:3358: firstNonClockKitEvent=1
+2026-11-06 11:22:48.704 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:282: connecting to gizmoappd for serverIdentifier=at.binisoft.theo.watchkitapp clientIdentifier=677D0001
+2026-11-06 11:22:48.704 Df TheoWatch[26493:1371a] [com.apple.xpc:connection] [0x105c503c0] activating connection: mach=true listener=false peer=false name=com.apple.gizmoappd
+2026-11-06 11:22:48.705 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:291: Began suspended launch
+2026-11-06 11:22:48.705 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:945: root view controller hasn't loaded yet
+2026-11-06 11:22:48.705 A  TheoWatch[26493:1371a] (PepperUICore) Scene didInitializeWithEvent
+2026-11-06 11:22:48.706 Df TheoWatch[26493:1371a] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-06 11:22:48.710 Df TheoWatch[26493:1371a] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 2 -> 2, <UIWindowScene: 0x105dea600> (at.binisoft.theo.watchkitapp)
+2026-11-06 11:22:48.711 Df TheoWatch[26493:1371a] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomWatch to LastOneWins
+2026-11-06 11:22:48.712 Df TheoWatch[26493:1371a] [com.apple.UIKit:EventDeferring] [0x105eeea70] Initialized with scene: <UIWindowScene: 0x105dea600>; behavior: <_UIEventDeferringBehavior_Default: 0x1098963a0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-06 11:22:48.712 Df TheoWatch[26493:1371a] [com.apple.BacklightServices:scenes] 0x105f13fc0 setDelegate:<0x105f13d80 _UIBacklightEnvironment> hasDelegate:YES for environment:at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.713 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x105c52080; >
+2026-11-06 11:22:48.713 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x105c52300; >
+2026-11-06 11:22:48.713 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x105c52440; >
+2026-11-06 11:22:48.718 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:48.718 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:48.719 Df TheoWatch[26493:1371a] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x105c52080; >
+2026-11-06 11:22:48.727 Df TheoWatch[26493:1371a] [com.apple.xpc:connection] [0x105c51e00] activating connection: mach=true listener=false peer=false name=com.apple.Carousel.CSLSDetentService
+2026-11-06 11:22:48.732 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke_2:973: Calling applicationDidFinishLaunching on <SwiftUI.ExtensionDelegate: 0x105eda9a0>
+2026-11-06 11:22:48.733 Df TheoWatch[26493:13722] [com.apple.Carousel:detents] received preferences
+2026-11-06 11:22:48.733 Df TheoWatch[26493:13722] [com.apple.Carousel:detents] CSLSDetentServiceConnection: service com.apple.Carousel.CSLSDetentService connected
+2026-11-06 11:22:48.733 Df TheoWatch[26493:13722] [com.apple.Carousel:detents] received detents, mapped by type {
+}
+2026-11-06 11:22:48.737 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewController:createCompanionControllerClass:properties:initializationContextID:info:gestureDescriptions:interfaceControllerCreationCompletion:]:1753: GizF:<-GizApp controllerClass=SwiftUI.InterfaceController
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface createViewController:className:properties:contextID:info:gestureDescriptions:clientIdentifier:interfaceControllerCreationCompletion:]_block_invoke_3:3149: !!! Create controller - clientIdentifier:677D0001, viewControllerIdentifier:677D0002, className:SwiftUI.InterfaceController
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2439: registering controller <SwiftUI.InterfaceController: 0x10986b720> with id 677D0002 and clientIdentifier 677D0001
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2452: _interfaceControllers={
+    677D0002 = "<SwiftUI.InterfaceController: 0x10986b720>";
+}
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2462: Found 0 pending blocks for view controller with ID 677D0002. Executing them now.
+2026-11-06 11:22:48.738 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:48.746 Df TheoWatch[26493:13722] [com.apple.watchkit:default] -[SPExtensionConnection setExtensionIsDebugging:]:1014: for at.binisoft.theo.watchkitapp, extensionIsDebugging=0
+2026-11-06 11:22:48.750 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:48.763 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:48.763 Df TheoWatch[26493:1371a] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x105dea600: Window became key in scene: UIWindow: 0x105d78000; contextId: 0xC8F72F83: reason: UIWindowScene: 0x105dea600: Window requested to become key in scene: 0x105d78000
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x105dea600; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x105d78000; reason: UIWindowScene: 0x105dea600: Window requested to become key in scene: 0x105d78000
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x105d78000; contextId: 0xC8F72F83; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.UIKit:EventDeferring] [0x105eeea70] Begin local event deferring requested for token: 0x105e61860; environments: 1; reason: UIWindowScene: 0x105dea600: Begin event deferring in keyboardFocus for window: 0x105d78000
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-06 11:22:48.764 Df TheoWatch[26493:1371a] [com.apple.xpc:connection] [0x105c60000] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:22:48.765 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureNegativeInteraction: 0x105ec8640>) installed: NO -> YES
+2026-11-06 11:22:48.766 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUICrownPressDismissGestureInteraction: 0x1098d4580>) installed: NO -> YES
+2026-11-06 11:22:48.766 Df TheoWatch[26493:13721] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-06 11:22:48.768 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureNegativeInteraction: 0x105ec8640> -> <UIWindow: 0x105d78000; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x105ee23f0>; backgroundColor = <UIDynamicSystemColor: 0x105ea8380; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x105ea86c0>>
+2026-11-06 11:22:48.768 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] didMoveToView: <WAGUICrownPressDismissGestureInteraction: 0x1098d4580> -> <UIWindow: 0x105d78000; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1098dda80>; backgroundColor = <UIDynamicSystemColor: 0x105ea8380; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x105ea86c0>>
+2026-11-06 11:22:48.768 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:WatchGesturesApplication] Enabled default watch gesture pinch interactions for key window: <UIWindow: 0x105d78000; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1098dda80>; backgroundColor = <UIDynamicSystemColor: 0x105ea8380; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x105ea86c0>>
+2026-11-06 11:22:48.771 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:677: isSuspended=1, isSuspendedUnderLock=0, isSuspendedEventsOnly=0
+2026-11-06 11:22:48.772 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface forwardDidEnterForegroundToScenesInViewController:]:3567: viewControllerID=677D0002
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:705: Updating appState
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 1 to 0
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 1 to 0
+2026-11-06 11:22:48.773 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]:1023: Updating appState
+2026-11-06 11:22:48.774 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:22:48.774 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:22:48.774 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 0 to 0
+2026-11-06 11:22:48.774 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 0 to 0
+2026-11-06 11:22:48.775 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1041: creating os_transaction appActive-9642799D-B168-4A23-A99B-0B384F4925BD
+2026-11-06 11:22:48.775 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1047: Calling applicationDidBecomeActive on <SwiftUI.ExtensionDelegate: 0x105eda9a0>
+2026-11-06 11:22:48.776 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewControllerActivate:]:1771: GizF:<-GizApp vcID=677D0002
+2026-11-06 11:22:48.776 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _createActiveViewControllerTransaction:]:4729: created os_transaction activeVC-677D0002-EF2EF50E-DE98-4898-B355-A650D2C5D554, _activeViewControllerTransactions={
+    677D0002 = "<OS_os_transaction: activeVC-677D0002-EF2EF50E-DE98-4898-B355-A650D2C5D554>";
+}
+2026-11-06 11:22:48.777 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] +[SPRemoteInterface setControllerActive:]:1140: after setting 677D0002 active, __controllerActive={
+    677D0002 = 1;
+}
+2026-11-06 11:22:48.777 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:48.777 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface _activateViewController:clientIdentifier:]:3273: Calling willActivate for 677D0002
+2026-11-06 11:22:48.777 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:48.778 Df TheoWatch[26493:1371a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:48.779 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2048 -> 6144; animating application lifecycle event: 0
+2026-11-06 11:22:48.779 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6144 -> 4096; animating application lifecycle event: 0
+2026-11-06 11:22:48.779 Df TheoWatch[26493:1371a] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4096 -> 0; animating application lifecycle event: 0
+2026-11-06 11:22:48.780 Df TheoWatch[26493:1371a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-06 11:22:48.780 Df TheoWatch[26493:13721] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:22:48.781 Df TheoWatch[26493:13721] [com.apple.xpc:session] [0x105e3d220] Session created.
+2026-11-06 11:22:48.781 Df TheoWatch[26493:13721] [com.apple.xpc:session] [0x105e3d220] Session created from connection [0x105c60640]
+2026-11-06 11:22:48.781 Df TheoWatch[26493:13721] [com.apple.xpc:connection] [0x105c60640] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:22:48.781 Df TheoWatch[26493:13721] [com.apple.xpc:session] [0x105e3d220] Session activated
+2026-11-06 11:22:48.951 Df TheoWatch[26493:1371a] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-06 11:22:48.953 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x105c666c0>) installed: NO -> YES
+2026-11-06 11:22:48.955 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x105c666c0> -> <SwiftUI.UpdateCoalescingCollectionView: 0x109a54e00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x109b21980>; layer = <CALayer: 0x109a7fd20>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x109a75c00>; dataSource: (null)>
+2026-11-06 11:22:49.012 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x105c6b200>) installed: NO -> YES
+2026-11-06 11:22:49.042 Df TheoWatch[26493:1371a] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x105c6b200> -> <SwiftUI.UpdateCoalescingCollectionView: 0x105d32a00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x109bb02c0>; layer = <CALayer: 0x109ba8ba0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x109978000>; dataSource: (null)>
+2026-11-06 11:22:49.311 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.311 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.312 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.313 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.337 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.337 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.344 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface finishActivatingVCWithID:completion:]:3396: interfaceViewControllerId is active, calling block immediately = 677D0002
+2026-11-06 11:22:49.344 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:22:49.344 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] -[SPRemoteInterface didAppearViewController:clientIdentifier:]_block_invoke_4:3340: Calling didAppear for 677D0002
+2026-11-06 11:22:49.344 Df TheoWatch[26493:1371a] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:22:49.344 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.345 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.345 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.346 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.346 Df TheoWatch[26493:1371a] [com.apple.UIKit:ExternalGestureCollector] Active external gesture recognizers did change: <_UIExternalGestureCollection: 0x10f14a9a0; active gestures: "doubleTap, flick">
+2026-11-06 11:22:49.347 Df TheoWatch[26493:1371a] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-06 11:22:49.347 Df TheoWatch[26493:1371a] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x105eac0c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1147 (elapsed = 1), _expireHandler: (null)
+2026-11-06 11:22:49.347 Df TheoWatch[26493:1371a] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x105e65630> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x105eac0c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1147 (elapsed = 1))
+2026-11-06 11:22:49.348 Df TheoWatch[26493:1371a] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x105e65630> for task identifier: 1
+2026-11-06 11:22:49.348 Df TheoWatch[26493:1371a] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-06 11:22:49.355 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:22:49.356 Df TheoWatch[26493:1371a] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:22:49.361 A  TheoWatch[26493:1371a] (PepperUICore) Scene handleEvent
+2026-11-06 11:22:49.362 Df TheoWatch[26493:1371a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:22:49.405 Df TheoWatch[26493:1371a] [com.apple.network:activity] Unsetting the global parent activity (null)
+2026-11-06 11:22:49.405 Df TheoWatch[26493:1371a] [com.apple.network:activity] Unset the global parent activity
+2026-11-06 11:22:49.405 Df TheoWatch[26493:1371a] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-06 11:22:49.724 A  TheoWatch[26493:1371e] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:22:49.820 A  TheoWatch[26493:1371f] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:04.022 Df TheoWatch[27349:13f25] [com.apple.xpc:connection] [0x10385d7c0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:23:04.298 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] WKApplicationExtensionMain:127: applicationDelegateClassName=SwiftUI.ExtensionDelegate
+2026-11-06 11:23:04.300 Df TheoWatch[27349:13f25] [com.apple.xpc:connection] [0x10385f200] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:23:04.307 A  TheoWatch[27349:13f3e] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:04.310 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:SaltUICore] SaltUICore was linked successfully!
+2026-11-06 11:23:04.310 Df TheoWatch[27349:13f4d] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:23:04.314 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-06 11:23:04.316 Df TheoWatch[27349:13f3f] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-06 11:23:04.316 Df TheoWatch[27349:13f25] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:23:04.316 Df TheoWatch[27349:13f25] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:23:04.316 Df TheoWatch[27349:13f3f] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-06 11:23:04.317 Df TheoWatch[27349:13f3a] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:23:04.317 Df TheoWatch[27349:13f25] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-06 11:23:04.317 Df TheoWatch[27349:13f3f] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x103a6e8f0>
+2026-11-06 11:23:04.317 Df TheoWatch[27349:13f4c] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-06 11:23:04.318 Df TheoWatch[27349:13f3f] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:23:04.318 Df TheoWatch[27349:13f3f] [com.apple.xpc:connection] [0x10385fe80] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:23:04.319 Df TheoWatch[27349:13f4c] [com.apple.xpc:connection] [0x103850140] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:04.320 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplication init]:58: Inited
+2026-11-06 11:23:04.320 Df TheoWatch[27349:13f25] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-06 11:23:04.321 Df TheoWatch[27349:13f25] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-06 11:23:04.322 Df TheoWatch[27349:13f25] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x103a6bf40; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-06 11:23:04.322 Df TheoWatch[27349:13f3a] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:23:04.322 Df TheoWatch[27349:13f25] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1039a9680 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-06 11:23:04.322 Df TheoWatch[27349:13f3a] [com.apple.runningboard:connection] Identity resolved as app<at.binisoft.theo.watchkitapp((null))>
+2026-11-06 11:23:04.322 Df TheoWatch[27349:13f25] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1039a9680 com.apple.frontboard.systemappservices> sent handshake
+2026-11-06 11:23:04.323 Df TheoWatch[27349:13f25] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x103a96260>
+2026-11-06 11:23:04.323 Df TheoWatch[27349:13f3f] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x103a6e8f0>
+2026-11-06 11:23:04.323 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-06 11:23:04.324 Df TheoWatch[27349:13f3f] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x103aa2e80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1163 (elapsed = 0).
+2026-11-06 11:23:04.325 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:04.325 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:04.326 Df TheoWatch[27349:13f25] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:23:04.326 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:23:04.327 Df TheoWatch[27349:13f25] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:04.328 Df TheoWatch[27349:13f25] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:04.328 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:23:04.329 Df TheoWatch[27349:13f25] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:04.329 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:23:04.329 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:04.330 A  TheoWatch[27349:13f3a] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:04.330 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-06 11:23:04.330 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-06 11:23:04.331 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-06 11:23:04.332 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-06 11:23:04.332 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CUISWatchKitApplicationSceneTransitionContext> on FBSSceneTransitionContext
+2026-11-06 11:23:04.333 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:04.333 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneSettings setting counterpart class: PUICMutableApplicationSceneSettings
+2026-11-06 11:23:04.334 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x103850280> for initial
+2026-11-06 11:23:04.334 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-06 11:23:04.334 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x103850280> for CADisplay KVO
+2026-11-06 11:23:04.335 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-06 11:23:04.335 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:04.335 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:04.336 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-06 11:23:04.337 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:23:04.337 Df TheoWatch[27349:13f25] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-06 11:23:04.338 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-06 11:23:04.339 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-06 11:23:04.339 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneClientSettings setting counterpart class: PUICMutableApplicationSceneClientSettings
+2026-11-06 11:23:04.339 Df TheoWatch[27349:13f3f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:04.339 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:23:04.340 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:23:04.341 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <PUICApplicationSceneTransitionContextInterface> on FBSSceneTransitionContext
+2026-11-06 11:23:04.342 Df TheoWatch[27349:13f3e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:23:04.362 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate application:didFinishLaunchingSuspendedWithOptions:]:780: launched suspended
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:353: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] setMainExtensionAndApplicationBundles:24: extensionBundle: /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app, appBundle /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] +[SPRemoteInterface startRemoteInterfaceWithBundle:]:308: startRemoteInterfaceWithBundle:NSBundle </Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app> (loaded)
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3862: SwiftUI.ExtensionDelegate
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3876: Created WKExtensionDelegate of class SwiftUI.ExtensionDelegate
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _extensionDelegateDidChange]:3883: delegate <SwiftUI.ExtensionDelegate: 0x103a52820> _handlesBGTasks=1
+2026-11-06 11:23:04.363 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] +[SPRemoteInterface _remoteIdentifier]_block_invoke:344: ComF:->ComD Gizmo app identifier at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPRemoteInterface setApplicationConnection:]:4091: connection=<SPExtensionConnection: 0x103851b80>
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3951: did begin using
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3970: no complication implemented so not instantiating complication server.
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:378: Set up native app for at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke:873: Got applicationRootInterfaceControllerClass SwiftUI.InterfaceController from extensionDelegate
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:933: self.hasReceivedNonClockKitEvent == NO
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-06 11:23:04.364 Df TheoWatch[27349:13f25] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-06 11:23:04.365 Df TheoWatch[27349:13f25] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-06 11:23:04.365 Df TheoWatch[27349:13f25] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-06 11:23:04.365 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate didReceiveNonClockKitEvent]:3358: firstNonClockKitEvent=1
+2026-11-06 11:23:04.365 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:282: connecting to gizmoappd for serverIdentifier=at.binisoft.theo.watchkitapp clientIdentifier=6AD50001
+2026-11-06 11:23:04.365 Df TheoWatch[27349:13f25] [com.apple.xpc:connection] [0x103850dc0] activating connection: mach=true listener=false peer=false name=com.apple.gizmoappd
+2026-11-06 11:23:04.366 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:291: Began suspended launch
+2026-11-06 11:23:04.366 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:945: root view controller hasn't loaded yet
+2026-11-06 11:23:04.366 A  TheoWatch[27349:13f25] (PepperUICore) Scene didInitializeWithEvent
+2026-11-06 11:23:04.367 Df TheoWatch[27349:13f25] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-06 11:23:04.369 Df TheoWatch[27349:13f3f] [com.apple.watchkit:default] -[SPExtensionConnection setExtensionIsDebugging:]:1014: for at.binisoft.theo.watchkitapp, extensionIsDebugging=0
+2026-11-06 11:23:04.369 Df TheoWatch[27349:13f25] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 2 -> 2, <UIWindowScene: 0x107070800> (at.binisoft.theo.watchkitapp)
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomWatch to LastOneWins
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.UIKit:EventDeferring] [0x103af8690] Initialized with scene: <UIWindowScene: 0x107070800>; behavior: <_UIEventDeferringBehavior_Default: 0x103ad1320>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.BacklightServices:scenes] 0x10707c630 setDelegate:<0x10707c840 _UIBacklightEnvironment> hasDelegate:YES for environment:at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x103852080; >
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x103852300; >
+2026-11-06 11:23:04.370 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x103852440; >
+2026-11-06 11:23:04.372 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.372 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.373 Df TheoWatch[27349:13f25] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x103852080; >
+2026-11-06 11:23:04.380 Df TheoWatch[27349:13f25] [com.apple.xpc:connection] [0x103851e00] activating connection: mach=true listener=false peer=false name=com.apple.Carousel.CSLSDetentService
+2026-11-06 11:23:04.381 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke_2:973: Calling applicationDidFinishLaunching on <SwiftUI.ExtensionDelegate: 0x103a52820>
+2026-11-06 11:23:04.381 Df TheoWatch[27349:13f3f] [com.apple.Carousel:detents] received preferences
+2026-11-06 11:23:04.381 Df TheoWatch[27349:13f3f] [com.apple.Carousel:detents] CSLSDetentServiceConnection: service com.apple.Carousel.CSLSDetentService connected
+2026-11-06 11:23:04.382 Df TheoWatch[27349:13f3f] [com.apple.Carousel:detents] received detents, mapped by type {
+}
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewController:createCompanionControllerClass:properties:initializationContextID:info:gestureDescriptions:interfaceControllerCreationCompletion:]:1753: GizF:<-GizApp controllerClass=SwiftUI.InterfaceController
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface createViewController:className:properties:contextID:info:gestureDescriptions:clientIdentifier:interfaceControllerCreationCompletion:]_block_invoke_3:3149: !!! Create controller - clientIdentifier:6AD50001, viewControllerIdentifier:6AD50002, className:SwiftUI.InterfaceController
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2439: registering controller <SwiftUI.InterfaceController: 0x107057800> with id 6AD50002 and clientIdentifier 6AD50001
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2452: _interfaceControllers={
+    6AD50002 = "<SwiftUI.InterfaceController: 0x107057800>";
+}
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2462: Found 0 pending blocks for view controller with ID 6AD50002. Executing them now.
+2026-11-06 11:23:04.383 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:04.389 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.392 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.392 Df TheoWatch[27349:13f25] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-06 11:23:04.393 Df TheoWatch[27349:13f25] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x107070800: Window became key in scene: UIWindow: 0x10397b800; contextId: 0x13D7F25A: reason: UIWindowScene: 0x107070800: Window requested to become key in scene: 0x10397b800
+2026-11-06 11:23:04.393 Df TheoWatch[27349:13f25] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x107070800; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x10397b800; reason: UIWindowScene: 0x107070800: Window requested to become key in scene: 0x10397b800
+2026-11-06 11:23:04.393 Df TheoWatch[27349:13f25] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x10397b800; contextId: 0x13D7F25A; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.393 Df TheoWatch[27349:13f25] [com.apple.UIKit:EventDeferring] [0x103af8690] Begin local event deferring requested for token: 0x103ac09c0; environments: 1; reason: UIWindowScene: 0x107070800: Begin event deferring in keyboardFocus for window: 0x10397b800
+2026-11-06 11:23:04.393 Df TheoWatch[27349:13f25] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-06 11:23:04.394 Df TheoWatch[27349:13f25] [com.apple.xpc:connection] [0x103860000] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:04.394 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureNegativeInteraction: 0x103a2d450>) installed: NO -> YES
+2026-11-06 11:23:04.395 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUICrownPressDismissGestureInteraction: 0x1070d9240>) installed: NO -> YES
+2026-11-06 11:23:04.396 Df TheoWatch[27349:13f4e] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-06 11:23:04.396 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureNegativeInteraction: 0x103a2d450> -> <UIWindow: 0x10397b800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x103ae2040>; backgroundColor = <UIDynamicSystemColor: 0x103987040; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x103987cc0>>
+2026-11-06 11:23:04.397 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] didMoveToView: <WAGUICrownPressDismissGestureInteraction: 0x1070d9240> -> <UIWindow: 0x10397b800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1070ca9a0>; backgroundColor = <UIDynamicSystemColor: 0x103987040; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x103987cc0>>
+2026-11-06 11:23:04.397 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:WatchGesturesApplication] Enabled default watch gesture pinch interactions for key window: <UIWindow: 0x10397b800; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1070ca9a0>; backgroundColor = <UIDynamicSystemColor: 0x103987040; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x103987cc0>>
+2026-11-06 11:23:04.398 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:677: isSuspended=1, isSuspendedUnderLock=0, isSuspendedEventsOnly=0
+2026-11-06 11:23:04.398 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface forwardDidEnterForegroundToScenesInViewController:]:3567: viewControllerID=6AD50002
+2026-11-06 11:23:04.398 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:705: Updating appState
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 1 to 0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 1 to 0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]:1023: Updating appState
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 0 to 0
+2026-11-06 11:23:04.399 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 0 to 0
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1041: creating os_transaction appActive-EEE37042-1F64-4880-8261-F6451CFB3B6F
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1047: Calling applicationDidBecomeActive on <SwiftUI.ExtensionDelegate: 0x103a52820>
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewControllerActivate:]:1771: GizF:<-GizApp vcID=6AD50002
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _createActiveViewControllerTransaction:]:4729: created os_transaction activeVC-6AD50002-C1B2B5E1-0289-482D-B38F-434EA398AAD4, _activeViewControllerTransactions={
+    6AD50002 = "<OS_os_transaction: activeVC-6AD50002-C1B2B5E1-0289-482D-B38F-434EA398AAD4>";
+}
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] +[SPRemoteInterface setControllerActive:]:1140: after setting 6AD50002 active, __controllerActive={
+    6AD50002 = 1;
+}
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface _activateViewController:clientIdentifier:]:3273: Calling willActivate for 6AD50002
+2026-11-06 11:23:04.400 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:04.401 Df TheoWatch[27349:13f25] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:04.401 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2048 -> 6144; animating application lifecycle event: 0
+2026-11-06 11:23:04.401 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6144 -> 4096; animating application lifecycle event: 0
+2026-11-06 11:23:04.401 Df TheoWatch[27349:13f25] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4096 -> 0; animating application lifecycle event: 0
+2026-11-06 11:23:04.402 Df TheoWatch[27349:13f25] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-06 11:23:04.402 Df TheoWatch[27349:13f4e] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:23:04.403 Df TheoWatch[27349:13f4e] [com.apple.xpc:session] [0x103a2f520] Session created.
+2026-11-06 11:23:04.403 Df TheoWatch[27349:13f4e] [com.apple.xpc:session] [0x103a2f520] Session created from connection [0x103860640]
+2026-11-06 11:23:04.403 Df TheoWatch[27349:13f4e] [com.apple.xpc:connection] [0x103860640] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:23:04.403 Df TheoWatch[27349:13f4e] [com.apple.xpc:session] [0x103a2f520] Session activated
+2026-11-06 11:23:04.547 Df TheoWatch[27349:13f25] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-06 11:23:04.548 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x1038666c0>) installed: NO -> YES
+2026-11-06 11:23:04.549 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x1038666c0> -> <SwiftUI.UpdateCoalescingCollectionView: 0x107248e00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x107311980>; layer = <CALayer: 0x107273cc0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x107265c00>; dataSource: (null)>
+2026-11-06 11:23:04.583 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x10386bc00>) installed: NO -> YES
+2026-11-06 11:23:04.584 Df TheoWatch[27349:13f25] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x10386bc00> -> <SwiftUI.UpdateCoalescingCollectionView: 0x103932a00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x10738e5c0>; layer = <CALayer: 0x107389cb0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x107170000>; dataSource: (null)>
+2026-11-06 11:23:04.871 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.871 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.876 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.877 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.929 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.930 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.946 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface finishActivatingVCWithID:completion:]:3396: interfaceViewControllerId is active, calling block immediately = 6AD50002
+2026-11-06 11:23:04.946 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:04.947 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] -[SPRemoteInterface didAppearViewController:clientIdentifier:]_block_invoke_4:3340: Calling didAppear for 6AD50002
+2026-11-06 11:23:04.947 Df TheoWatch[27349:13f25] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:04.947 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.948 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.948 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.948 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.949 Df TheoWatch[27349:13f25] [com.apple.UIKit:ExternalGestureCollector] Active external gesture recognizers did change: <_UIExternalGestureCollection: 0x10c9e58d0; active gestures: "doubleTap, flick">
+2026-11-06 11:23:04.951 Df TheoWatch[27349:13f25] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-06 11:23:04.951 Df TheoWatch[27349:13f25] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x103aa2e80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1163 (elapsed = 1), _expireHandler: (null)
+2026-11-06 11:23:04.951 Df TheoWatch[27349:13f25] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x103a6e8f0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x103aa2e80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1163 (elapsed = 1))
+2026-11-06 11:23:04.951 Df TheoWatch[27349:13f25] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x103a6e8f0> for task identifier: 1
+2026-11-06 11:23:04.959 Df TheoWatch[27349:13f25] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-06 11:23:04.970 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:04.971 Df TheoWatch[27349:13f25] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:04.986 A  TheoWatch[27349:13f25] (PepperUICore) Scene handleEvent
+2026-11-06 11:23:04.987 Df TheoWatch[27349:13f25] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:05.030 Df TheoWatch[27349:13f25] [com.apple.network:activity] Unsetting the global parent activity (null)
+2026-11-06 11:23:05.031 Df TheoWatch[27349:13f25] [com.apple.network:activity] Unset the global parent activity
+2026-11-06 11:23:05.031 Df TheoWatch[27349:13f25] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-06 11:23:05.347 A  TheoWatch[27349:13f3f] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:05.471 A  TheoWatch[27349:13f3f] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:19.027 Df TheoWatch[28269:147e3] [com.apple.xpc:connection] [0x10105d7c0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-06 11:23:19.330 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] WKApplicationExtensionMain:127: applicationDelegateClassName=SwiftUI.ExtensionDelegate
+2026-11-06 11:23:19.333 Df TheoWatch[28269:147e3] [com.apple.xpc:connection] [0x10105f480] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-06 11:23:19.339 A  TheoWatch[28269:147ee] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-06 11:23:19.341 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:SaltUICore] SaltUICore was linked successfully!
+2026-11-06 11:23:19.341 Df TheoWatch[28269:147fe] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-06 11:23:19.342 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147e3] [com.apple.runningboard:connection] Initializing connection
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147e3] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147e3] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147fd] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147ef] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-06 11:23:19.343 Df TheoWatch[28269:147f0] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-06 11:23:19.344 Df TheoWatch[28269:147ef] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-06 11:23:19.344 Df TheoWatch[28269:147ef] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x10128c820>
+2026-11-06 11:23:19.344 Df TheoWatch[28269:147ef] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-06 11:23:19.344 Df TheoWatch[28269:147ef] [com.apple.xpc:connection] [0x10105fe80] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-06 11:23:19.345 Df TheoWatch[28269:147f0] [com.apple.xpc:connection] [0x101050140] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:19.346 A  TheoWatch[28269:147ee] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:19.346 Df TheoWatch[28269:147fd] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-06 11:23:19.346 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplication init]:58: Inited
+2026-11-06 11:23:19.346 Df TheoWatch[28269:147fd] [com.apple.runningboard:connection] Identity resolved as app<at.binisoft.theo.watchkitapp((null))>
+2026-11-06 11:23:19.347 Df TheoWatch[28269:147e3] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-06 11:23:19.348 Df TheoWatch[28269:147ef] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x10128c820>
+2026-11-06 11:23:19.348 Df TheoWatch[28269:147ef] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x1012929c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1178 (elapsed = 0).
+2026-11-06 11:23:19.348 Df TheoWatch[28269:147e3] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-06 11:23:19.349 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-06 11:23:19.350 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:19.350 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:19.350 Df TheoWatch[28269:147e3] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x101283fe0; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-06 11:23:19.351 Df TheoWatch[28269:147e3] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1011a9400 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-06 11:23:19.351 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:23:19.351 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:23:19.351 Df TheoWatch[28269:147e3] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1011a9400 com.apple.frontboard.systemappservices> sent handshake
+2026-11-06 11:23:19.351 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-06 11:23:19.352 Df TheoWatch[28269:147e3] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x10129b0a0>
+2026-11-06 11:23:19.352 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:19.352 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-06 11:23:19.353 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-06 11:23:19.353 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-06 11:23:19.353 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:19.353 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-06 11:23:19.353 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-06 11:23:19.354 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:19.354 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-06 11:23:19.355 Df TheoWatch[28269:147e3] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-06 11:23:19.355 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-06 11:23:19.355 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-06 11:23:19.356 Df TheoWatch[28269:147e3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:19.356 Df TheoWatch[28269:147ef] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-06 11:23:19.356 Df TheoWatch[28269:147e3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CUISWatchKitApplicationSceneTransitionContext> on FBSSceneTransitionContext
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147e3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneSettings setting counterpart class: PUICMutableApplicationSceneSettings
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneSettingsExtension on FBSSceneSettings
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-06 11:23:19.357 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-06 11:23:19.359 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] PUICApplicationSceneClientSettings setting counterpart class: PUICMutableApplicationSceneClientSettings
+2026-11-06 11:23:19.359 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension PUICApplicationSceneClientSettingsExtension on FBSSceneClientSettings
+2026-11-06 11:23:19.360 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x101050280> for initial
+2026-11-06 11:23:19.360 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x101050280> for CADisplay KVO
+2026-11-06 11:23:19.361 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-06 11:23:19.363 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <PUICApplicationSceneTransitionContextInterface> on FBSSceneTransitionContext
+2026-11-06 11:23:19.363 Df TheoWatch[28269:147ff] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-06 11:23:19.364 Df TheoWatch[28269:147e3] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-06 11:23:19.380 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate application:didFinishLaunchingSuspendedWithOptions:]:780: launched suspended
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:353: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] setMainExtensionAndApplicationBundles:24: extensionBundle: /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app, appBundle /Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] +[SPRemoteInterface startRemoteInterfaceWithBundle:]:308: startRemoteInterfaceWithBundle:NSBundle </Users/runner/Library/Developer/CoreSimulator/Devices/7F940202-2A2E-4192-80F3-FF20F7731A28/data/Containers/Bundle/Application/1BCB43DE-9A4B-4B9A-8327-E2C868A71135/TheoWatch.app> (loaded)
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3862: SwiftUI.ExtensionDelegate
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface createExtensionDelegateWithClassName:]:3876: Created WKExtensionDelegate of class SwiftUI.ExtensionDelegate
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _extensionDelegateDidChange]:3883: delegate <SwiftUI.ExtensionDelegate: 0x1012c15c0> _handlesBGTasks=1
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] +[SPRemoteInterface _remoteIdentifier]_block_invoke:344: ComF:->ComD Gizmo app identifier at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPRemoteInterface setApplicationConnection:]:4091: connection=<SPExtensionConnection: 0x101051a40>
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3951: did begin using
+2026-11-06 11:23:19.381 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPRemoteInterface extensionDidBeginUsingWithLaunchEnv:launchArgs:launchedSuspendedNotInDock:]:3970: no complication implemented so not instantiating complication server.
+2026-11-06 11:23:19.382 Df TheoWatch[28269:147e3] [com.apple.watchkit:extension_loading] -[SPExtensionConnection _setupApp]:378: Set up native app for at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.382 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke:873: Got applicationRootInterfaceControllerClass SwiftUI.InterfaceController from extensionDelegate
+2026-11-06 11:23:19.382 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:933: self.hasReceivedNonClockKitEvent == NO
+2026-11-06 11:23:19.382 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-06 11:23:19.382 Df TheoWatch[28269:147e3] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-06 11:23:19.383 Df TheoWatch[28269:147e3] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-06 11:23:19.383 Df TheoWatch[28269:147e3] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-06 11:23:19.383 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate didReceiveNonClockKitEvent]:3358: firstNonClockKitEvent=1
+2026-11-06 11:23:19.384 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:282: connecting to gizmoappd for serverIdentifier=at.binisoft.theo.watchkitapp clientIdentifier=6E6D0001
+2026-11-06 11:23:19.384 Df TheoWatch[28269:147e3] [com.apple.xpc:connection] [0x101051040] activating connection: mach=true listener=false peer=false name=com.apple.gizmoappd
+2026-11-06 11:23:19.384 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPExtensionConnection connectWithIdentifier:completion:]_block_invoke:291: Began suspended launch
+2026-11-06 11:23:19.384 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]:945: root view controller hasn't loaded yet
+2026-11-06 11:23:19.385 A  TheoWatch[28269:147e3] (PepperUICore) Scene didInitializeWithEvent
+2026-11-06 11:23:19.386 Df TheoWatch[28269:147ee] [com.apple.watchkit:default] -[SPExtensionConnection setExtensionIsDebugging:]:1014: for at.binisoft.theo.watchkitapp, extensionIsDebugging=0
+2026-11-06 11:23:19.386 Df TheoWatch[28269:147e3] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 2 -> 2, <UIWindowScene: 0x101022400> (at.binisoft.theo.watchkitapp)
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomWatch to LastOneWins
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:EventDeferring] [0x1012f5e30] Initialized with scene: <UIWindowScene: 0x101022400>; behavior: <_UIEventDeferringBehavior_Default: 0x104c8a640>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.BacklightServices:scenes] 0x1012d9260 setDelegate:<0x1012d9860 _UIBacklightEnvironment> hasDelegate:YES for environment:at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101052080; >
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101052300; >
+2026-11-06 11:23:19.388 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101052440; >
+2026-11-06 11:23:19.390 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.390 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.391 Df TheoWatch[28269:147e3] [com.apple.UIKit:UIBacklightEnvironment] Updated traitOverrides: <UITraitCollection: 0x101052080; >
+2026-11-06 11:23:19.396 Df TheoWatch[28269:147e3] [com.apple.xpc:connection] [0x101051e00] activating connection: mach=true listener=false peer=false name=com.apple.Carousel.CSLSDetentService
+2026-11-06 11:23:19.397 Df TheoWatch[28269:147ee] [com.apple.Carousel:detents] received preferences
+2026-11-06 11:23:19.397 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate application:_didFinishLaunchingWithOptions:]_block_invoke_2:973: Calling applicationDidFinishLaunching on <SwiftUI.ExtensionDelegate: 0x1012c15c0>
+2026-11-06 11:23:19.397 Df TheoWatch[28269:147ee] [com.apple.Carousel:detents] CSLSDetentServiceConnection: service com.apple.Carousel.CSLSDetentService connected
+2026-11-06 11:23:19.397 Df TheoWatch[28269:147ee] [com.apple.Carousel:detents] received detents, mapped by type {
+}
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewController:createCompanionControllerClass:properties:initializationContextID:info:gestureDescriptions:interfaceControllerCreationCompletion:]:1753: GizF:<-GizApp controllerClass=SwiftUI.InterfaceController
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface createViewController:className:properties:contextID:info:gestureDescriptions:clientIdentifier:interfaceControllerCreationCompletion:]_block_invoke_3:3149: !!! Create controller - clientIdentifier:6E6D0001, viewControllerIdentifier:6E6D0002, className:SwiftUI.InterfaceController
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2439: registering controller <SwiftUI.InterfaceController: 0x101172a00> with id 6E6D0002 and clientIdentifier 6E6D0001
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2452: _interfaceControllers={
+    6E6D0002 = "<SwiftUI.InterfaceController: 0x101172a00>";
+}
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _registerInterfaceController:interfaceControllerID:interfaceControllerClientID:applicationRootController:]:2462: Found 0 pending blocks for view controller with ID 6E6D0002. Executing them now.
+2026-11-06 11:23:19.399 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:19.404 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x101022400: Window became key in scene: UIWindow: 0x1011b3c00; contextId: 0x6409D4EB: reason: UIWindowScene: 0x101022400: Window requested to become key in scene: 0x1011b3c00
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x101022400; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x1011b3c00; reason: UIWindowScene: 0x101022400: Window requested to become key in scene: 0x1011b3c00
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x1011b3c00; contextId: 0x6409D4EB; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.408 Df TheoWatch[28269:147e3] [com.apple.UIKit:EventDeferring] [0x1012f5e30] Begin local event deferring requested for token: 0x1012538a0; environments: 1; reason: UIWindowScene: 0x101022400: Begin event deferring in keyboardFocus for window: 0x1011b3c00
+2026-11-06 11:23:19.409 Df TheoWatch[28269:147e3] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-06 11:23:19.409 Df TheoWatch[28269:147e3] [com.apple.xpc:connection] [0x101060000] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-06 11:23:19.409 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureNegativeInteraction: 0x10128e760>) installed: NO -> YES
+2026-11-06 11:23:19.410 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUICrownPressDismissGestureInteraction: 0x1012fd180>) installed: NO -> YES
+2026-11-06 11:23:19.410 Df TheoWatch[28269:147ef] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-06 11:23:19.411 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureNegativeInteraction: 0x10128e760> -> <UIWindow: 0x1011b3c00; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x1012ca340>; backgroundColor = <UIDynamicSystemColor: 0x1012b4480; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x1012b4a00>>
+2026-11-06 11:23:19.411 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] didMoveToView: <WAGUICrownPressDismissGestureInteraction: 0x1012fd180> -> <UIWindow: 0x1011b3c00; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x104cddba0>; backgroundColor = <UIDynamicSystemColor: 0x1012b4480; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x1012b4a00>>
+2026-11-06 11:23:19.411 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:WatchGesturesApplication] Enabled default watch gesture pinch interactions for key window: <UIWindow: 0x1011b3c00; frame = (0 0; 208 248); tintColor = kCGColorSpaceModelRGB 0.89 0.678 0.133 1; gestureRecognizers = <NSArray: 0x104cddba0>; backgroundColor = <UIDynamicSystemColor: 0x1012b4480; name = _windowBackgroundColor>; layer = <UIWindowLayer: 0x1012b4a00>>
+2026-11-06 11:23:19.412 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:677: isSuspended=1, isSuspendedUnderLock=0, isSuspendedEventsOnly=0
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface forwardDidEnterForegroundToScenesInViewController:]:3567: viewControllerID=6E6D0002
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate applicationWillEnterForeground:]:705: Updating appState
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 1 to 0
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 1 to 0
+2026-11-06 11:23:19.413 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]:1023: Updating appState
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]:3505: Updating appState to 0, suspendedUnderLock=0
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate _updateAppState:]_block_invoke:3509: GizF:<-GizApp state=0, suspendedUnderLock=0
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[WKApplication setApplicationState:]:74: Updating appState from 0 to 0
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[WKExtension setApplicationState:]:109: Updating appState from 0 to 0
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1041: creating os_transaction appActive-758C0128-C4C1-42B2-9E12-EBA186C8F323
+2026-11-06 11:23:19.414 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPApplicationDelegate applicationDidBecomeActive:]_block_invoke:1047: Calling applicationDidBecomeActive on <SwiftUI.ExtensionDelegate: 0x1012c15c0>
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPExtensionConnection interfaceViewControllerActivate:]:1771: GizF:<-GizApp vcID=6E6D0002
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _createActiveViewControllerTransaction:]:4729: created os_transaction activeVC-6E6D0002-CA97646D-1425-404D-A3A6-5F5376E5C8BB, _activeViewControllerTransactions={
+    6E6D0002 = "<OS_os_transaction: activeVC-6E6D0002-CA97646D-1425-404D-A3A6-5F5376E5C8BB>";
+}
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] +[SPRemoteInterface setControllerActive:]:1140: after setting 6E6D0002 active, __controllerActive={
+    6E6D0002 = 1;
+}
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface _activateViewController:clientIdentifier:]:3273: Calling willActivate for 6E6D0002
+2026-11-06 11:23:19.415 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:19.416 Df TheoWatch[28269:147e3] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:19.417 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2048 -> 6144; animating application lifecycle event: 0
+2026-11-06 11:23:19.417 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6144 -> 4096; animating application lifecycle event: 0
+2026-11-06 11:23:19.417 Df TheoWatch[28269:147e3] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4096 -> 0; animating application lifecycle event: 0
+2026-11-06 11:23:19.417 Df TheoWatch[28269:147e3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-06 11:23:19.418 Df TheoWatch[28269:147ef] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-06 11:23:19.418 Df TheoWatch[28269:147ef] [com.apple.xpc:session] [0x101295540] Session created.
+2026-11-06 11:23:19.418 Df TheoWatch[28269:147ef] [com.apple.xpc:session] [0x101295540] Session created from connection [0x101060640]
+2026-11-06 11:23:19.418 Df TheoWatch[28269:147ef] [com.apple.xpc:connection] [0x101060640] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-06 11:23:19.418 Df TheoWatch[28269:147ef] [com.apple.xpc:session] [0x101295540] Session activated
+2026-11-06 11:23:19.574 Df TheoWatch[28269:147e3] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-06 11:23:19.575 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x1010666c0>) installed: NO -> YES
+2026-11-06 11:23:19.577 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x1010666c0> -> <SwiftUI.UpdateCoalescingCollectionView: 0x104e44e00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x104f11980>; layer = <CALayer: 0x104e6fcc0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x104e65880>; dataSource: (null)>
+2026-11-06 11:23:19.699 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] WAGUIGestureRecognizerInstaller(<WAGUIPrimaryGestureViewInteraction: 0x101070280>) installed: NO -> YES
+2026-11-06 11:23:19.700 Df TheoWatch[28269:147e3] [com.apple.WatchGestures:ui] didMoveToView: <WAGUIPrimaryGestureViewInteraction: 0x101070280> -> <SwiftUI.UpdateCoalescingCollectionView: 0x104e45c00; baseClass = UICollectionView; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = <NSArray: 0x104fdfdc0>; layer = <CALayer: 0x104e6dcb0>; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}; layout: <PUICListCollectionViewLayout: 0x105064380>; dataSource: (null)>
+2026-11-06 11:23:19.839 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.840 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.843 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.843 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.891 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.892 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.924 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.924 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.933 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface finishActivatingVCWithID:completion:]:3396: interfaceViewControllerId is active, calling block immediately = 6E6D0002
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_enterAPICallbackCriticalSection:624: __isInAPICallbackCriticalSectionRefCount=1
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] -[SPRemoteInterface didAppearViewController:clientIdentifier:]_block_invoke_4:3340: Calling didAppear for 6E6D0002
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.watchkit:default] spUtils_exitAPICallbackCriticalSection:631: __isInAPICallbackCriticalSectionRefCount=0
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.934 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.935 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.935 Df TheoWatch[28269:147e3] [com.apple.UIKit:ExternalGestureCollector] Active external gesture recognizers did change: <_UIExternalGestureCollection: 0x1051ac580; active gestures: "doubleTap, flick">
+2026-11-06 11:23:19.938 Df TheoWatch[28269:147e3] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-06 11:23:19.938 Df TheoWatch[28269:147e3] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x1012929c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1178 (elapsed = 1), _expireHandler: (null)
+2026-11-06 11:23:19.938 Df TheoWatch[28269:147e3] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x10128c820> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x1012929c0>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1178 (elapsed = 1))
+2026-11-06 11:23:19.938 Df TheoWatch[28269:147e3] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x10128c820> for task identifier: 1
+2026-11-06 11:23:19.942 Df TheoWatch[28269:147e3] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-06 11:23:19.956 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] [at.binisoft.theo.watchkitapp] updating status bar hidden = NO
+2026-11-06 11:23:19.958 Df TheoWatch[28269:147e3] [com.apple.PepperUICore:Navigation] status bar hidden updated to 0
+2026-11-06 11:23:19.965 A  TheoWatch[28269:147e3] (PepperUICore) Scene handleEvent
+2026-11-06 11:23:19.965 Df TheoWatch[28269:147e3] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: at.binisoft.theo.watchkitapp  persistentID: at.binisoft.theo.watchkitapp
+2026-11-06 11:23:20.004 Df TheoWatch[28269:147e3] [com.apple.network:activity] Unsetting the global parent activity (null)
+2026-11-06 11:23:20.004 Df TheoWatch[28269:147e3] [com.apple.network:activity] Unset the global parent activity
+2026-11-06 11:23:20.004 Df TheoWatch[28269:147e3] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-06 11:23:20.329 A  TheoWatch[28269:147fd] (RunningBoardServices) didChangeInheritances
+2026-11-06 11:23:20.502 A  TheoWatch[28269:147ef] (RunningBoardServices) didChangeInheritances
