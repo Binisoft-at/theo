@@ -1,0 +1,11 @@
+CD_SavedView.CD_colorName
+CD_SavedView.CD_createdAt
+CD_SavedView.CD_deletedAt
+CD_SavedView.CD_entityName
+CD_SavedView.CD_isFavorite
+CD_SavedView.CD_modifiedAt
+CD_SavedView.CD_name
+CD_SavedView.CD_queryRaw
+CD_SavedView.CD_sortOrder
+CD_SavedView.CD_symbol
+CD_SavedView.CD_uuid
