@@ -10,13 +10,16 @@ public enum NotesImport {
         public var isHeading: Bool
         /// Heading level: 1 for `#` (a group), 2 for `##` (a subproject inside it) ...
         public var level: Int
+        /// A `> …` line: a note for the task above, not a task of its own.
+        public var isNote: Bool
 
-        public init(title: String, done: Bool, indent: Int, isHeading: Bool, level: Int = 1) {
+        public init(title: String, done: Bool, indent: Int, isHeading: Bool, level: Int = 1, isNote: Bool = false) {
             self.title = title
             self.done = done
             self.indent = indent
             self.isHeading = isHeading
             self.level = level
+            self.isNote = isNote
         }
     }
 
@@ -24,7 +27,8 @@ public enum NotesImport {
     private static let doneMarkers = ["- [x] ", "- [X] ", "* [x] ", "[x] ", "[X] ", "☑ ", "☒ ", "✓ ", "✔ ", "✅ ", "● "]
 
     /// Parses pasted text. Headings are lines starting with `#` or ending with `:`; optionally any
-    /// line without a checkbox marker is treated as a heading too.
+    /// line without a checkbox marker is treated as a heading too. Lines starting with `>` are
+    /// notes for the task above.
     public static func parse(_ text: String, plainLinesAreHeadings: Bool) -> [Line] {
         var result: [Line] = []
         for rawLine in text.components(separatedBy: .newlines) {
@@ -46,6 +50,12 @@ public enum NotesImport {
                 body = body.dropFirst()
             }
             var line = String(body).trimmingCharacters(in: .whitespaces)
+
+            if line.hasPrefix(">") {
+                let note = line.dropFirst().trimmingCharacters(in: .whitespaces)
+                if !note.isEmpty { result.append(Line(title: note, done: false, indent: min(indent, 4), isHeading: false, isNote: true)) }
+                continue
+            }
 
             if line.hasPrefix("#") {
                 let level = line.prefix(while: { $0 == "#" }).count

@@ -675,6 +675,7 @@ struct TaskListView<Header: View>: View {
             new.tags = entry.tags
             if let estimate = entry.estimate { new.estimate = estimate }
             new.recurrence = entry.recurrence
+            if entry.ongoing { new.isOngoing = true }
             app.store.save()
         }
         if let plansFor { app.store.plan([new], for: plansFor) }

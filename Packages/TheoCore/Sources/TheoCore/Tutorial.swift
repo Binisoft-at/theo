@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 4
+    public static let version = 5
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -312,6 +312,13 @@ public enum TutorialCatalog {
             title: "How the day went",
             body: "Tap the ring at the top of Today: Power Hours done and what they went into, how the day compares with the ones before, and every finished task, ready to export as CSV. Pick what it shows in Settings. Today's ⋯ → Group By sorts the page by group, subgroup, priority, deadline, tag or size.",
             macBody: "Press ⌘9 (or click the ring at the top of Today): Power Hours done and what they went into, how the day compares with the ones before, and every finished task, ready to export as CSV. Pick what it shows in Settings. Today's ⋯ → Group By sorts the page by group, subgroup, priority, deadline, tag or size.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "ongoing", since: 5, symbol: "infinity",
+            title: "Work that never ends",
+            body: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or touch and hold → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
+            macBody: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or right-click → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
             goal: .none
         ),
         TutorialStep(

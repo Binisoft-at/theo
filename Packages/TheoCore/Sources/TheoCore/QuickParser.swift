@@ -14,6 +14,8 @@ public struct ParsedEntry: Equatable, Sendable {
     /// Power Hours ("(0,25PH)").
     public var estimate: Double?
     public var recurrence: Recurrence?
+    /// An ongoing task ("∞", "laufend", "ongoing"): never finished, each check-off is logged.
+    public var ongoing: Bool
 
     public init(
         title: String,
@@ -25,7 +27,8 @@ public struct ParsedEntry: Equatable, Sendable {
         groupID: UUID? = nil,
         groupName: String? = nil,
         estimate: Double? = nil,
-        recurrence: Recurrence? = nil
+        recurrence: Recurrence? = nil,
+        ongoing: Bool = false
     ) {
         self.title = title
         self.priority = priority
@@ -37,10 +40,11 @@ public struct ParsedEntry: Equatable, Sendable {
         self.groupName = groupName
         self.estimate = estimate
         self.recurrence = recurrence
+        self.ongoing = ongoing
     }
 
     public var hasExtras: Bool {
-        priority != .normal || due != nil || !tags.isEmpty || groupID != nil || estimate != nil || recurrence != nil
+        priority != .normal || due != nil || !tags.isEmpty || groupID != nil || estimate != nil || recurrence != nil || ongoing
     }
 }
 
@@ -53,6 +57,7 @@ public struct ParsedEntry: Equatable, Sendable {
 /// - `📅 2026-11-04` or `due:2026-11-04` set an exact deadline (also understood by Import)
 /// - `0,5PH` / `(1PH)` set the estimate in Power Hours
 /// - `daily`, `weekly`, `every 3 days`, `täglich` ... make it repeat
+/// - `∞`, `laufend`, `ongoing` or `andauernd` make it an ongoing task
 public enum QuickParser {
     public struct GroupRef: Sendable {
         public let id: UUID
@@ -79,7 +84,12 @@ public enum QuickParser {
         public static let recurrence = Options(rawValue: 1 << 5)
         /// Only `📅 2026-11-04` / `due:2026-11-04`, never guessed dates (used by Import).
         public static let exactDates = Options(rawValue: 1 << 6)
-        public static let all: Options = [.dates, .priority, .tags, .group, .estimate, .recurrence, .exactDates]
+        /// `∞`, `laufend`, `ongoing`, `andauernd`.
+        public static let ongoing = Options(rawValue: 1 << 7)
+        public static let all: Options = [.dates, .priority, .tags, .group, .estimate, .recurrence, .exactDates, .ongoing]
+
+        /// Words (whole tokens) that make a task ongoing.
+        public static let ongoingWords: Set<String> = ["∞", "laufend", "ongoing", "andauernd"]
     }
 
     private static let detector: NSDataDetector? = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
@@ -107,6 +117,10 @@ public enum QuickParser {
             let lower = token.lowercased()
             if options.contains(.priority), let priority = priority(for: lower) {
                 entry.priority = priority
+                continue
+            }
+            if options.contains(.ongoing), Options.ongoingWords.contains(lower) {
+                entry.ongoing = true
                 continue
             }
             if options.contains(.tags), token.count > 1, token.hasPrefix("#") {

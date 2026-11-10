@@ -95,6 +95,7 @@ struct TaskStore {
         task.estimate = entry.estimate ?? PowerHours.defaultForNewTasks
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
+        if entry.ongoing { task.isOngoing = true }
         applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         save()
         return task
@@ -168,6 +169,7 @@ struct TaskStore {
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         task.plannedDay = parent.plannedDay
+        if entry.ongoing { task.isOngoing = true }
         applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         if parent.isDone {
             parent.isDone = false
@@ -201,6 +203,16 @@ struct TaskStore {
         func apply(_ task: TaskItem) {
             guard !touched.contains(ObjectIdentifier(task)) else { return }
             touched.insert(ObjectIdentifier(task))
+            // An ongoing task is never finished: checking it off logs a finished copy.
+            if done && task.isOngoing && !task.isDone {
+                logOngoing(task, at: now)
+                return
+            }
+            // Unchecking a logged copy takes the log back.
+            if !done && task.isDone, let original = task.loggedFor {
+                unlog(task, original: original)
+                return
+            }
             guard task.isDone != done else { return }
             task.isDone = done
             task.completedAt = done ? now : nil
@@ -209,12 +221,64 @@ struct TaskStore {
         }
         for task in tasks {
             let wasDone = task.isDone
+            if done && task.isOngoing {
+                apply(task)
+                continue
+            }
             apply(task)
             if done {
                 // Completing a parent completes its subtasks, like checking off a whole block.
                 for child in layout(for: task.groupID).block(of: task).dropFirst() { apply(child) }
                 if !wasDone { scheduleNextOccurrence(of: task, now: now) }
             }
+        }
+        save()
+    }
+
+    /// Checking off an ongoing task: a finished copy goes under it (it counts in History and
+    /// the day review, Power Hours and focus time included) and the task stays open. Planned for
+    /// that day, it comes off the plan: the copy shows there as done.
+    private func logOngoing(_ task: TaskItem, at now: Date) {
+        let log = insertSibling(after: task, title: task.title)
+        log.isDone = true
+        log.completedAt = now
+        log.estimate = task.estimate
+        log.focusSeconds = task.focusSeconds
+        log.importance = task.importance
+        log.priorityRaw = task.priorityRaw
+        log.tagsRaw = task.tagsRaw
+        log.plannedDay = task.plannedDay
+        log.traitProposalGroupID = nil
+        log.loggedFor = task.uuid
+        task.focusSeconds = 0
+        task.lastDoneAt = now
+        if let planned = task.plannedDay, planned <= now { task.plannedDay = nil }
+        task.touch()
+    }
+
+    /// Takes a log back: the copy goes away and the ongoing task is planned again where it was.
+    private func unlog(_ log: TaskItem, original id: UUID) {
+        if let original = task(id: id), original.deletedAt == nil {
+            original.focusSeconds += log.focusSeconds
+            if original.plannedDay == nil { original.plannedDay = log.plannedDay }
+            let earlier = liveTasks().filter { $0.loggedFor == id && $0 !== log && $0.isDone }
+                .compactMap(\.completedAt).max()
+            original.lastDoneAt = earlier
+            original.touch()
+        }
+        log.deletedAt = Date()
+        log.touch()
+    }
+
+    /// Turns tasks into ongoing ones (or back).
+    func setOngoing(_ tasks: [TaskItem], _ ongoing: Bool) {
+        for task in tasks where task.isOngoing != ongoing {
+            task.isOngoing = ongoing
+            if ongoing && task.isDone {
+                task.isDone = false
+                task.completedAt = nil
+            }
+            task.touch()
         }
         save()
     }
@@ -504,6 +568,39 @@ struct TaskStore {
     func addTag(_ tasks: [TaskItem], _ tag: String) {
         for task in tasks {
             task.tags = task.tags + [tag]
+            task.touch()
+        }
+        save()
+    }
+
+    // MARK: - Starting over
+
+    /// Moves every task and group to Recently Deleted (kept there for 30 days), e.g. before
+    /// importing a fresh set. Returns what was removed, for Undo.
+    @discardableResult
+    func clearEverything() -> (tasks: [TaskItem], groups: [TaskGroup]) {
+        let now = Date()
+        let tasks = liveTasks()
+        let groups = liveGroups()
+        for task in tasks {
+            task.deletedAt = now
+            task.touch()
+        }
+        for group in groups {
+            group.deletedAt = now
+            group.touch()
+        }
+        save()
+        return (tasks, groups)
+    }
+
+    func undoClear(_ cleared: (tasks: [TaskItem], groups: [TaskGroup])) {
+        for group in cleared.groups {
+            group.deletedAt = nil
+            group.touch()
+        }
+        for task in cleared.tasks {
+            task.deletedAt = nil
             task.touch()
         }
         save()

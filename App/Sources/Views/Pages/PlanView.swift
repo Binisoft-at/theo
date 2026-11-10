@@ -32,7 +32,9 @@ struct PlanView: View {
             return DateText.dayDelta(date, today: day) <= 0
         }, day: day)
         let suggested = leftOverIDs.union(due.map(\.uuid))
-        let important = Array(rankedTop(rest.filter { !suggested.contains($0.uuid) && $0.plannedDay == nil }, day: day).prefix(5))
+        // Ongoing work, to pick for the day (it never finishes, so it's always on offer).
+        let ongoing = rankedTop(rest.filter { $0.isOngoing && !suggested.contains($0.uuid) }, day: day)
+        let important = Array(rankedTop(rest.filter { !suggested.contains($0.uuid) && $0.plannedDay == nil && !$0.isOngoing }, day: day).prefix(5))
 
         VStack(spacing: 0) {
             DayStrip(selected: day, tasks: openTasks) { selected = $0 }
@@ -57,6 +59,9 @@ struct PlanView: View {
                 }
                 if !due.isEmpty {
                     section("Due by then", tasks: due, day: day)
+                }
+                if !ongoing.isEmpty {
+                    section("Ongoing", tasks: ongoing, day: day)
                 }
                 if !important.isEmpty {
                     section("Most important", tasks: important, day: day)

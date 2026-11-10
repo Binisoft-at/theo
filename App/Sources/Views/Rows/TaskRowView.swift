@@ -155,6 +155,18 @@ struct TaskMetaLine: View {
     private var hasContent: Bool {
         task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
             || (style.showGroup && task.group != nil) || plannedToShow != nil || task.traitProposalGroupID != nil
+            || task.isOngoing
+    }
+
+    /// "Ongoing · yesterday": an ongoing task and when it was last checked off.
+    private var ongoingText: String {
+        guard let last = task.lastDoneAt else { return "Ongoing" }
+        let days = -DateText.dayDelta(last, today: today)
+        switch days {
+        case ...0: return "Ongoing · done today"
+        case 1: return "Ongoing · yesterday"
+        default: return "Ongoing · \(days)d ago"
+        }
     }
 
     /// The day it's planned for, unless that's also the deadline's day (the deadline says it).
@@ -188,6 +200,11 @@ struct TaskMetaLine: View {
                         Image(systemName: "bell.fill")
                             .accessibilityLabel("Reminder on")
                     }
+                }
+                if task.isOngoing && !task.isDone {
+                    Label(ongoingText, systemImage: "infinity")
+                        .foregroundStyle(Color.teal)
+                        .help("Ongoing: checking it off logs it for the day, the task stays")
                 }
                 if let estimateText {
                     Label(estimateText, systemImage: "timer")

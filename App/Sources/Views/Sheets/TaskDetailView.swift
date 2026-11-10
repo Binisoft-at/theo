@@ -124,6 +124,20 @@ struct TaskDetailView: View {
 
                 TaskPlanningSections(task: task)
 
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { task.isOngoing },
+                        set: { app.store.setOngoing([task], $0) }
+                    )) {
+                        Label("Ongoing", systemImage: "infinity")
+                    }
+                    if task.isOngoing, let last = task.lastDoneAt {
+                        LabeledContent("Last done", value: last.formatted(date: .abbreviated, time: .shortened))
+                    }
+                } footer: {
+                    Text("For work that never ends, like checking the account or answering mail: checking it off logs it for the day (with its Power Hours) and the task stays.")
+                }
+
                 Section("Organize") {
                     Picker(selection: groupBinding) {
                         Label("Quick Entry", systemImage: "tray.and.arrow.down").tag(UUID?.none)

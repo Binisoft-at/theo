@@ -133,6 +133,14 @@ struct TaskMenuItems: View {
             }
         }
 
+        // Ongoing: never finished, each check-off is logged for the day.
+        let allOngoing = tasks.allSatisfy(\.isOngoing)
+        Button {
+            withAnimation(.snappy) { app.store.setOngoing(tasks, !allOngoing) }
+        } label: {
+            Label(allOngoing ? "Not Ongoing" : "Ongoing (Never Finished)", systemImage: allOngoing ? "infinity.circle" : "infinity")
+        }
+
         if let single {
             Button {
                 withAnimation(.snappy) { app.matrixTask = single }

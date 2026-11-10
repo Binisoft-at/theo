@@ -68,6 +68,9 @@ enum DemoData {
         add("30 min run", health, dueDays: 0, hour: 18)
         add("Book physio session", health, priority: .low)
 
+        // Work that never ends: checked off yesterday, back today.
+        add("Answer client mail", work)
+
         // A subgroup that's switched off (its task stays off Today and the other lists).
         let admin = store.addGroup(name: "Admin", symbol: "tray.full", color: .graphite, parent: work.uuid)
         add("Expense report", admin)
@@ -109,6 +112,11 @@ enum DemoData {
         // suggestion instead of being changed.
         admin.isActive = false
         work.ownTraits = GroupTraits(estimate: 1, tags: ["work"])
+        if let mail = open.first(where: { $0.title == "Answer client mail" }) {
+            mail.isOngoing = true
+            mail.lastDoneAt = Date().addingTimeInterval(-26 * 3600)
+            mail.plannedDay = todayKey
+        }
         if let reviews = open.first(where: { $0.title == "Review pull requests" }) {
             reviews.estimate = 0.5
             reviews.plannedDay = todayKey

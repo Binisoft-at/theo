@@ -258,6 +258,9 @@ struct QuickEntryBar: View {
                 if subtaskParent == nil {
                     groupChip
                 }
+                if entry.ongoing {
+                    removableChip("∞ Ongoing", color: .teal) { disabled.insert(.ongoing) }
+                }
                 ForEach(entry.tags, id: \.self) { tag in
                     removableChip("#" + tag, color: TheoColor.forTag(tag).color) { disabled.insert(.tags) }
                 }

@@ -144,8 +144,22 @@ extension TaskStore {
             return start
         }
         var created = 0
+        var lastTask: TaskItem?
+        // Indents of the lines above that carry their own estimate: their subtasks without one
+        // get none, so the parent's total counts (instead of 0,25 PH defaults on each line).
+        var estimatedAbove: [Int] = []
         for line in lines {
+            if line.isNote {
+                if let lastTask {
+                    lastTask.notes = lastTask.notes.isEmpty ? line.title : lastTask.notes + "\n" + line.title
+                } else if let currentGroup {
+                    currentGroup.notes = currentGroup.notes.isEmpty ? line.title : currentGroup.notes + "\n" + line.title
+                }
+                continue
+            }
             if line.isHeading {
+                lastTask = nil
+                estimatedAbove = []
                 skippedBelow = nil
                 let name = line.title.lowercased()
                 if line.level <= 1 && (name == "quick entry" || name == "quick" || name == "inbox") {
@@ -173,13 +187,18 @@ extension TaskStore {
                 skippedBelow = line.indent
                 continue
             }
-            let parsed = QuickParser.parse(line.title, groups: [], options: [.priority, .tags, .estimate, .exactDates])
+            let parsed = QuickParser.parse(line.title, groups: [], options: [.priority, .tags, .estimate, .exactDates, .ongoing])
             let task = TaskItem(title: parsed.title, sortOrder: nextOrder(currentGroup?.uuid), indent: line.indent)
             context.insert(task)
             task.group = currentGroup
             task.priority = parsed.priority
             task.tags = parsed.tags
-            task.estimate = parsed.estimate ?? (line.done ? 0 : PowerHours.defaultForNewTasks)
+            estimatedAbove.removeAll { $0 >= line.indent }
+            let underEstimate = !estimatedAbove.isEmpty
+            task.estimate = parsed.estimate ?? (line.done || underEstimate ? 0 : PowerHours.defaultForNewTasks)
+            if parsed.estimate != nil { estimatedAbove.append(line.indent) }
+            if parsed.ongoing { task.isOngoing = true }
+            lastTask = task
             task.importance = Matrix.importance(for: parsed.priority, current: Matrix.defaultImportance)
             task.dueDate = parsed.due
             if !line.done { applyTraits(to: task, values: Self.typedValues(parsed, task), propose: false) }
