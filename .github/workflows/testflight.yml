@@ -58,6 +58,33 @@ jobs:
       - name: Generate Xcode project
         run: make generate
 
+      # TestFlight builds sync through CloudKit Production. A build with fields Production
+      # doesn't know yet would fail to sync, so stop here until the schema is deployed.
+      - name: CloudKit Production has every field
+        env:
+          CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+        run: |
+          if [ -z "$CLOUDKIT_MANAGEMENT_TOKEN" ]; then
+            echo "::warning::No CLOUDKIT_MANAGEMENT_TOKEN secret, so the Production schema isn't checked"
+            exit 0
+          fi
+          CONTAINER_ID=$(xcodebuild -project Theo.xcodeproj -target Theo -showBuildSettings 2>/dev/null | awk -F' = ' '$1 ~ /^ *APP_CLOUDKIT_CONTAINER$/ {print $2}')
+          xcrun cktool save-token --type management "$CLOUDKIT_MANAGEMENT_TOKEN" >/dev/null 2>&1 \
+            || printf '%s\n' "$CLOUDKIT_MANAGEMENT_TOKEN" | xcrun cktool save-token --type management >/dev/null 2>&1 || true
+          if ! xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+               --environment production --output-file "$RUNNER_TEMP/production.ckdb"; then
+            echo "::warning::Couldn't read the Production schema, so it isn't checked"
+            exit 0
+          fi
+          missing=$(python3 scripts/ci/schema-missing.py cloudkit/schema.ckdb "$RUNNER_TEMP/production.ckdb")
+          if [ -n "$missing" ]; then
+            echo "$missing" > schema-missing.log
+            echo "::error::CloudKit Production is missing fields. Deploy Schema Changes in the CloudKit Console (container $CONTAINER_ID, Development), then run this again."
+            echo "$missing"
+            exit 1
+          fi
+          echo "Production has every field."
+
       # The iOS app embeds the watch app; download the watchOS platform only if it's missing.
       - name: watchOS platform
         if: env.PLATFORMS != 'macos'
@@ -101,7 +128,8 @@ jobs:
             grep -E "error|Error|ERROR|warning: .*(sign|profile|entitlement|provision)|Upload|upload|succeeded|failed|FAILED|EXPORT|ARCHIVE" "$f" | tail -300 > "$RUNNER_TEMP/out/${f%.log}-summary.txt" || true
             tail -200 "$f" > "$RUNNER_TEMP/out/${f%.log}-tail.txt" || true
           done
-          echo "${{ job.status }} build ${BUILD_NUMBER}" > "$RUNNER_TEMP/out/status.txt"
+          echo "${{ job.status }} build ${BUILD_NUMBER} ${{ github.sha }}" > "$RUNNER_TEMP/out/status.txt"
+          if [ -f schema-missing.log ]; then cp schema-missing.log "$RUNNER_TEMP/out/production-missing.txt"; fi
           scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "testflight ${{ github.run_id }}" ci-testflight
 
       - name: Remove API key

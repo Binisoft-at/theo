@@ -1,11 +1,16 @@
 name: CloudKit schema
 
-# One click instead of "run a development build once": imports cloudkit/schema.ckdb into the
-# app container's Development environment. Afterwards deploy it to Production once in the
-# CloudKit Console (TestFlight and App Store builds use Production); the run summary links it.
+# Imports cloudkit/schema.ckdb into the app container's Development environment: on its own
+# whenever the schema file changes on main, or by hand. Afterwards it has to be deployed to
+# Production once in the CloudKit Console (TestFlight and App Store builds use Production;
+# Apple offers no API for that step). The ci-cloudkit branch's status.txt says whether
+# Production still needs it ("deploy-needed") or already matches ("in-sync").
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [cloudkit/schema.ckdb, .github/workflows/cloudkit-schema.yml]
 
 permissions:
   contents: write
@@ -110,5 +115,9 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/out"
           cp *.ckdb "$RUNNER_TEMP/out/" 2>/dev/null || true
-          echo "${{ job.status }}" > "$RUNNER_TEMP/out/status.txt"
+          missing=""
+          if [ -f production.ckdb ]; then missing=$(python3 scripts/ci/schema-missing.py cloudkit/schema.ckdb production.ckdb); fi
+          if [ -n "$missing" ]; then state="deploy-needed"; else state="in-sync"; fi
+          echo "${{ job.status }} $state ${{ github.sha }}" > "$RUNNER_TEMP/out/status.txt"
+          if [ -n "$missing" ]; then echo "$missing" > "$RUNNER_TEMP/out/production-missing.txt"; fi
           scripts/ci/publish-ci-output.sh "$RUNNER_TEMP/out" "cloudkit ${{ github.run_id }}" ci-cloudkit
