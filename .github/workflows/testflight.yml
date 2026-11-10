@@ -4,6 +4,8 @@ name: TestFlight
 # no certificates or profiles live in the repo. Build number = workflow run number.
 # Runs on GitHub's Macs (free for public repositories); the repository variable MAC_RUNNER
 # overrides the runner (docs/self-hosted-runner.md).
+# Starts by hand, for a `v*` tag, or for a commit on main whose message contains
+# "[testflight]" (how a session without tag access ships a finished, green batch).
 on:
   workflow_dispatch:
     inputs:
@@ -13,6 +15,7 @@ on:
         options: [both, ios, macos]
         default: both
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions:
@@ -29,6 +32,8 @@ env:
 jobs:
   upload:
     name: Archive & upload
+    # Pushes to main only ship when the commit asks for it.
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[testflight]')
     runs-on: ${{ fromJSON(vars.MAC_RUNNER || '"macos-26"') }}
     timeout-minutes: 60
     # Repository secrets (org secrets don't reach private repos on GitHub Free).

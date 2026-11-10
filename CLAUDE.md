@@ -30,9 +30,11 @@ except the one CloudKit step below.
 4. Fix and repeat until green. Look at the screenshots of whatever changed visibly.
    Screenshot launch arguments are in `AppModel.applyLaunchArguments` and the
    "Simulator screenshots" step of `ci.yml`. Add new ones for new screens.
-5. Ship: once the last commit is green, push a version tag. That starts TestFlight
-   (`testflight.yml`, iOS with the watch app and macOS, build number = run number):
-   `git tag v2026.11.10-1 && git push origin v2026.11.10-1` (date plus a counter).
+5. Ship: once the last commit is green, push an empty commit to `main` whose message
+   contains `[testflight]`. That starts TestFlight (`testflight.yml`, iOS with the watch app
+   and macOS, build number = run number):
+   `git commit --allow-empty -m "Release: <what's in it> [testflight]" && git push -u origin main`.
+   (A `v*` tag works too, but this session's git access refuses tag pushes.)
    The result lands on the `ci-testflight` branch (`status.txt`: `success build N <sha>`).
    Builds reach the owner's TestFlight 10 to 20 minutes after a successful run.
 6. Tell the owner briefly what changed and anything they have to do.
@@ -53,7 +55,7 @@ schema there (CloudKit Console, signed in). So:
   Development → Deploy Schema Changes… → Deploy.
 - TestFlight refuses to upload while Production is missing fields (step "CloudKit Production
   has every field"), so a build can't break sync. If it stops there, ask for the deploy,
-  then push a new tag.
+  then ship again.
 
 ## Conventions and pitfalls
 
