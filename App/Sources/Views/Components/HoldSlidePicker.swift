@@ -31,20 +31,22 @@ struct RadialLayout: Equatable {
 
     init(origin: CGPoint, bounds: CGRect, count: Int) {
         let n = max(1, count)
-        let margin: Double = 30
-        let left = max(0, Double(origin.x - bounds.minX) - margin)
-        let right = max(0, Double(bounds.maxX - origin.x) - margin)
-        let up = max(60, Double(origin.y - bounds.minY) - margin)
+        // Room for half an option's label at the screen edges; next to an edge this goes
+        // negative, which tilts the arc's end away from the edge.
+        let margin: Double = 44
+        let left = Double(origin.x - bounds.minX) - margin
+        let right = Double(bounds.maxX - origin.x) - margin
+        let up = max(60, Double(origin.y - bounds.minY) - 30)
         var radius = 100.0
         var start = 180.0
         var end = 0.0
-        // Grow the arc until neighbouring options are at least 40 points apart, as far as the
+        // Grow the arc until neighbouring options are at least 46 points apart, as far as the
         // room above allows.
         while true {
-            start = acos(max(-1, -left / radius)) * 180 / Double.pi
-            end = acos(min(1, right / radius)) * 180 / Double.pi
+            start = acos(min(1, max(-1, -left / radius))) * 180 / Double.pi
+            end = acos(min(1, max(-1, right / radius))) * 180 / Double.pi
             let spacing = (start - end) * Double.pi / 180 * radius / Double(max(1, n - 1))
-            if spacing >= 40 || radius + 10 > min(up, 250) { break }
+            if spacing >= 46 || radius + 10 > min(up, 260) { break }
             radius += 10
         }
         self.origin = origin
