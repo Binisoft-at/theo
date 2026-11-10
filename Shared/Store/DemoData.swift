@@ -69,7 +69,7 @@ enum DemoData {
         add("Book physio session", health, priority: .low)
 
         // A subgroup that's switched off (its task stays off Today and the other lists).
-        let admin = store.addGroup(name: "Admin", symbol: "tray.full", color: .gray, parent: work.uuid)
+        let admin = store.addGroup(name: "Admin", symbol: "tray.full", color: .graphite, parent: work.uuid)
         add("Expense report", admin)
 
         // History for the previous days.
