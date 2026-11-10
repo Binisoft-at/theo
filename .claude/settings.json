@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push -u origin main)",
+      "Bash(git push origin v:*)",
+      "Bash(git tag v:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run rerun:*)",
+      "Bash(gh workflow run:*)"
+    ]
+  }
+}
