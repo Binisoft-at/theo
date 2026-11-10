@@ -148,6 +148,11 @@ struct RadialPickerOverlay: View {
             let layout = pick.layout
             let local = { (point: CGPoint) in CGPoint(x: point.x - origin.x, y: point.y - origin.y) }
             ZStack {
+                // Dims the page a little so the options read clearly over it.
+                Rectangle()
+                    .fill(Color.black.opacity(0.16))
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 // A faint arc the options sit on, and the line to the one pointed at.
                 Path { path in
                     path.addArc(center: local(layout.origin), radius: layout.radius,
