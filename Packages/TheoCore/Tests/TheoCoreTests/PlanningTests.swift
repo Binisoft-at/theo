@@ -182,6 +182,36 @@ struct MatrixTests {
         #expect(Matrix.between(nil, nil) == nil)
     }
 
+    @Test func insertionRanksBetweenWithoutInventingADeadline() {
+        let above = Matrix.Rank(importance: 0.9, days: nil)
+        let below = Matrix.Rank(importance: 0.5, days: nil)
+        let new = Matrix.insertion(above: above, below: below)
+        #expect(new?.days == nil)
+        let score = new?.score ?? 0
+        #expect(score < above.score && score > below.score)
+    }
+
+    @Test func insertionBetweenDeadlinesTakesOneOfThem() {
+        // Both due today: importance alone can't reach their score, so it borrows the deadline.
+        let above = Matrix.Rank(importance: 0.9, days: 0)
+        let below = Matrix.Rank(importance: 0.8, days: 0)
+        let new = Matrix.insertion(above: above, below: below)
+        #expect(new?.days == 0)
+        let score = new?.score ?? 0
+        #expect(score < above.score && score > below.score)
+    }
+
+    @Test func insertionAtTheEdgesAndOverdue() {
+        let only = Matrix.Rank(importance: 0.3, days: nil)
+        let after = Matrix.insertion(above: only, below: nil)
+        let before = Matrix.insertion(above: nil, below: only)
+        #expect((after?.score ?? 1) < only.score)
+        #expect((before?.score ?? 0) > only.score)
+        #expect(Matrix.insertion(above: nil, below: nil) == nil)
+        // Overdue counts as today; a new task never gets a deadline in the past.
+        #expect(Matrix.Rank(importance: 0.5, days: -3).days == 0)
+    }
+
     @Test func columns() {
         #expect(Matrix.column(forDays: -2) == 0)
         #expect(Matrix.column(forDays: 14) == 14)

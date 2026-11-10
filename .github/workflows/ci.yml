@@ -113,6 +113,9 @@ jobs:
           shoot history-light -TheoScreen history
           shoot matrix-light -TheoScreen matrix
           shoot plan-light -TheoScreen plan
+          shoot review-light -TheoScreen review
+          shoot work-light -TheoScreen work
+          shoot radial-light -TheoScreen today -TheoRadialDemo
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask
           xcrun simctl ui "$UDID" appearance dark

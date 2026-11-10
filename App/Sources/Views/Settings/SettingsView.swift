@@ -1,4 +1,5 @@
 import SwiftUI
+import TheoCore
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var app
@@ -13,6 +14,13 @@ struct SettingsView: View {
     @AppStorage(Prefs.newTaskPlacement) private var placementRaw = NewTaskPlacement.bottom.rawValue
     @AppStorage(Prefs.focusMinutes) private var focusMinutes = 50
     @AppStorage(Prefs.breakMinutes) private var breakMinutes = 10
+    @AppStorage(Prefs.defaultEstimate) private var defaultEstimate = 0.25
+    @AppStorage(Prefs.reviewPowerHours) private var reviewPowerHours = true
+    @AppStorage(Prefs.reviewBreakdown) private var reviewBreakdown = true
+    @AppStorage(Prefs.reviewComparison) private var reviewComparison = true
+    @AppStorage(Prefs.reviewShare) private var reviewShare = true
+    @AppStorage(Prefs.reviewTasks) private var reviewTasks = true
+    @AppStorage(Prefs.reviewCompareDays) private var reviewCompareDays = 7
 
     var body: some View {
         Form {
@@ -62,7 +70,7 @@ struct SettingsView: View {
                 Text("At the start of each day, unfinished tasks roll over to the new page and completed ones move to History — your Notes routine, automated.")
             }
 
-            Section("Tasks") {
+            Section {
                 Picker("Completed tasks", selection: $completedRaw) {
                     ForEach(CompletedMode.allCases) { mode in
                         Text(mode.title).tag(mode.rawValue)
@@ -73,8 +81,36 @@ struct SettingsView: View {
                         Text(placement.title).tag(placement.rawValue)
                     }
                 }
+                Picker("New tasks start with", selection: $defaultEstimate) {
+                    Text("No estimate").tag(0.0)
+                    ForEach([0.1, 0.25, 0.5, 0.75, 1.0], id: \.self) { value in
+                        Text(PowerHours.format(value)).tag(value)
+                    }
+                }
                 Toggle("Show days carried over", isOn: $showAge)
                 Toggle("Show notes preview", isOn: $showNotesPreview)
+            } header: {
+                Text("Tasks")
+            } footer: {
+                Text("Every new task gets this estimate unless you type or pick another one, or its group sets one. Remove it from a task any time.")
+            }
+
+            Section {
+                Toggle("Power Hours worked", isOn: $reviewPowerHours)
+                Toggle("What it went into", isOn: $reviewBreakdown)
+                Toggle("Comparison with other days", isOn: $reviewComparison)
+                Picker("Compare with", selection: $reviewCompareDays) {
+                    ForEach([7, 14, 30], id: \.self) { days in
+                        Text("\(days) days before").tag(days)
+                    }
+                }
+                .disabled(!reviewComparison)
+                Toggle("Share of the page done", isOn: $reviewShare)
+                Toggle("Finished tasks", isOn: $reviewTasks)
+            } header: {
+                Text("Day Review")
+            } footer: {
+                Text("Tap the ring on Today (or press ⌘9 on the Mac) to see what got done, during the day and after. The finished tasks export as CSV from there.")
             }
 
             Section {

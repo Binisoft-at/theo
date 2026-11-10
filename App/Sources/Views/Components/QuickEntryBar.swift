@@ -103,7 +103,17 @@ struct QuickEntryBar: View {
         }
     }
 
-    private var effectiveEstimate: Double { estimateChoice ?? parsed.estimate ?? 0 }
+    /// Power Hours picked or typed (0 = explicitly none); nil leaves it to the default.
+    private var chosenEstimate: Double? { estimateChoice ?? parsed.estimate }
+    /// What the task will get: picked or typed, else its group's trait, else the default.
+    private var effectiveEstimate: Double {
+        chosenEstimate ?? targetTraits.estimate ?? PowerHours.defaultForNewTasks
+    }
+    /// Traits of the group the task will land in.
+    private var targetTraits: GroupTraits {
+        let groupID = subtaskParent?.groupID ?? targetGroupID
+        return app.store.traits(of: groups.first(where: { $0.uuid == groupID }))
+    }
 
     private var effectiveRecurrence: Recurrence? {
         switch recurrenceChoice {
@@ -198,8 +208,9 @@ struct QuickEntryBar: View {
                 #endif
             matrixHandle
             if !text.isEmpty {
-                // Tap adds; hold and slide up picks the Power Hours, letting go adds with them.
-                HoldSlidePicker(options: Self.estimateOptions, onTap: add) { index in
+                // Tap adds; hold and point at a value on the arc picks the Power Hours, letting go
+                // adds with them.
+                HoldSlidePicker(options: Self.estimateOptions, title: "Power Hours", onTap: add) { index in
                     pickEstimate(index)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
@@ -208,7 +219,7 @@ struct QuickEntryBar: View {
                 }
                 .transition(.scale.combined(with: .opacity))
                 .accessibilityLabel(isMultiline ? "Add \(Composer.lines(text).count) Tasks" : "Add Task")
-                .accessibilityHint("Touch and hold, then slide up to set the Power Hours")
+                .accessibilityHint("Touch and hold, then slide toward a value to set the Power Hours")
                 .accessibilityAddTraits(.isButton)
                 .background {
                     Button("Add", action: add)
@@ -294,7 +305,7 @@ struct QuickEntryBar: View {
         } else {
             title = level == .normal ? "Priority" : level.marks
         }
-        return HoldSlidePicker(options: (1...Matrix.levels).map(String.init), step: 28) {
+        return HoldSlidePicker(options: (1...Matrix.levels).map(String.init), title: "Importance") {
             importanceChoice = nil
             priorityChoice = level.next
         } onPick: { index in
@@ -306,7 +317,7 @@ struct QuickEntryBar: View {
         }
         .accessibilityLabel("Priority")
         .accessibilityValue(importanceChoice.map { "Importance \($0)" } ?? level.title)
-        .accessibilityHint("Tap to raise, touch and hold and slide to pick an importance from 1 to 10")
+        .accessibilityHint("Tap to raise, touch and hold and slide toward a number to pick an importance from 1 to 10")
     }
 
     static let estimateOptions = PowerHours.presets.map { PowerHours.number($0) } + ["Custom…"]
@@ -320,32 +331,35 @@ struct QuickEntryBar: View {
         add()
     }
 
-    /// Hold the + and drag it between two tasks to add one right there (what's typed, or an
-    /// empty line to type into). A tap just starts typing.
+    /// Drag the + up between two tasks to add one right there (what's typed, or an empty line to
+    /// type into). It moves at once, no hold needed; a ghost follows the finger. A tap just
+    /// starts typing.
     private var insertHandle: some View {
         Image(systemName: subtaskParent != nil ? "arrow.turn.down.right" : "plus.circle.fill")
             .font(.title2)
             .foregroundStyle(.tint)
             .contentTransition(.symbolEffect(.replace))
             .symbolEffect(.bounce, value: addedCount)
+            .frame(minWidth: 30, minHeight: 30)
             .contentShape(Rectangle())
             .onTapGesture { focused = true }
             .highPriorityGesture(
-                LongPressGesture(minimumDuration: 0.15)
-                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-                    .onChanged { value in
-                        guard case .second(true, let drag?) = value else { return }
+                DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                    .onChanged { drag in
+                        if app.insertDragLocation == nil {
+                            let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            app.insertDragTitle = isMultiline ? "" : (typed.isEmpty ? "" : parsed.title)
+                        }
                         app.insertDragLocation = drag.location
                     }
-                    .onEnded { value in
+                    .onEnded { drag in
                         app.insertDragLocation = nil
-                        guard case .second(true, let drag?) = value else { return }
                         dropBetween(at: drag.location)
                     }
             )
             .sensoryFeedback(.impact(weight: .light), trigger: app.insertDragLocation != nil) { _, new in new }
             .accessibilityLabel("New task")
-            .accessibilityHint("Touch and hold, then drag between two tasks to add one there")
+            .accessibilityHint("Drag up between two tasks to add one there")
     }
 
     private func dropBetween(at location: CGPoint) {
@@ -356,7 +370,7 @@ struct QuickEntryBar: View {
             value.priority = effectivePriority
             value.due = effectiveDue?.date
             value.dueHasTime = effectiveDue?.hasTime ?? false
-            value.estimate = effectiveEstimate > 0 ? effectiveEstimate : nil
+            value.estimate = chosenEstimate
             value.recurrence = effectiveRecurrence
             entry = value
         }
@@ -455,7 +469,8 @@ struct QuickEntryBar: View {
                 }
             }
         } label: {
-            chipLabel(value > 0 ? PowerHours.format(value) : "PH", symbol: "timer", color: .teal, active: value > 0)
+            // The default shows dimmed; a picked or typed estimate in colour.
+            chipLabel(value > 0 ? PowerHours.format(value) : "No PH", symbol: "timer", color: .teal, active: chosenEstimate != nil && value > 0)
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
@@ -591,7 +606,7 @@ struct QuickEntryBar: View {
             entry.priority = effectivePriority
             entry.due = effectiveDue?.date
             entry.dueHasTime = effectiveDue?.hasTime ?? false
-            entry.estimate = effectiveEstimate > 0 ? effectiveEstimate : nil
+            entry.estimate = chosenEstimate
             entry.recurrence = effectiveRecurrence
             // Something that repeats needs a first date: today.
             if entry.recurrence != nil && entry.due == nil {

@@ -76,9 +76,12 @@ struct TutorialTests {
         let steps = TutorialCatalog.steps(newerThan: 2)
         #expect(steps.first?.id == "whats-new")
         #expect(steps.last?.id == "finish")
-        #expect(steps.dropFirst().dropLast().allSatisfy { $0.since == 3 })
+        #expect(steps.dropFirst().dropLast().allSatisfy { $0.since > 2 })
         #expect(steps.count > 2)
         #expect(TutorialCatalog.steps(newerThan: 1).count > steps.count)
+        let latest = TutorialCatalog.steps(newerThan: TutorialCatalog.version - 1)
+        #expect(latest.dropFirst().dropLast().allSatisfy { $0.since == TutorialCatalog.version })
+        #expect(latest.count > 2)
     }
 
     @Test func upToDateGetsNothing() {

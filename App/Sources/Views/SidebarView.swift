@@ -11,7 +11,7 @@ struct SidebarView: View {
 
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
-    private var openTasks: [TaskItem]
+    private var allOpen: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @State private var groupPendingDelete: TaskGroup?
@@ -19,6 +19,7 @@ struct SidebarView: View {
     var body: some View {
         @Bindable var app = app
         let today = app.dayStart
+        let openTasks = allOpen.activeOnly(groups)
         let todayCount = openTasks.filter { PageBuilder.isOnToday($0, dayStart: today) }.count
         let tomorrowCount = openTasks.filter { $0.isPlanned(for: DayBoundary.current.dayStart(byAdding: 1, to: today)) }.count
         let dueCount = openTasks.filter { task in
@@ -29,6 +30,7 @@ struct SidebarView: View {
         let quickCount = openTasks.filter { $0.groupID == nil }.count
         let tags = Sections.tags(in: openTasks)
         let tree = GroupTree.ordered(groups)
+        let off = GroupTree.inactiveIDs(groups)
 
         sidebarList(selection: usesSelection ? $app.selection : nil) {
             Section {
@@ -62,11 +64,37 @@ struct SidebarView: View {
                             title: group.displayName,
                             symbol: group.symbol,
                             color: group.color.color,
-                            count: openTasks.filter { $0.groupID == group.uuid }.count
+                            count: allOpen.filter { $0.groupID == group.uuid }.count
                         )
                         .padding(.leading, CGFloat(item.level) * 16)
+                        // Switched off (or inside a group that is): dimmed, with a pause mark.
+                        .opacity(off.contains(group.uuid) ? 0.45 : 1)
+                        .overlay(alignment: .trailing) {
+                            if !group.isActive {
+                                Image(systemName: "pause.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.trailing, 28)
+                                    .accessibilityLabel("Off")
+                            }
+                        }
                     }
+                    #if os(iOS)
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            withAnimation(.snappy) { app.store.setActive(group, !group.isActive) }
+                        } label: {
+                            Label(group.isActive ? "Off" : "On", systemImage: group.isActive ? "pause.circle" : "play.circle")
+                        }
+                        .tint(group.isActive ? .gray : .green)
+                    }
+                    #endif
                     .contextMenu {
+                        Button {
+                            withAnimation(.snappy) { app.store.setActive(group, !group.isActive) }
+                        } label: {
+                            Label(group.isActive ? "Switch Off" : "Switch On", systemImage: group.isActive ? "pause.circle" : "play.circle")
+                        }
                         Button {
                             app.groupEditor = .edit(group)
                         } label: {

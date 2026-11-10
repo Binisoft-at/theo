@@ -68,6 +68,10 @@ enum DemoData {
         add("30 min run", health, dueDays: 0, hour: 18)
         add("Book physio session", health, priority: .low)
 
+        // A subgroup that's switched off (its task stays off Today and the other lists).
+        let admin = store.addGroup(name: "Admin", symbol: "tray.full", color: .gray, parent: work.uuid)
+        add("Expense report", admin)
+
         // History for the previous days.
         for day in 1...6 {
             for index in 0..<(2 + day % 3) {
@@ -100,6 +104,15 @@ enum DemoData {
             task.priority = Matrix.priority(forImportance: task.importance)
             task.estimate = sample.estimate
             task.plannedDay = sample.planned ? todayKey : nil
+        }
+        // Work hands its tasks 1 PH and #work; a task that had its own estimate shows the
+        // suggestion instead of being changed.
+        admin.isActive = false
+        work.ownTraits = GroupTraits(estimate: 1, tags: ["work"])
+        if let reviews = open.first(where: { $0.title == "Review pull requests" }) {
+            reviews.estimate = 0.5
+            reviews.plannedDay = todayKey
+            reviews.traitProposalGroupID = work.uuid
         }
         store.save()
     }

@@ -67,7 +67,9 @@ extension TaskStore {
         let target = group(id: targetGroupID)
         for item in block {
             item.indent = max(0, source.depth(of: item) - rootDepth + newRootDepth)
+            let changed = item.groupID != target?.uuid
             item.group = target
+            if changed { applyTraits(to: item, propose: true) }
         }
         assignOrders(block, lower: lower, upper: upper)
         normalizeIfNeeded(groupID: targetGroupID)
@@ -177,9 +179,10 @@ extension TaskStore {
             task.group = currentGroup
             task.priority = parsed.priority
             task.tags = parsed.tags
-            task.estimate = parsed.estimate ?? 0
+            task.estimate = parsed.estimate ?? (line.done ? 0 : PowerHours.defaultForNewTasks)
             task.importance = Matrix.importance(for: parsed.priority, current: Matrix.defaultImportance)
             task.dueDate = parsed.due
+            if !line.done { applyTraits(to: task, values: Self.typedValues(parsed, task), propose: false) }
             if line.done {
                 task.isDone = true
                 task.completedAt = Date()

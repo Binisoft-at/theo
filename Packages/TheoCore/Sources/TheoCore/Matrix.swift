@@ -99,6 +99,45 @@ public enum Matrix {
         }
     }
 
+    /// A task's place in the ranking: importance, and whole days until its deadline (nil = none).
+    public struct Rank: Equatable, Sendable {
+        public var importance: Double
+        public var days: Int?
+
+        public init(importance: Double, days: Int?) {
+            self.importance = importance
+            self.days = days.map { max(0, $0) }
+        }
+
+        public var score: Double { Matrix.score(importance: importance, urgency: Matrix.urgency(daysUntilDue: days)) }
+    }
+
+    /// Importance and deadline for a new task dropped between two ranked tasks, so that it ranks
+    /// right between them (just below the last one, or just above the first). It gets no
+    /// deadline whenever importance alone can do that, so dropping a task never invents one.
+    /// Otherwise it takes the lower neighbour's deadline, then the upper one's.
+    public static func insertion(above: Rank?, below: Rank?) -> Rank? {
+        let target: Double
+        switch (above, below) {
+        case let (a?, b?): target = (a.score + b.score) / 2
+        case let (a?, nil): target = a.score - 0.02
+        case let (nil, b?): target = b.score + 0.02
+        case (nil, nil): return nil
+        }
+        var candidates: [Int?] = [nil]
+        for days in [below?.days, above?.days] where days != nil && !candidates.contains(days) {
+            candidates.append(days)
+        }
+        for days in candidates {
+            let needed = (target - 0.4 * urgency(daysUntilDue: days)) / 0.6
+            if needed >= 0.1 - 1e-9, needed <= 1 + 1e-9 {
+                return Rank(importance: min(1, max(0.1, needed)), days: days)
+            }
+        }
+        let days = above?.days ?? below?.days
+        return Rank(importance: importance(toReach: target, urgency: urgency(daysUntilDue: days)), days: days)
+    }
+
     // MARK: - Grid
 
     /// Columns: today ... +14 days, then one "no date" column.

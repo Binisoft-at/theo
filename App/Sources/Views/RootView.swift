@@ -184,6 +184,15 @@ struct AppChrome: ViewModifier {
                 FocusView()
                     .tint(accent)
             }
+            .sheet(item: $app.reviewDay) { day in
+                NavigationStack {
+                    DayReviewView(day: day.start)
+                }
+                .tint(accent)
+                #if os(macOS)
+                .frame(minWidth: 520, minHeight: 620)
+                #endif
+            }
             .overlay {
                 if let drag = app.matrixDrag {
                     MatrixDropOverlay(drag: drag)
@@ -193,8 +202,53 @@ struct AppChrome: ViewModifier {
                         .tint(accent)
                 }
             }
+            .overlay {
+                if let location = app.insertDragLocation {
+                    InsertGhost(title: app.insertDragTitle, location: location)
+                        .tint(accent)
+                }
+            }
+            .overlay {
+                if let pick = app.radialPick {
+                    RadialPickerOverlay(pick: pick)
+                        .tint(accent)
+                }
+            }
+            .overlay {
+                // Measures the visible part of the window (it shrinks above the keyboard), so a
+                // circular pick always opens where it can be seen.
+                Color.clear
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { app.visibleFrame = $0 }
+                    .allowsHitTesting(false)
+            }
+            .animation(.snappy(duration: 0.16), value: app.radialPick?.id)
             .animation(.snappy(duration: 0.2), value: app.matrixDrag == nil)
             .animation(.snappy(duration: 0.2), value: app.matrixTask == nil)
+    }
+}
+
+/// The task the composer's + carries while it's dragged over a list, just above the finger.
+struct InsertGhost: View {
+    let title: String
+    /// Finger position in global coordinates.
+    let location: CGPoint
+
+    var body: some View {
+        GeometryReader { geo in
+            let origin = geo.frame(in: .global).origin
+            Label(title.isEmpty ? "New Task" : title, systemImage: "plus.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: 240)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .glassEffect(.regular.tint(Color.accentColor.opacity(0.25)), in: .capsule)
+                .fixedSize()
+                .position(x: location.x - origin.x + 60, y: location.y - origin.y - 34)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .transition(.opacity)
     }
 }
 

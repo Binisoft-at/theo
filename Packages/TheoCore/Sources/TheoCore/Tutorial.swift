@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 3
+    public static let version = 4
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -282,9 +282,9 @@ public enum TutorialCatalog {
             goal: .planTask
         ),
         TutorialStep(
-            id: "insert", since: 3, symbol: "plus.square.dashed",
+            id: "insert", since: 4, symbol: "plus.square.dashed",
             title: "Drop a task in between",
-            body: "Hold the + at the left of the bottom bar and drag it between two tasks. A new line opens right there, ranked between its neighbours.",
+            body: "Drag the + at the left of the bottom bar up between two tasks, no holding needed. A new line opens right where you let go, ranked between its neighbours (right under a task with subtasks, it becomes the first one).",
             goal: .addTask
         ),
         TutorialStep(
@@ -295,10 +295,24 @@ public enum TutorialCatalog {
             goal: .addSubtask
         ),
         TutorialStep(
-            id: "hold-estimate", since: 3, symbol: "hand.point.up.left",
-            title: "Hold and slide",
-            body: "Hold the send button ↑ and slide up to pick 0,1 to 4 Power Hours, then let go to add the task. Holding works on the ! chip too, for importance.",
+            id: "hold-estimate", since: 4, symbol: "hand.point.up.left",
+            title: "Hold and point",
+            body: "Hold the send button ↑ and the Power Hours fan out in an arc above it: slide toward one and let go to add the task with it. The ! chip does the same for importance 1–10. Every task starts with 0,25 PH, which you can change in Settings.",
             goal: .estimate
+        ),
+        TutorialStep(
+            id: "group-traits", since: 4, symbol: "wand.and.stars",
+            title: "Groups pass things on",
+            body: "Edit a group to give its tasks an importance, Power Hours, tags or a deadline. New tasks there take them. A task you move in keeps its own values and shows \u{201C}Suggested\u{201D} instead. On a group's page, tap a subgroup to switch it off: its tasks stay out of Today until you switch it back on.",
+            macBody: "Edit a group to give its tasks an importance, Power Hours, tags or a deadline. New tasks there take them. A task you move in keeps its own values and shows \u{201C}Suggested\u{201D} instead. Right-click a group in the sidebar → Switch Off to keep its tasks out of Today.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "review", since: 4, symbol: "chart.bar.xaxis",
+            title: "How the day went",
+            body: "Tap the ring at the top of Today: Power Hours done and what they went into, how the day compares with the ones before, and every finished task, ready to export as CSV. Pick what it shows in Settings. Today's ⋯ → Group By sorts the page by group, subgroup, priority, deadline, tag or size.",
+            macBody: "Press ⌘9 (or click the ring at the top of Today): Power Hours done and what they went into, how the day compares with the ones before, and every finished task, ready to export as CSV. Pick what it shows in Settings. Today's ⋯ → Group By sorts the page by group, subgroup, priority, deadline, tag or size.",
+            goal: .none
         ),
         TutorialStep(
             id: "overdue", since: 3, symbol: "calendar.badge.clock",

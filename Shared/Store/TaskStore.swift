@@ -92,9 +92,10 @@ struct TaskStore {
         task.dueDate = entry.due
         task.dueHasTime = entry.dueHasTime
         task.tags = entry.tags
-        task.estimate = entry.estimate ?? 0
+        task.estimate = entry.estimate ?? PowerHours.defaultForNewTasks
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
+        applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         save()
         return task
     }
@@ -113,7 +114,9 @@ struct TaskStore {
         context.insert(new)
         new.group = task.group?.deletedAt == nil ? task.group : nil
         new.importance = Matrix.defaultImportance
+        new.estimate = PowerHours.defaultForNewTasks
         new.plannedDay = task.plannedDay
+        applyTraits(to: new, propose: false)
         normalizeIfNeeded(groupID: task.groupID)
         save()
         return new
@@ -129,33 +132,43 @@ struct TaskStore {
         context.insert(new)
         new.group = task.group?.deletedAt == nil ? task.group : nil
         new.importance = Matrix.defaultImportance
+        new.estimate = PowerHours.defaultForNewTasks
         new.plannedDay = task.plannedDay
+        applyTraits(to: new, propose: false)
         normalizeIfNeeded(groupID: task.groupID)
         save()
         return new
     }
 
-    /// A new last subtask of `parent`, right after its existing subtasks. Adding work under a
-    /// finished task reopens it.
+    /// A new subtask of `parent`: the last one, right after its existing subtasks, or with
+    /// `first` the first one, right under the parent. Adding work under a finished task reopens it.
     @discardableResult
-    func addSubtask(_ entry: ParsedEntry, to parent: TaskItem) -> TaskItem {
+    func addSubtask(_ entry: ParsedEntry, to parent: TaskItem, first: Bool = false) -> TaskItem {
         let layout = self.layout(for: parent.groupID)
         guard let index = layout.index(of: parent) else {
             return addTask(entry, defaultGroupID: parent.groupID, placement: .bottom)
         }
-        let end = layout.blockEnd(after: index)
-        let upper = end < layout.items.count ? layout.items[end].sortOrder : nil
-        let task = TaskItem(title: entry.title, sortOrder: midpoint(layout.items[end - 1].sortOrder, upper), indent: layout.depths[index] + 1)
+        let order: Double
+        if first {
+            let next = index + 1 < layout.items.count ? layout.items[index + 1].sortOrder : nil
+            order = midpoint(parent.sortOrder, next)
+        } else {
+            let end = layout.blockEnd(after: index)
+            let upper = end < layout.items.count ? layout.items[end].sortOrder : nil
+            order = midpoint(layout.items[end - 1].sortOrder, upper)
+        }
+        let task = TaskItem(title: entry.title, sortOrder: order, indent: layout.depths[index] + 1)
         context.insert(task)
         task.group = parent.group?.deletedAt == nil ? parent.group : nil
         task.priority = entry.priority
         task.dueDate = entry.due
         task.dueHasTime = entry.dueHasTime
         task.tags = entry.tags
-        task.estimate = entry.estimate ?? 0
+        task.estimate = entry.estimate ?? PowerHours.defaultForNewTasks
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         task.plannedDay = parent.plannedDay
+        applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         if parent.isDone {
             parent.isDone = false
             parent.completedAt = nil
@@ -404,6 +417,21 @@ struct TaskStore {
         save()
     }
 
+    /// One-time: open tasks from before the default Power Hours get it too (finished ones keep
+    /// what they had, so past days don't change).
+    func applyDefaultEstimateOnce() {
+        let key = "defaultEstimateApplied"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        let value = PowerHours.defaultForNewTasks
+        if value > 0 {
+            for task in liveTasks() where !task.isDone && task.estimate <= 0 {
+                task.estimate = value
+            }
+            save()
+        }
+        UserDefaults.standard.set(true, forKey: key)
+    }
+
     /// One-time: older tasks only had priority marks; give them a matching importance.
     func syncImportanceWithPriority() {
         let key = "importanceFromPriority"
@@ -481,6 +509,104 @@ struct TaskStore {
         save()
     }
 
+    // MARK: - Group traits
+
+    /// A group's traits, with what it inherits from the groups it sits in.
+    func traits(of group: TaskGroup?) -> GroupTraits {
+        guard let group else { return GroupTraits() }
+        var result = group.ownTraits
+        var seen: Set<UUID> = [group.uuid]
+        var current = group
+        while let parentID = current.parentUUID, !seen.contains(parentID), let parent = self.group(id: parentID) {
+            result = result.inheriting(from: parent.ownTraits)
+            seen.insert(parentID)
+            current = parent
+        }
+        return result
+    }
+
+    /// What a task has of its own (a default importance or estimate counts as nothing).
+    func traitValues(of task: TaskItem, today: Date) -> GroupTraits.TaskValues {
+        GroupTraits.TaskValues(
+            importance: abs(task.importance - Matrix.defaultImportance) < 0.001 ? nil : task.importance,
+            estimate: task.estimate <= 0 || abs(task.estimate - PowerHours.defaultForNewTasks) < 0.001 ? nil : task.estimate,
+            tags: task.tags,
+            hasDeadline: task.dueDate != nil,
+            dueDays: Matrix.daysUntil(task.dueDate, today: today)
+        )
+    }
+
+    /// What was typed for a new task (anything not typed is open for the group's traits).
+    static func typedValues(_ entry: ParsedEntry, _ task: TaskItem) -> GroupTraits.TaskValues {
+        GroupTraits.TaskValues(
+            importance: entry.priority != .normal ? task.importance : nil,
+            estimate: entry.estimate,
+            tags: task.tags,
+            hasDeadline: entry.due != nil,
+            dueDays: nil
+        )
+    }
+
+    /// Gives a task its group's traits where it has nothing of its own. With `propose`, traits
+    /// that differ from its own values become a proposal it shows; nothing is overwritten.
+    func applyTraits(to task: TaskItem, values: GroupTraits.TaskValues? = nil, propose: Bool) {
+        let today = DayBoundary.current.start(of: Date())
+        let traits = self.traits(of: task.group)
+        guard !traits.isEmpty else {
+            task.traitProposalGroupID = nil
+            return
+        }
+        let plan = traits.plan(for: values ?? traitValues(of: task, today: today))
+        apply(plan.apply, to: task, today: today)
+        if propose {
+            task.traitProposalGroupID = plan.propose.isEmpty ? nil : task.groupID
+        }
+    }
+
+    private func apply(_ traits: GroupTraits, to task: TaskItem, today: Date) {
+        if let importance = traits.importance {
+            task.importance = min(1, max(0.1, importance))
+            task.priority = Matrix.priority(forImportance: task.importance)
+        }
+        if let estimate = traits.estimate { task.estimate = max(0, estimate) }
+        if !traits.tags.isEmpty {
+            var tags = task.tags
+            for tag in traits.tags where !tags.contains(tag) { tags.append(tag) }
+            task.tags = tags
+        }
+        if let days = traits.dueDays { setDueDay(task, days: days, today: today) }
+    }
+
+    /// What a task still offers from the group it was moved to, recomputed each time so it
+    /// disappears once the values match. nil = nothing to offer.
+    func traitProposal(for task: TaskItem) -> (group: TaskGroup, traits: GroupTraits)? {
+        guard let id = task.traitProposalGroupID, id == task.groupID, !task.isDone, let group = self.group(id: id) else { return nil }
+        let today = DayBoundary.current.start(of: Date())
+        let proposal = traits(of: group).plan(for: traitValues(of: task, today: today)).propose
+        return proposal.isEmpty ? nil : (group, proposal)
+    }
+
+    /// Takes over some (or all) of a proposal.
+    func acceptProposal(_ task: TaskItem, _ traits: GroupTraits) {
+        apply(traits, to: task, today: DayBoundary.current.start(of: Date()))
+        if traitProposal(for: task) == nil { task.traitProposalGroupID = nil }
+        task.touch()
+        save()
+    }
+
+    func dismissProposal(_ task: TaskItem) {
+        task.traitProposalGroupID = nil
+        task.touch()
+        save()
+    }
+
+    /// Switches a group (with its subgroups) on or off.
+    func setActive(_ group: TaskGroup, _ active: Bool) {
+        group.isActive = active
+        group.touch()
+        save()
+    }
+
     // MARK: - Moving between groups
 
     /// Files tasks (with their subtasks) at the bottom of another group.
@@ -494,8 +620,10 @@ struct TaskStore {
             for item in source.block(of: task) where !seen.contains(ObjectIdentifier(item)) {
                 seen.insert(ObjectIdentifier(item))
                 item.indent = max(0, source.depth(of: item) - rootDepth)
+                let changed = item.groupID != target?.uuid
                 item.group = target
                 item.sortOrder = next
+                if changed { applyTraits(to: item, propose: true) }
                 item.touch()
                 next += 1
             }

@@ -13,7 +13,7 @@ struct WatchTodayView: View {
     @AppStorage("watch.showDoneToday") private var showDone = false
 
     var body: some View {
-        let page = tasks.filter { $0.isOnPage(of: model.dayStart) }
+        let page = tasks.activeOnly(groups).filter { $0.isOnPage(of: model.dayStart) }
         let sections = WatchPage.sections(page, groups: groups, dayStart: model.dayStart)
         let done = WatchPage.completed(page)
         List {

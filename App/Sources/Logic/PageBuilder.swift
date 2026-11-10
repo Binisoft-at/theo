@@ -108,24 +108,32 @@ enum PageBuilder {
     /// ones first.
     static func rankedRows(_ tasks: [TaskItem], options: Options) -> [ListRow] {
         let day = options.rankDay ?? Date()
-        var blocks: [(score: Double, done: Bool, rows: [ListRow])] = []
+        // Equal scores keep a fixed order (group order, then manual order), so the list never
+        // reshuffles when something is added.
+        var blocks: [(score: Double, done: Bool, groupOrder: Double, order: Double, rows: [ListRow])] = []
+        func append(_ head: TaskItem, _ rows: [ListRow]) {
+            let groupOrder = head.group.map { $0.deletedAt == nil ? $0.sortOrder : -.infinity } ?? -.infinity
+            blocks.append((head.matrixScore(today: day), head.isDone, groupOrder, head.sortOrder, rows))
+        }
         for section in Dictionary(grouping: tasks, by: \.groupID).values {
             var current: [ListRow] = []
             var head: TaskItem?
             for row in taskRows(section, options: options) {
                 guard case .task(let task, let depth, _) = row else { continue }
                 if depth == 0 {
-                    if let head { blocks.append((head.matrixScore(today: day), head.isDone, current)) }
+                    if let head { append(head, current) }
                     head = task
                     current = []
                 }
                 current.append(row)
             }
-            if let head { blocks.append((head.matrixScore(today: day), head.isDone, current)) }
+            if let head { append(head, current) }
         }
         blocks.sort { a, b in
             if a.done != b.done { return !a.done }
-            return a.score > b.score
+            if abs(a.score - b.score) > 1e-9 { return a.score > b.score }
+            if a.groupOrder != b.groupOrder { return a.groupOrder < b.groupOrder }
+            return a.order < b.order
         }
         return blocks.flatMap(\.rows)
     }
@@ -193,13 +201,37 @@ enum PageBuilder {
                 isCollapsed: false,
                 collapsible: false
             )))
-            let open1 = section.tasks.filter { !$0.isDone }
+            var open1 = section.tasks.filter { !$0.isDone }
+            if let day = options.rankDay {
+                open1 = open1.enumerated()
+                    .sorted { ($0.element.matrixScore(today: day), -$0.offset) > ($1.element.matrixScore(today: day), -$1.offset) }
+                    .map(\.element)
+            }
             let done1 = section.tasks.filter(\.isDone)
                 .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
             for task in open1 { rows.append(.task(task, depth: 0, style: options.style)) }
             if options.completed == .bottom {
                 for task in done1 { rows.append(.task(task, depth: 0, style: options.style)) }
             }
+        }
+        return rows
+    }
+
+    /// Sections whose tasks keep their subtasks, each ranked on its own (Today by top group).
+    static func rankedSections(_ sections: [(key: String, title: String, symbol: String, color: Color, tasks: [TaskItem])], options: Options) -> [ListRow] {
+        var rows: [ListRow] = []
+        for section in sections where !section.tasks.isEmpty {
+            let open = section.tasks.filter { !$0.isDone }.count
+            rows.append(.header(SectionHeaderInfo(
+                id: section.key,
+                kind: .label(key: section.key, title: section.title, symbol: section.symbol, color: section.color),
+                openCount: open,
+                doneCount: section.tasks.count - open,
+                isCollapsed: false,
+                collapsible: false,
+                openEstimate: PowerHours.total(section.tasks, where: { !$0.isDone })
+            )))
+            rows += rankedRows(section.tasks, options: options)
         }
         return rows
     }

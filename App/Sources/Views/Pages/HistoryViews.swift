@@ -2,8 +2,10 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-struct DayRef: Hashable {
+struct DayRef: Hashable, Identifiable {
     let start: Date
+
+    var id: Date { start }
 }
 
 /// Past daily pages, grouped like the Notes list (Yesterday, Previous 7 Days, months …).
@@ -218,6 +220,13 @@ struct DayPageView: View {
         }
         .navigationTitle(DateText.pageTitle(start))
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    app.reviewDay = day
+                } label: {
+                    Label("Review", systemImage: "chart.bar.xaxis")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 ShareLink(item: markdown(sections: sections, done: doneThatDay)) {
                     Label("Share", systemImage: "square.and.arrow.up")

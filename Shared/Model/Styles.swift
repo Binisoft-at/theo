@@ -126,25 +126,36 @@ enum NewTaskPlacement: String, CaseIterable, Identifiable {
 }
 
 enum TodayGrouping: String, CaseIterable, Identifiable {
-    case ranked, groups, deadline
+    case ranked, topGroups, groups, priority, deadline, tags, size
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .ranked: "Ranked"
-        case .groups: "Groups"
+        case .topGroups: "Groups"
+        case .groups: "Groups & Subgroups"
+        case .priority: "Priority"
         case .deadline: "Deadline"
+        case .tags: "Tags"
+        case .size: "Size (Power Hours)"
         }
     }
 
     var symbol: String {
         switch self {
         case .ranked: "list.number"
-        case .groups: "rectangle.grid.1x2"
+        case .topGroups: "rectangle.grid.1x2"
+        case .groups: "list.bullet.indent"
+        case .priority: "exclamationmark.3"
         case .deadline: "calendar"
+        case .tags: "number"
+        case .size: "timer"
         }
     }
+
+    /// Lines can be dragged into place (the other groupings are computed).
+    var allowsReorder: Bool { self == .ranked || self == .groups }
 }
 
 /// UserDefaults keys shared between views.
@@ -165,6 +176,23 @@ enum Prefs {
     /// Focus timer lengths in minutes (one Power Hour of focus, then a break, by default).
     static let focusMinutes = "focusMinutes"
     static let breakMinutes = "breakMinutes"
+    /// Power Hours every new task starts with (0 = none).
+    static let defaultEstimate = "defaultEstimate"
+    /// What the day review shows.
+    static let reviewPowerHours = "review.powerHours"
+    static let reviewBreakdown = "review.breakdown"
+    static let reviewComparison = "review.comparison"
+    static let reviewShare = "review.share"
+    static let reviewTasks = "review.tasks"
+    /// How many days before the reviewed one it's compared with.
+    static let reviewCompareDays = "review.compareDays"
+}
+
+extension PowerHours {
+    /// What a new task gets when nothing says otherwise: 0,25 PH unless changed in Settings.
+    static var defaultForNewTasks: Double {
+        UserDefaults.standard.object(forKey: Prefs.defaultEstimate) as? Double ?? 0.25
+    }
 }
 
 extension Matrix {

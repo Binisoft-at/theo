@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import TheoCore
 
 /// A heading inside the daily page ("Work", "Project X", ...). Groups can optionally be
 /// treated as projects, which adds a progress bar and a deadline.
@@ -20,6 +21,14 @@ final class TaskGroup {
     var deletedAt: Date?
     /// The group this one sits inside (a subproject); nil = top level.
     var parentUUID: UUID?
+    /// Off: its tasks (and its subgroups') stay out of Today, Plan, Upcoming and the other
+    /// lists until it's switched back on. They still show on its own page.
+    var isActive: Bool = true
+    /// Traits its tasks inherit (see `GroupTraits`); nil / empty = none.
+    var traitImportance: Double?
+    var traitEstimate: Double?
+    var traitTagsRaw: String = ""
+    var traitDueDays: Int?
 
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.group)
     var tasks: [TaskItem]? = []
@@ -52,4 +61,22 @@ extension TaskGroup {
     }
 
     func touch() { modifiedAt = Date() }
+
+    /// The traits set on this group itself (a subgroup also inherits its parent's).
+    var ownTraits: GroupTraits {
+        get {
+            GroupTraits(
+                importance: traitImportance,
+                estimate: traitEstimate,
+                tags: traitTagsRaw.split(separator: ",").map(String.init).filter { !$0.isEmpty },
+                dueDays: traitDueDays
+            )
+        }
+        set {
+            traitImportance = newValue.importance
+            traitEstimate = newValue.estimate
+            traitTagsRaw = newValue.tags.joined(separator: ",")
+            traitDueDays = newValue.dueDays
+        }
+    }
 }

@@ -44,6 +44,9 @@ final class TaskItem {
     var recurrenceRaw: String = ""
     /// Notification offsets for timed deadlines (`Reminders` format); empty = at the time.
     var remindersRaw: String = ""
+    /// A group whose traits differ from this task's own values (set when it was moved there):
+    /// the task offers them instead of being overwritten. nil = nothing to offer.
+    var traitProposalGroupID: UUID?
 
     init(title: String = "", group: TaskGroup? = nil, sortOrder: Double = 0, indent: Int = 0) {
         let now = Date()

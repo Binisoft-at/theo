@@ -154,7 +154,7 @@ struct TaskMetaLine: View {
 
     private var hasContent: Bool {
         task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
-            || (style.showGroup && task.group != nil) || plannedToShow != nil
+            || (style.showGroup && task.group != nil) || plannedToShow != nil || task.traitProposalGroupID != nil
     }
 
     /// The day it's planned for, unless that's also the deadline's day (the deadline says it).
@@ -216,6 +216,19 @@ struct TaskMetaLine: View {
                     Label("\(ageDays)d", systemImage: "arrow.uturn.forward")
                         .foregroundStyle(ageDays >= 3 ? Color.orange : Color.secondary)
                         .help("Carried over for \(ageDays) day\(ageDays == 1 ? "" : "s")")
+                }
+                if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
+                    Menu {
+                        TraitProposalMenu(task: task, group: proposal.group, traits: proposal.traits)
+                    } label: {
+                        Label("Suggested", systemImage: "wand.and.stars")
+                            .foregroundStyle(Color.purple)
+                    }
+                    .menuStyle(.button)
+                    .menuIndicator(.hidden)
+                    .buttonStyle(.plain)
+                    .fixedSize()
+                    .accessibilityHint("\(proposal.group.displayName) suggests other values")
                 }
             }
             .font(.caption.weight(.medium))
@@ -312,5 +325,54 @@ struct CompactLabelStyle: LabelStyle {
             configuration.icon.imageScale(.small)
             configuration.title
         }
+    }
+}
+
+/// What a group suggests for a task that already had values of its own: take all of it, one
+/// part, or keep the task as it is.
+struct TraitProposalMenu: View {
+    let task: TaskItem
+    let group: TaskGroup
+    let traits: GroupTraits
+
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        Section("\(group.displayName) suggests") {
+            Button {
+                withAnimation(.snappy) { app.store.acceptProposal(task, traits) }
+            } label: {
+                Label("Apply All", systemImage: "wand.and.stars")
+            }
+            ForEach(parts.indices, id: \.self) { index in
+                let part = parts[index]
+                Button(part.title) {
+                    withAnimation(.snappy) { app.store.acceptProposal(task, part.traits) }
+                }
+            }
+            Button(role: .destructive) {
+                withAnimation(.snappy) { app.store.dismissProposal(task) }
+            } label: {
+                Label("Keep Mine", systemImage: "xmark")
+            }
+        }
+    }
+
+    /// Each suggested value on its own.
+    private var parts: [(title: String, traits: GroupTraits)] {
+        var result: [(title: String, traits: GroupTraits)] = []
+        if let importance = traits.importance {
+            let one = GroupTraits(importance: importance)
+            result.append((one.summary.first ?? "Importance", one))
+        }
+        if let estimate = traits.estimate {
+            let one = GroupTraits(estimate: estimate)
+            result.append((one.summary.first ?? "Power Hours", one))
+        }
+        if let dueDays = traits.dueDays {
+            let one = GroupTraits(dueDays: dueDays)
+            result.append((one.summary.first ?? "Deadline", one))
+        }
+        return result.count > 1 ? result : []
     }
 }

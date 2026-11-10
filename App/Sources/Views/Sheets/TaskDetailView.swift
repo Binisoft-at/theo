@@ -43,6 +43,27 @@ struct TaskDetailView: View {
                         .lineLimit(3...12)
                 }
 
+                if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
+                    Section {
+                        Text(proposal.traits.summary.joined(separator: " · "))
+                            .font(.subheadline)
+                        HStack {
+                            Button("Apply") {
+                                withAnimation(.snappy) { app.store.acceptProposal(task, proposal.traits) }
+                            }
+                            .buttonStyle(.glassProminent)
+                            Button("Keep Mine") {
+                                withAnimation(.snappy) { app.store.dismissProposal(task) }
+                            }
+                            .buttonStyle(.glass)
+                        }
+                    } header: {
+                        Label("\(proposal.group.displayName) suggests", systemImage: "wand.and.stars")
+                    } footer: {
+                        Text("This group gives its tasks these values. This task already had its own, so nothing was changed.")
+                    }
+                }
+
                 subtaskSection
 
                 Section {

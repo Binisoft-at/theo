@@ -33,8 +33,9 @@ struct TodayView: View {
     private var completed: CompletedMode { CompletedMode(rawValue: completedRaw) ?? .bottom }
     private var grouping: TodayGrouping { TodayGrouping(rawValue: groupingRaw) ?? .ranked }
 
+    /// Planned for today, leaving out groups that are switched off.
     private var visible: [TaskItem] {
-        tasks.filter { PageBuilder.isOnToday($0, dayStart: dayStart) }
+        tasks.activeOnly(groups).filter { PageBuilder.isOnToday($0, dayStart: dayStart) }
     }
 
     private func rows(for visible: [TaskItem]) -> [ListRow] {
@@ -47,13 +48,25 @@ struct TodayView: View {
             var options = PageBuilder.Options(completed: completed, collapsedTasks: app.collapsedTaskIDs, rankDay: dayStart)
             if filter != .all {
                 options.showEmptyPlaceholders = false
-                let rows = PageBuilder.page(tasks: filtered, groups: groups, quickEntryCollapsed: false, options: options)
+                let rows = PageBuilder.page(tasks: filtered, groups: groups.activeOnly, quickEntryCollapsed: false, options: options)
                 return Self.droppingEmptySections(rows)
             }
-            return PageBuilder.page(tasks: filtered, groups: groups, quickEntryCollapsed: quickCollapsed, options: options)
+            return PageBuilder.page(tasks: filtered, groups: groups.activeOnly, quickEntryCollapsed: quickCollapsed, options: options)
+        case .topGroups:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), collapsedTasks: app.collapsedTaskIDs, rankDay: dayStart)
+            return PageBuilder.rankedSections(Sections.byTopGroup(filtered, groups: groups.activeOnly), options: options)
         case .deadline:
-            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true))
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), rankDay: dayStart)
             return PageBuilder.labeled(Sections.byDeadline(filtered, groups: groups, today: dayStart, includeNone: true), options: options)
+        case .priority:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), rankDay: dayStart)
+            return PageBuilder.labeled(Sections.byPriority(filtered, groups: groups, includeNone: true), options: options)
+        case .tags:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), rankDay: dayStart)
+            return PageBuilder.labeled(Sections.byTag(filtered), options: options)
+        case .size:
+            let options = PageBuilder.Options(completed: completed, style: RowStyle(showGroup: true), rankDay: dayStart)
+            return PageBuilder.labeled(Sections.bySize(filtered), options: options)
         }
     }
 
@@ -66,7 +79,7 @@ struct TodayView: View {
 
         Group {
             if search.isEmpty {
-                TaskListView(rows: rows, allowsReorder: grouping != .deadline && filter == .all, plansFor: dayStart) {
+                TaskListView(rows: rows, allowsReorder: grouping.allowsReorder && filter == .all, plansFor: dayStart) {
                     TodayHeader(
                         date: dayStart,
                         open: open,
@@ -160,6 +173,11 @@ struct TodayView: View {
             } label: {
                 Label("Focus Timer", systemImage: "timer")
             }
+            Button {
+                app.reviewDay = DayRef(start: dayStart)
+            } label: {
+                Label("Day Review", systemImage: "chart.bar.xaxis")
+            }
             Divider()
             if !app.isSandbox {
                 Button {
@@ -234,14 +252,22 @@ struct TodayHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
-                ZStack {
-                    ProgressRing(progress: total == 0 ? 0 : Double(done) / Double(total))
-                    Text("\(done)")
-                        .font(.caption.weight(.bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
+                Button {
+                    app.reviewDay = DayRef(start: date)
+                } label: {
+                    ZStack {
+                        ProgressRing(progress: total == 0 ? 0 : Double(done) / Double(total))
+                        Text("\(done)")
+                            .font(.caption.weight(.bold))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                    .frame(width: 42, height: 42)
+                    .contentShape(Circle())
                 }
-                .frame(width: 42, height: 42)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Day review")
+                .accessibilityHint("Shows what got done today")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateText.pageTitle(date))
                         .font(.headline)
@@ -293,10 +319,21 @@ struct PlanPrompt: View {
 
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
-    private var openTasks: [TaskItem]
+    private var allOpen: [TaskItem]
+    @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil })
+    private var groups: [TaskGroup]
+
+    @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == true })
+    private var finished: [TaskItem]
 
     var body: some View {
+        let openTasks = allOpen.activeOnly(groups)
         let leftOver = openTasks.filter { $0.isLeftOver(before: dayStart) }
+        let yesterday = DayBoundary.current.dayStart(byAdding: -1, to: dayStart)
+        let doneYesterday = finished.filter { task in
+            guard let completed = task.completedAt else { return false }
+            return completed >= yesterday && completed < dayStart
+        }
         let due = openTasks.filter { task in
             guard let date = task.dueDate, task.plannedDay == nil else { return false }
             return DateText.dayDelta(date, today: dayStart) <= 0
@@ -334,6 +371,18 @@ struct PlanPrompt: View {
                     Label(due.count == 1 ? "Add 1 Task Due Today" : "Add \(due.count) Tasks Due by Today", systemImage: "calendar")
                 }
                 .buttonStyle(.glass)
+            }
+            if !doneYesterday.isEmpty {
+                let powerHours = PageBuilder.estimateTotals(doneYesterday).done
+                Button {
+                    app.reviewDay = DayRef(start: yesterday)
+                } label: {
+                    Label("Yesterday: \(doneYesterday.count) done" + (powerHours > 0 ? " · " + PowerHours.format(powerHours) : "") + " · Review",
+                          systemImage: "chart.bar.xaxis")
+                        .font(.footnote.weight(.medium))
+                }
+                .buttonStyle(.borderless)
+                .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity)

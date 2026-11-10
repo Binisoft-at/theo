@@ -46,6 +46,21 @@ enum GroupTree {
         return result
     }
 
+    /// Groups that are switched off, together with every group inside them.
+    static func inactiveIDs(_ groups: [TaskGroup]) -> Set<UUID> {
+        var result = Set<UUID>()
+        for group in groups where !group.isActive && !result.contains(group.uuid) {
+            result.insert(group.uuid)
+            for child in descendants(of: group.uuid, in: groups) { result.insert(child.uuid) }
+        }
+        return result
+    }
+
+    /// Off itself, or inside a group that is.
+    static func isOff(_ group: TaskGroup, in groups: [TaskGroup]) -> Bool {
+        inactiveIDs(groups).contains(group.uuid)
+    }
+
     /// "haeb tasks › 1. Laufend".
     static func path(of group: TaskGroup, in groups: [TaskGroup]) -> String {
         var names = [group.displayName]
@@ -57,5 +72,23 @@ enum GroupTree {
             current = parent
         }
         return names.joined(separator: " › ")
+    }
+}
+
+extension Array where Element == TaskItem {
+    /// Leaves out tasks whose group (or a group it sits in) is switched off.
+    func activeOnly(_ groups: [TaskGroup]) -> [TaskItem] {
+        let off = GroupTree.inactiveIDs(groups)
+        guard !off.isEmpty else { return self }
+        return filter { task in task.groupID.map { !off.contains($0) } ?? true }
+    }
+}
+
+extension Array where Element == TaskGroup {
+    /// Groups that are on (and not inside a group that's off).
+    var activeOnly: [TaskGroup] {
+        let off = GroupTree.inactiveIDs(self)
+        guard !off.isEmpty else { return self }
+        return filter { !off.contains($0.uuid) }
     }
 }

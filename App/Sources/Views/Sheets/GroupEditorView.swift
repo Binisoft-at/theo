@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import TheoCore
 
 /// Create or edit a group: name, icon, color, project settings.
 struct GroupEditorView: View {
@@ -18,6 +19,12 @@ struct GroupEditorView: View {
     @State private var due = Date()
     @State private var notes = ""
     @State private var parentID: UUID?
+    @State private var isActive = true
+    /// Traits: 0 / -1 / "" mean none.
+    @State private var traitLevel = 0
+    @State private var traitEstimate = -1.0
+    @State private var traitTags = ""
+    @State private var traitDueDays = -1
     @State private var loaded = false
     @FocusState private var nameFocused: Bool
 
@@ -112,6 +119,16 @@ struct GroupEditorView: View {
                 }
 
                 Section {
+                    Toggle(isOn: $isActive) {
+                        Label("On", systemImage: isActive ? "play.circle" : "pause.circle")
+                    }
+                } footer: {
+                    Text("Switched off, its tasks (and its subgroups') stay out of Today, Plan, Upcoming and the other lists until you switch it back on. They stay on its own page.")
+                }
+
+                traitsSection
+
+                Section {
                     Toggle(isOn: $isProject) {
                         Label("Project", systemImage: "chart.bar.fill")
                     }
@@ -166,10 +183,102 @@ struct GroupEditorView: View {
         #endif
     }
 
+    /// Traits new and moved tasks inherit.
+    private var traitsSection: some View {
+        Section {
+            Picker(selection: $traitLevel) {
+                Text("None").tag(0)
+                ForEach((1...Matrix.levels).reversed(), id: \.self) { level in
+                    Text(Self.levelTitle(level)).tag(level)
+                }
+            } label: {
+                Label("Importance", systemImage: "exclamationmark.3")
+            }
+            Picker(selection: $traitEstimate) {
+                Text("None").tag(-1.0)
+                Text("No estimate").tag(0.0)
+                ForEach(PowerHours.presets, id: \.self) { value in
+                    Text(PowerHours.format(value)).tag(value)
+                }
+            } label: {
+                Label("Power Hours", systemImage: "timer")
+            }
+            Picker(selection: $traitDueDays) {
+                Text("None").tag(-1)
+                Text("Today").tag(0)
+                Text("Tomorrow").tag(1)
+                ForEach([2, 3, 5, 7, 14], id: \.self) { days in
+                    Text("In \(days) days").tag(days)
+                }
+            } label: {
+                Label("Deadline", systemImage: "calendar")
+            }
+            HStack {
+                Label("Tags", systemImage: "number")
+                TextField("e.g. work, calls", text: $traitTags)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .autocorrectionDisabled()
+            }
+            if let parent = groups.first(where: { $0.uuid == parentID }) {
+                let inherited = app.store.traits(of: parent)
+                if !inherited.isEmpty {
+                    Label("Inherits from \(parent.displayName): " + inherited.summary.joined(separator: " · "), systemImage: "arrow.turn.down.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let existing, !existing.liveTasks.filter({ !$0.isDone }).isEmpty, !currentTraits.isEmpty {
+                Button {
+                    applyToExisting(existing)
+                } label: {
+                    Label("Apply to the \(existing.liveTasks.filter { !$0.isDone }.count) Open Tasks Here", systemImage: "wand.and.stars")
+                }
+            }
+        } header: {
+            Text("Tasks Placed Here Get")
+        } footer: {
+            Text("New and moved tasks take these where they have nothing of their own. Where a task already has something else, it shows a suggestion instead and keeps its own. Subgroups inherit these unless they set their own.")
+        }
+    }
+
+    /// "8  !!".
+    private static func levelTitle(_ level: Int) -> String {
+        let marks = Matrix.priority(forImportance: Matrix.importance(forLevel: level)).marks
+        return marks.isEmpty ? "\(level)" : "\(level)  \(marks)"
+    }
+
+    private var currentTraits: GroupTraits {
+        GroupTraits(
+            importance: traitLevel > 0 ? Matrix.importance(forLevel: traitLevel) : nil,
+            estimate: traitEstimate >= 0 ? traitEstimate : nil,
+            tags: traitTags.split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "#")).lowercased() }
+                .filter { !$0.isEmpty },
+            dueDays: traitDueDays >= 0 ? traitDueDays : nil
+        )
+    }
+
+    private func applyToExisting(_ group: TaskGroup) {
+        save(dismissing: false)
+        let tasks = group.liveTasks.filter { !$0.isDone }
+        for task in tasks { app.store.applyTraits(to: task, propose: true) }
+        app.store.save()
+        app.show("Applied to \(tasks.count) task\(tasks.count == 1 ? "" : "s") · differences are suggested", symbol: "wand.and.stars")
+    }
+
     private func load() {
         guard !loaded else { return }
         loaded = true
         if let existing {
+            isActive = existing.isActive
+            let traits = existing.ownTraits
+            traitLevel = traits.importance.map { Matrix.level(forImportance: $0) } ?? 0
+            traitEstimate = traits.estimate ?? -1
+            traitTags = traits.tags.joined(separator: ", ")
+            traitDueDays = traits.dueDays ?? -1
             name = existing.name
             symbol = existing.symbol
             color = existing.color
@@ -188,6 +297,10 @@ struct GroupEditorView: View {
     }
 
     private func save() {
+        save(dismissing: true)
+    }
+
+    private func save(dismissing: Bool) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         let group = existing ?? app.store.addGroup(name: trimmed, symbol: symbol, color: color, parent: parentID)
@@ -198,8 +311,10 @@ struct GroupEditorView: View {
         group.isProject = isProject
         group.dueDate = isProject && hasDue ? Calendar.current.startOfDay(for: due) : nil
         group.notes = notes
+        group.isActive = isActive
+        group.ownTraits = currentTraits
         group.touch()
         app.store.save()
-        dismiss()
+        if dismissing { dismiss() }
     }
 }

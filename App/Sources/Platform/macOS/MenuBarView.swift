@@ -16,7 +16,7 @@ struct MenuBarView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        let today = openTasks.filter { PageBuilder.isOnToday($0, dayStart: app.dayStart) }
+        let today = openTasks.activeOnly(groups).filter { PageBuilder.isOnToday($0, dayStart: app.dayStart) }
             .sorted(by: Sections.pageOrder(groups))
         VStack(alignment: .leading, spacing: 12) {
             HStack {

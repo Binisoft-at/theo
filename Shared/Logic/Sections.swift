@@ -138,6 +138,48 @@ enum Sections {
         return result
     }
 
+    /// One section per top-level group, holding its subgroups' tasks too (Quick Entry first).
+    static func byTopGroup(_ tasks: [TaskItem], groups: [TaskGroup]) -> [LabeledSection] {
+        var result: [LabeledSection] = [
+            (key: "quick", title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .secondary, tasks: tasks.filter { $0.groupID == nil })
+        ]
+        for item in GroupTree.ordered(groups) where item.level == 0 {
+            let inside = Set([item.group.uuid] + GroupTree.descendants(of: item.group.uuid, in: groups).map(\.uuid))
+            let items = tasks.filter { task in task.groupID.map { inside.contains($0) } ?? false }
+            result.append((key: item.group.uuid.uuidString, title: item.group.displayName, symbol: item.group.symbol,
+                           color: item.group.color.color, tasks: items))
+        }
+        return result
+    }
+
+    /// One section per tag, most used first; a task with several tags sits under its first.
+    static func byTag(_ tasks: [TaskItem]) -> [LabeledSection] {
+        var result: [LabeledSection] = []
+        var placed = Set<ObjectIdentifier>()
+        for tag in Self.tags(in: tasks) {
+            let items = tasks.filter { !placed.contains(ObjectIdentifier($0)) && $0.tags.first == tag }
+            items.forEach { placed.insert(ObjectIdentifier($0)) }
+            result.append((key: "tag-" + tag, title: "#" + tag, symbol: "number", color: TheoColor.forTag(tag).color, tasks: items))
+        }
+        let untagged = tasks.filter { !placed.contains(ObjectIdentifier($0)) }
+        result.append((key: "tag-none", title: "No Tag", symbol: "circle.dashed", color: .secondary, tasks: untagged))
+        return result
+    }
+
+    /// By estimate: quick wins, short tasks, deep work, and the ones without one.
+    static func bySize(_ tasks: [TaskItem]) -> [LabeledSection] {
+        [
+            (key: "size-quick", title: "Quick Wins · up to \(PowerHours.format(0.25))", symbol: "hare", color: .green,
+             tasks: tasks.filter { $0.estimate > 0 && $0.estimate <= 0.25 }),
+            (key: "size-short", title: "Short · up to \(PowerHours.format(1))", symbol: "timer", color: .teal,
+             tasks: tasks.filter { $0.estimate > 0.25 && $0.estimate <= 1 }),
+            (key: "size-deep", title: "Deep Work · more than \(PowerHours.format(1))", symbol: "brain.head.profile", color: .indigo,
+             tasks: tasks.filter { $0.estimate > 1 }),
+            (key: "size-none", title: "No Estimate", symbol: "circle.dashed", color: .secondary,
+             tasks: tasks.filter { $0.estimate <= 0 }),
+        ]
+    }
+
     static func tags(in tasks: [TaskItem]) -> [String] {
         var counts: [String: Int] = [:]
         for task in tasks {

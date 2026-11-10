@@ -57,7 +57,7 @@ struct WatchUpcomingView: View {
 
     var body: some View {
         WatchSectionList(
-            sections: Sections.upcoming(openTasks, groups: groups, today: model.dayStart).filter { !$0.tasks.isEmpty },
+            sections: Sections.upcoming(openTasks.activeOnly(groups), groups: groups, today: model.dayStart).filter { !$0.tasks.isEmpty },
             emptyTitle: "Nothing Scheduled",
             emptySymbol: "calendar",
             emptyText: "Tasks with a deadline show up here."
@@ -75,7 +75,7 @@ struct WatchPriorityView: View {
 
     var body: some View {
         WatchSectionList(
-            sections: Sections.byPriority(openTasks, groups: groups, includeNone: false).filter { !$0.tasks.isEmpty },
+            sections: Sections.byPriority(openTasks.activeOnly(groups), groups: groups, includeNone: false).filter { !$0.tasks.isEmpty },
             emptyTitle: "No Priorities",
             emptySymbol: "exclamationmark.3",
             emptyText: "Say \"!!\" when adding a task, or set a priority in its details."

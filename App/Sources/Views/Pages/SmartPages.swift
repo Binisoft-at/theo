@@ -26,8 +26,12 @@ struct GroupPageView: View {
     @ViewBuilder
     private func content(group: TaskGroup?) -> some View {
         let completed = showAllCompleted ? CompletedMode.bottom : (CompletedMode(rawValue: completedRaw) ?? .bottom)
-        // The group's own tasks plus those of its subprojects.
-        let inside: Set<UUID> = groupID.map { Set([$0] + GroupTree.descendants(of: $0, in: groups).map(\.uuid)) } ?? []
+        // The group's own tasks plus those of its subgroups, leaving out subgroups switched off
+        // (the page's own group always shows, on or off).
+        let offBelow = GroupTree.inactiveIDs(groups.filter { $0.uuid != groupID })
+        let inside: Set<UUID> = groupID.map { id in
+            Set([id] + GroupTree.descendants(of: id, in: groups).map(\.uuid).filter { !offBelow.contains($0) })
+        } ?? []
         let mine = tasks.filter { task in
             if let groupID = task.groupID {
                 guard inside.contains(groupID) else { return false }
@@ -47,7 +51,7 @@ struct GroupPageView: View {
         let name = group?.displayName ?? "Quick Entry"
 
         TaskListView(rows: rows, allowsReorder: true, defaultGroupID: groupID) {
-            GroupPageHeader(group: group, open: open, done: mine.count - open, today: app.dayStart)
+            GroupPageHeader(group: group, open: open, done: mine.count - open, today: app.dayStart, groups: groups)
         }
         .navigationTitle(name)
         .toolbar {
@@ -105,9 +109,15 @@ struct GroupPageHeader: View {
     let open: Int
     let done: Int
     let today: Date
+    var groups: [TaskGroup] = []
+
+    @Environment(AppModel.self) private var app
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let group, GroupTree.isOff(group, in: groups) {
+                OffBanner(group: group, groups: groups)
+            }
             if let group {
                 HStack(spacing: 10) {
                     Image(systemName: group.symbol)
@@ -135,6 +145,14 @@ struct GroupPageHeader: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+                let traits = app.store.traits(of: group)
+                if !traits.isEmpty {
+                    Label(traits.summary.joined(separator: " · "), systemImage: "wand.and.stars")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .help("New and moved tasks take these unless they have their own")
+                }
+                SubgroupSwitches(parent: group, groups: groups)
             } else {
                 Text("Everything you threw in quickly. Drag tasks onto a group, or swipe left → Move.")
                     .font(.callout)
@@ -154,7 +172,7 @@ struct UpcomingView: View {
     private var groups: [TaskGroup]
 
     var body: some View {
-        let sections = Sections.upcoming(tasks, groups: groups, today: app.dayStart)
+        let sections = Sections.upcoming(tasks.activeOnly(groups), groups: groups, today: app.dayStart)
         let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true, showDeferred: true)))
         Group {
             if rows.isEmpty {
@@ -180,7 +198,7 @@ struct PriorityView: View {
     private var groups: [TaskGroup]
 
     var body: some View {
-        let sections = Sections.byPriority(tasks, groups: groups, includeNone: false)
+        let sections = Sections.byPriority(tasks.activeOnly(groups), groups: groups, includeNone: false)
         let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true)))
         Group {
             if rows.isEmpty {
@@ -208,7 +226,7 @@ struct TagView: View {
     private var groups: [TaskGroup]
 
     var body: some View {
-        let tagged = tasks.filter { $0.tags.contains(tag) && PageBuilder.isOnToday($0, dayStart: app.dayStart) }
+        let tagged = tasks.activeOnly(groups).filter { $0.tags.contains(tag) && PageBuilder.isOnToday($0, dayStart: app.dayStart) }
         let rows = PageBuilder.labeled(Sections.byGroup(tagged, groups: groups), options: PageBuilder.Options())
         Group {
             if rows.isEmpty {
@@ -218,5 +236,88 @@ struct TagView: View {
             }
         }
         .navigationTitle("#" + tag)
+    }
+}
+
+/// On the page of a group that's off: say so, and switch it back on in one tap.
+struct OffBanner: View {
+    let group: TaskGroup
+    let groups: [TaskGroup]
+
+    @Environment(AppModel.self) private var app
+
+    /// The group above this one that's switched off.
+    private var offAncestor: TaskGroup? {
+        groups.first(where: { candidate in
+            !candidate.isActive && GroupTree.descendants(of: candidate.uuid, in: groups).contains(where: { $0.uuid == group.uuid })
+        })
+    }
+
+    var body: some View {
+        // Off because of the group itself, or a group it sits in.
+        let switchedOff: TaskGroup? = group.isActive ? offAncestor : group
+        HStack(spacing: 10) {
+            Image(systemName: "pause.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text(switchedOff === group
+                 ? "Off: these tasks stay out of Today, Plan and the other lists."
+                 : "Off with “\(switchedOff?.displayName ?? "its group")”: these tasks stay out of the other lists.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            if let switchedOff {
+                Button("Turn On") {
+                    withAnimation(.snappy) { app.store.setActive(switchedOff, true) }
+                }
+                .buttonStyle(.glass)
+                .controlSize(.small)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.secondary.opacity(0.1)))
+    }
+}
+
+/// A group's subgroups as switches: tap one to turn it off (its tasks leave this page and every
+/// list) or back on; touch and hold to open it.
+struct SubgroupSwitches: View {
+    let parent: TaskGroup
+    let groups: [TaskGroup]
+
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        let children = groups.filter { $0.parentUUID == parent.uuid }.sorted { $0.sortOrder < $1.sortOrder }
+        if !children.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(children, id: \.uuid) { child in
+                        Button {
+                            withAnimation(.snappy) { app.store.setActive(child, !child.isActive) }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: child.isActive ? "circle.inset.filled" : "circle")
+                                    .imageScale(.small)
+                                Text(child.displayName)
+                                    .lineLimit(1)
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(child.isActive ? child.color.color : Color.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(child.isActive ? child.color.color.opacity(0.14) : Color.secondary.opacity(0.08)))
+                            .overlay(Capsule().strokeBorder(Color.secondary.opacity(child.isActive ? 0 : 0.3), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                        }
+                        .buttonStyle(.plain)
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in app.go(.group(child.uuid)) })
+                        .accessibilityLabel(child.displayName)
+                        .accessibilityValue(child.isActive ? "On" : "Off")
+                        .accessibilityHint("Tap to switch it \(child.isActive ? "off" : "on"), touch and hold to open it")
+                    }
+                }
+            }
+            .scrollClipDisabled()
+        }
     }
 }

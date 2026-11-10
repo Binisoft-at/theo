@@ -43,6 +43,8 @@ struct TaskListView<Header: View>: View {
                     } action: { frame in
                         frames.byID[row.id] = frame
                     }
+                    // A row scrolled out of view keeps no stale position for drops.
+                    .onDisappear { frames.byID[row.id] = nil }
                     .overlay(alignment: .bottom) {
                         if insertAfterID == row.id { InsertionLine() }
                     }
@@ -635,8 +637,9 @@ struct TaskListView<Header: View>: View {
         }
     }
 
-    /// Drops a new task between two rows. It takes the average importance and urgency of its
-    /// neighbours, unless what was typed says otherwise.
+    /// Drops a new task between two rows, ranked right between them (see `Matrix.insertion`)
+    /// unless what was typed sets its priority or deadline. Dropped right under a task with
+    /// subtasks, it becomes that task's first subtask.
     private func insertTask(at location: CGPoint, entry: ParsedEntry?) -> Bool {
         insertAfterID = nil
         insertBeforeFirst = false
@@ -645,10 +648,15 @@ struct TaskListView<Header: View>: View {
         let belowTask = point.below?.task
         let title = entry?.title ?? ""
         let new: TaskItem
+        // Ranked against the lines that end up as its siblings: as a first subtask, just above
+        // the old first one; after a line, between it and the next one at the same level.
+        var neighbours = (above: rankOf(aboveTask), below: rankOf(belowTask))
         if let aboveTask, let belowTask, belowTask.groupID == aboveTask.groupID, Self.isChild(belowTask, of: aboveTask, in: rows) {
-            new = app.store.addSubtask(ParsedEntry(title: title), to: aboveTask)
+            new = app.store.addSubtask(ParsedEntry(title: title), to: aboveTask, first: true)
+            neighbours.above = nil
         } else if let aboveTask {
             new = app.store.insertSibling(after: aboveTask, title: title)
+            if Self.depth(of: point.above) != Self.depth(of: point.below) { neighbours.below = nil }
         } else if case .header(let info)? = point.above, info.kind.acceptsTasks {
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: info.kind.groupID, placement: .top)
         } else if let belowTask {
@@ -657,20 +665,32 @@ struct TaskListView<Header: View>: View {
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: defaultGroupID, placement: .bottom)
         }
         let typedRank = entry.map { $0.priority != .normal || $0.due != nil } ?? false
-        if !typedRank, let value = Matrix.between(aboveTask?.matrixPosition(today: app.dayStart), belowTask?.matrixPosition(today: app.dayStart)) {
-            app.store.applyRank(new, importance: value.importance, urgency: value.urgency, today: app.dayStart)
+        if !typedRank, let rank = Matrix.insertion(above: neighbours.above, below: neighbours.below) {
+            if let days = rank.days { app.store.setDueDay(new, days: days, today: app.dayStart) }
+            app.store.setImportance([new], rank.importance)
         }
         if let entry {
             if entry.priority != .normal { app.store.setPriority([new], entry.priority) }
             if let due = entry.due { app.store.setDue([new], due, hasTime: entry.dueHasTime) }
             new.tags = entry.tags
-            new.estimate = entry.estimate ?? 0
+            if let estimate = entry.estimate { new.estimate = estimate }
             new.recurrence = entry.recurrence
             app.store.save()
         }
         if let plansFor { app.store.plan([new], for: plansFor) }
         if entry == nil { beginEdit(new) }
         return true
+    }
+
+    /// A neighbour's place in the ranking; finished tasks don't count.
+    private func rankOf(_ task: TaskItem?) -> Matrix.Rank? {
+        guard let task, !task.isDone else { return nil }
+        return Matrix.Rank(importance: task.importance, days: Matrix.daysUntil(task.dueDate, today: app.dayStart))
+    }
+
+    private static func depth(of row: ListRow?) -> Int? {
+        guard case .task(_, let depth, _)? = row else { return nil }
+        return depth
     }
 
     private static func isChild(_ task: TaskItem, of parent: TaskItem, in rows: [ListRow]) -> Bool {

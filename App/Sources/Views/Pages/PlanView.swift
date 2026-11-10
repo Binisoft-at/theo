@@ -8,7 +8,7 @@ import TheoCore
 struct PlanView: View {
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false }, sort: \TaskItem.sortOrder)
-    private var openTasks: [TaskItem]
+    private var allOpen: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @State private var selected: Date?
@@ -17,8 +17,12 @@ struct PlanView: View {
     /// Logical start of the selected day (defaults to today).
     private var day: Date { selected ?? app.dayStart }
 
+    /// Groups that are switched off stay out of planning.
+    private var openTasks: [TaskItem] { allOpen.activeOnly(groups) }
+
     var body: some View {
         let day = self.day
+        let openTasks = self.openTasks
         let planned = rankedTop(openTasks.filter { $0.isPlanned(for: day) }, day: day)
         let rest = openTasks.filter { !$0.isPlanned(for: day) }
         let leftOver = rankedTop(rest.filter { $0.isLeftOver(before: day) }, day: day)
@@ -59,7 +63,7 @@ struct PlanView: View {
                 }
                 Section {
                     DisclosureGroup(isExpanded: $showEverything) {
-                        ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
+                        ForEach(GroupTree.ordered(groups.activeOnly), id: \.group.uuid) { item in
                             groupBlock(name: GroupTree.path(of: item.group, in: groups), symbol: item.group.symbol, color: item.group.color.color,
                                        tasks: rest.filter { $0.groupID == item.group.uuid }, day: day)
                         }

@@ -112,6 +112,14 @@ final class AppModel {
 
     /// The composer's + being dragged over a list (global position), to insert a task there.
     var insertDragLocation: CGPoint?
+    /// What the dragged + carries: the typed title, or empty for a blank line.
+    var insertDragTitle = ""
+    /// A circular hold-and-slide pick in progress (drawn by the window, above everything).
+    var radialPick: RadialPick?
+    /// The day whose review is open (today's, or a past day's from History).
+    var reviewDay: DayRef?
+    /// The window's visible part in global coordinates, above the keyboard when it's up.
+    @ObservationIgnored var visibleFrame: CGRect = .zero
     /// Set by the list on screen: inserts a task where the + was dropped; false if nowhere.
     @ObservationIgnored var insertHandler: ((CGPoint, ParsedEntry?) -> Bool)?
     @ObservationIgnored var insertHandlerOwner: UUID?
@@ -148,7 +156,10 @@ final class AppModel {
         self.reminders = isSandbox || Persistence.isDemo ? nil : ReminderScheduler(container: container)
         guard !isSandbox else { return }
         focus = Self.loadFocus()
-        if !Persistence.isDemo { store.syncImportanceWithPriority() }
+        if !Persistence.isDemo {
+            store.syncImportanceWithPriority()
+            store.applyDefaultEstimateOnce()
+        }
         let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []
         collapsedTaskIDs = Set(stored.compactMap(UUID.init(uuidString:)))
         applyLaunchArguments()
@@ -327,11 +338,29 @@ final class AppModel {
             case "plan": selection = .plan
             case "history": selection = .history
             case "quick": selection = .quickEntry
+            case "review":
+                selection = .today
+                reviewDay = DayRef(start: dayStart)
+            case "work":
+                if let work = store.liveGroups().first(where: { $0.name == "Work" }) { selection = .group(work.uuid) }
             case "sidebar":
                 selection = nil
                 compactColumn = .sidebar
                 phoneTab = .lists
             default: selection = .today
+            }
+        }
+        if args.contains("-TheoRadialDemo") {
+            // The circular picker opened from the send button, pointing at 1 PH.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2.5))
+                let bounds = visibleFrame.isEmpty ? CGRect(x: 0, y: 0, width: 402, height: 874) : visibleFrame
+                let origin = CGPoint(x: bounds.maxX - 34, y: bounds.maxY - 120)
+                var pick = RadialPick(title: "Power Hours", options: QuickEntryBar.estimateOptions, origin: origin, location: origin, bounds: bounds)
+                let target = pick.layout.position(of: 4)
+                pick.location = target
+                pick.selection = pick.layout.selection(at: target)
+                radialPick = pick
             }
         }
     }

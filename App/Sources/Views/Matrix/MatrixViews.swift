@@ -271,13 +271,16 @@ struct MatrixPlacementOverlay: View {
 struct MatrixPageView: View {
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false }, sort: \TaskItem.sortOrder)
-    private var openTasks: [TaskItem]
+    private var allOpen: [TaskItem]
+    @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil })
+    private var groups: [TaskGroup]
     @AppStorage("matrixScope") private var onlyToday = false
     @State private var selectedID: UUID?
     @State private var dragging: (id: UUID, cell: MatrixGeometry.Cell)?
 
     private var scoped: [TaskItem] {
-        onlyToday ? openTasks.filter { $0.isOnPage(of: app.dayStart) } : openTasks
+        let openTasks = allOpen.activeOnly(groups)
+        return onlyToday ? openTasks.filter { $0.isOnPage(of: app.dayStart) } : openTasks
     }
 
     var body: some View {
