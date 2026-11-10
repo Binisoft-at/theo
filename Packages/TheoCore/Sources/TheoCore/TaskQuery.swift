@@ -59,6 +59,20 @@ public struct TaskQuery: Codable, Equatable, Hashable, Sendable {
             case .none: "No Grouping"
             }
         }
+
+        /// For a small button.
+        public var shortTitle: String {
+            switch self {
+            case .group: "Subgroups"
+            case .topGroup: "Groups"
+            case .priority: "Priority"
+            case .deadline: "Deadline"
+            case .tag: "Tags"
+            case .size: "Size"
+            case .planned: "Planned"
+            case .none: "Ungrouped"
+            }
+        }
     }
 
     public enum Sort: String, Codable, CaseIterable, Sendable {
@@ -73,6 +87,19 @@ public struct TaskQuery: Codable, Equatable, Hashable, Sendable {
             case .estimate: "Power Hours"
             case .created: "Newest First"
             case .title: "Title"
+            }
+        }
+
+        /// For a small button.
+        public var shortTitle: String {
+            switch self {
+            case .priorityDeadline: "Priority · Due"
+            case .rank: "Rank"
+            case .deadline: "Due"
+            case .priority: "Priority"
+            case .estimate: "PH"
+            case .created: "Newest"
+            case .title: "A–Z"
             }
         }
     }

@@ -140,8 +140,9 @@ struct AllTasksView: View {
                     ForEach(TaskQuery.Grouping.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             } label: {
-                Label(query.grouping.title, systemImage: "rectangle.3.group")
+                Label(query.grouping.shortTitle, systemImage: "rectangle.3.group")
                     .font(.caption.weight(.semibold))
+                    .lineLimit(1)
             }
             .menuStyle(.button)
             .buttonStyle(.glass)
@@ -154,7 +155,7 @@ struct AllTasksView: View {
                     ForEach(TaskQuery.Sort.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             } label: {
-                Label(query.sort.title, systemImage: "arrow.up.arrow.down")
+                Label(query.sort.shortTitle, systemImage: "arrow.up.arrow.down")
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }

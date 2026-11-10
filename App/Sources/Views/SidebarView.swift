@@ -17,6 +17,7 @@ struct SidebarView: View {
     @Query(filter: #Predicate<SavedView> { $0.deletedAt == nil }, sort: \SavedView.sortOrder)
     private var views: [SavedView]
     @State private var groupPendingDelete: TaskGroup?
+    @AppStorage("sidebar.showShortcuts") private var showShortcuts = false
 
     var body: some View {
         @Bindable var app = app
@@ -205,10 +206,22 @@ struct SidebarView: View {
         .navigationTitle("Theo")
         #if os(macOS)
         .safeAreaInset(edge: .bottom) {
+            // On its own background, so the list never shows through it; the legend folds away
+            // (each item already shows its shortcut).
             VStack(alignment: .leading, spacing: 8) {
-                ShortcutLegend()
+                DisclosureGroup(isExpanded: $showShortcuts) {
+                    ShortcutLegend()
+                } label: {
+                    Text("Keyboard Shortcuts")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
                 SyncFooter()
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
         }
         #endif
         .toolbar {
