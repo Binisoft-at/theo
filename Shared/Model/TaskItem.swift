@@ -47,6 +47,8 @@ final class TaskItem {
     /// A group whose traits differ from this task's own values (set when it was moved there):
     /// the task offers them instead of being overwritten. nil = nothing to offer.
     var traitProposalGroupID: UUID?
+    /// Small synced values without a CloudKit field of their own (see `Extras`).
+    var extrasRaw: String = ""
 
     init(title: String = "", group: TaskGroup? = nil, sortOrder: Double = 0, indent: Int = 0) {
         let now = Date()

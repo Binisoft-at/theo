@@ -29,6 +29,8 @@ final class TaskGroup {
     var traitEstimate: Double?
     var traitTagsRaw: String = ""
     var traitDueDays: Int?
+    /// Small synced values without a CloudKit field of their own (see `Extras`).
+    var extrasRaw: String = ""
 
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.group)
     var tasks: [TaskItem]? = []
@@ -61,6 +63,11 @@ extension TaskGroup {
     }
 
     func touch() { modifiedAt = Date() }
+
+    var extras: [String: String] {
+        get { Extras.decode(extrasRaw) }
+        set { extrasRaw = Extras.encode(newValue) }
+    }
 
     /// The traits set on this group itself (a subgroup also inherits its parent's).
     var ownTraits: GroupTraits {
