@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 5
+    public static let version = 6
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -319,6 +319,20 @@ public enum TutorialCatalog {
             title: "Work that never ends",
             body: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or touch and hold → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
             macBody: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or right-click → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "all-tasks", since: 6, symbol: "tray.full",
+            title: "Every task, any way",
+            body: "Lists → All Tasks shows everything, by group and by priority and deadline to start with. Filters narrow it down (group, tag, importance, deadline, planned, size, ongoing). Group By and Sort change the layout, and the chips on top switch in one tap. ⋯ → Save as View keeps a combination in the sidebar. Touch and hold a group or view → Add to Favorites puts it on top.",
+            macBody: "All Tasks (⇧⌘A) shows everything, by group and by priority and deadline to start with. Filters narrow it down (group, tag, importance, deadline, planned, size, ongoing). Group By and Sort change the layout, and the chips on top switch in one tap. ⋯ → Save as View keeps a combination in the sidebar. Right-click a group or view → Add to Favorites puts it on top.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "overview", since: 6, symbol: "chart.pie",
+            title: "The big picture",
+            body: "The Overview tab sums it all up: what's open and how big, what's due in the next two weeks, every group with its size and what's pressing, the priorities, ongoing work and the biggest open blocks. Tap any card to open the list behind it. A task with subtasks shows their Power Hours added up (Σ).",
+            macBody: "Overview (⇧⌘O) sums it all up: what's open and how big, what's due in the next two weeks, every group with its size and what's pressing, the priorities, ongoing work and the biggest open blocks. Click any card to open the list behind it. Hover between two lines and click the + to add a task right there; swipe right or left with two fingers to indent or outdent.",
             goal: .none
         ),
         TutorialStep(

@@ -48,6 +48,14 @@ struct RootView: View {
                     PlanView()
                 }
             }
+            Tab("Overview", systemImage: "chart.pie", value: PhoneTab.overview) {
+                NavigationStack {
+                    OverviewView()
+                        .navigationDestination(for: SidebarItem.self) { item in
+                            DetailRouter(selection: item, dayStart: app.dayStart)
+                        }
+                }
+            }
             Tab("Lists", systemImage: "list.bullet", value: PhoneTab.lists) {
                 NavigationStack(path: $app.phonePath) {
                     SidebarView(usesSelection: false, showsDayPages: false)
@@ -123,7 +131,10 @@ struct RootView: View {
             app.refreshDay()
         }
         .onChange(of: scenePhase) { _, phase in
+            // Hand changes to iCloud before the app goes to sleep.
+            if phase != .active { app.store.save() }
             if phase == .active {
+                app.backups.backUpIfDue()
                 app.refreshDay()
                 app.tickFocus()
                 app.reminders?.scheduleSoon()
@@ -263,6 +274,13 @@ struct DetailRouter: View {
             TodayView(dayStart: dayStart)
         case .plan:
             PlanView()
+        case .overview:
+            OverviewView()
+        case .allTasks:
+            AllTasksView()
+        case .view(let id):
+            AllTasksView(viewID: id)
+                .id(id)
         case .upcoming:
             UpcomingView()
         case .priority:

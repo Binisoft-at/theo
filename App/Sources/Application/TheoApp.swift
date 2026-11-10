@@ -94,6 +94,11 @@ struct TheoCommands: Commands {
             Button("Day Review") { app.commandTarget.reviewDay = DayRef(start: app.commandTarget.dayStart) }
                 .keyboardShortcut("9")
             Divider()
+            Button("Overview") { app.go(.overview) }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+            Button("All Tasks") { app.go(.allTasks) }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+            Divider()
             Button("Focus Timer") { app.commandTarget.showFocus = true }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
         }

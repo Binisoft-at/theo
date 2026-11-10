@@ -3,7 +3,7 @@ import SwiftData
 import CoreData
 
 enum Persistence {
-    static let schema = Schema([TaskItem.self, TaskGroup.self])
+    static let schema = Schema([TaskItem.self, TaskGroup.self, SavedView.self])
 
     /// Why the CloudKit store couldn't be opened (shown in Settings), if it couldn't.
     nonisolated(unsafe) static var startupError: String?
@@ -57,7 +57,7 @@ enum Persistence {
     private static func initializeCloudKitSchemaIfNeeded(containerID: String, storeURL: URL) {
         let key = "cloudKitSchemaInitialized.\(containerID)"
         guard !UserDefaults.standard.bool(forKey: key),
-              let model = NSManagedObjectModel.makeManagedObjectModel(for: [TaskItem.self, TaskGroup.self]) else { return }
+              let model = NSManagedObjectModel.makeManagedObjectModel(for: [TaskItem.self, TaskGroup.self, SavedView.self]) else { return }
         do {
             try autoreleasepool {
                 let description = NSPersistentStoreDescription(url: storeURL)

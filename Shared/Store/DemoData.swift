@@ -112,6 +112,17 @@ enum DemoData {
         // suggestion instead of being changed.
         admin.isActive = false
         work.ownTraits = GroupTraits(estimate: 1, tags: ["work"])
+        work.isFavorite = true
+        // A saved view, as a favourite.
+        var dueSoon = TaskQuery()
+        dueSoon.deadline = .week
+        dueSoon.grouping = .deadline
+        dueSoon.sort = .deadline
+        let view = SavedView(name: "Due This Week", query: dueSoon, sortOrder: 1)
+        view.isFavorite = true
+        view.symbol = "calendar"
+        view.colorName = TheoColor.orange.rawValue
+        context.insert(view)
         if let mail = open.first(where: { $0.title == "Answer client mail" }) {
             mail.isOngoing = true
             mail.lastDoneAt = Date().addingTimeInterval(-26 * 3600)

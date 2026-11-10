@@ -51,7 +51,8 @@ struct GroupPageView: View {
         let name = group?.displayName ?? "Quick Entry"
 
         TaskListView(rows: rows, allowsReorder: true, defaultGroupID: groupID) {
-            GroupPageHeader(group: group, open: open, done: mine.count - open, today: app.dayStart, groups: groups)
+            GroupPageHeader(group: group, open: open, done: mine.count - open, today: app.dayStart, groups: groups,
+                            stats: TaskStats(mine, today: app.dayStart))
         }
         .navigationTitle(name)
         .toolbar {
@@ -78,7 +79,12 @@ struct GroupPageView: View {
                         Button {
                             app.groupEditor = .subgroup(group)
                         } label: {
-                            Label("New Subproject…", systemImage: "folder.badge.plus")
+                            Label("New Subgroup…", systemImage: "folder.badge.plus")
+                        }
+                        Button {
+                            app.store.setFavorite(group, !group.isFavorite)
+                        } label: {
+                            Label(group.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: group.isFavorite ? "star.slash" : "star")
                         }
                     }
                     #if os(iOS)
@@ -110,6 +116,7 @@ struct GroupPageHeader: View {
     let done: Int
     let today: Date
     var groups: [TaskGroup] = []
+    var stats: TaskStats?
 
     @Environment(AppModel.self) private var app
 
@@ -136,6 +143,9 @@ struct GroupPageHeader: View {
                         }
                     }
                 }
+                if let stats {
+                    TaskStatsBar(stats: stats)
+                }
                 if group.isProject, open + done > 0 {
                     ProgressView(value: Double(done), total: Double(open + done))
                         .tint(group.color.color)
@@ -154,6 +164,9 @@ struct GroupPageHeader: View {
                 }
                 SubgroupSwitches(parent: group, groups: groups)
             } else {
+                if let stats {
+                    TaskStatsBar(stats: stats)
+                }
                 Text("Everything you threw in quickly. Drag tasks onto a group, or swipe left → Move.")
                     .font(.callout)
                     .foregroundStyle(.secondary)

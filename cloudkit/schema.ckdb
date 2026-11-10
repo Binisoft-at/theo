@@ -1,5 +1,28 @@
 DEFINE SCHEMA
 
+    RECORD TYPE CD_SavedView (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        CD_colorName    STRING,
+        CD_createdAt    TIMESTAMP,
+        CD_deletedAt    TIMESTAMP,
+        CD_entityName   STRING,
+        CD_isFavorite   INT64,
+        CD_modifiedAt   TIMESTAMP,
+        CD_name         STRING,
+        CD_queryRaw     STRING,
+        CD_sortOrder    DOUBLE,
+        CD_symbol       STRING,
+        CD_uuid         STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE CD_TaskGroup (
         "___createTime" TIMESTAMP,
         "___createdBy"  REFERENCE,

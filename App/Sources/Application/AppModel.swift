@@ -5,6 +5,10 @@ import TheoCore
 enum SidebarItem: Hashable {
     case today
     case plan
+    case overview
+    case allTasks
+    /// A saved view (`SavedView`).
+    case view(UUID)
     case upcoming
     case priority
     case matrix
@@ -24,7 +28,7 @@ struct IndentRequest: Equatable {
 
 /// iPhone tab bar.
 enum PhoneTab: Hashable {
-    case today, plan, lists, search
+    case today, plan, overview, lists, search
 }
 
 struct Toast: Identifiable, Equatable {
@@ -109,6 +113,8 @@ final class AppModel {
     var matrixTask: TaskItem?
     /// Schedules the notifications for timed tasks (not on the tour's practice page).
     let reminders: ReminderScheduler?
+    /// Daily safety copies of everything (Settings → Backups).
+    let backups: BackupManager
 
     /// The composer's + being dragged over a list (global position), to insert a task there.
     var insertDragLocation: CGPoint?
@@ -154,6 +160,7 @@ final class AppModel {
         self.dayStart = DayBoundary.current.start(of: Date())
         // No reminders on the practice page or the screenshot demo data.
         self.reminders = isSandbox || Persistence.isDemo ? nil : ReminderScheduler(container: container)
+        self.backups = BackupManager(container: container, enabled: !isSandbox && !Persistence.isDemo)
         guard !isSandbox else { return }
         focus = Self.loadFocus()
         if !Persistence.isDemo {
@@ -183,6 +190,8 @@ final class AppModel {
             phoneTab = .today
         case .plan:
             phoneTab = .plan
+        case .overview:
+            phoneTab = .overview
         default:
             phoneTab = .lists
             phonePath = NavigationPath([item])
@@ -211,7 +220,7 @@ final class AppModel {
 
     func requestQuickEntry() {
         switch selection {
-        case .history, .trash, .upcoming, .priority, .matrix, .plan, .tag, .none: go(.today)
+        case .history, .trash, .upcoming, .priority, .matrix, .plan, .overview, .tag, .none: go(.today)
         default: if phonePath.isEmpty { go(selection ?? .today) }
         }
         detailPath = NavigationPath()
@@ -338,6 +347,10 @@ final class AppModel {
             case "plan": selection = .plan
             case "history": selection = .history
             case "quick": selection = .quickEntry
+            case "overview":
+                selection = .overview
+                phoneTab = .overview
+            case "alltasks": selection = .allTasks
             case "review":
                 selection = .today
                 reviewDay = DayRef(start: dayStart)

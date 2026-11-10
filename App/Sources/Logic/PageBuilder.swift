@@ -43,6 +43,8 @@ struct RowStyle {
     var subtasksDone = 0
     /// The subtasks are folded away.
     var subtasksFolded = false
+    /// Open Power Hours of the line with all its subtasks (shown as the parent's total).
+    var blockEstimate: Double = 0
 }
 
 /// The flat row model behind every task list. Headers are rows too, exactly like headings
@@ -97,6 +99,7 @@ enum PageBuilder {
             style.subtaskCount = children.count
             style.subtasksDone = children.filter(\.isDone).count
             style.subtasksFolded = !children.isEmpty && options.collapsedTasks.contains(task.uuid)
+            style.blockEstimate = children.isEmpty ? 0 : PowerHours.total([task] + children, where: { !$0.isDone })
             rows.append(.task(task, depth: all[index].depth, style: style))
             index = style.subtasksFolded ? end : index + 1
         }

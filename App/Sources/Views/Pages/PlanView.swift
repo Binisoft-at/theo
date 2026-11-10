@@ -12,7 +12,10 @@ struct PlanView: View {
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @State private var selected: Date?
-    @State private var showEverything = false
+    /// How "Browse All Tasks" is sorted into sections, which are open, and what's searched.
+    @AppStorage("plan.browse") private var browseRaw = PlanBrowse.group.rawValue
+    @State private var expanded: Set<String> = []
+    @State private var browseSearch = ""
 
     /// Logical start of the selected day (defaults to today).
     private var day: Date { selected ?? app.dayStart }
@@ -66,18 +69,8 @@ struct PlanView: View {
                 if !important.isEmpty {
                     section("Most important", tasks: important, day: day)
                 }
-                Section {
-                    DisclosureGroup(isExpanded: $showEverything) {
-                        ForEach(GroupTree.ordered(groups.activeOnly), id: \.group.uuid) { item in
-                            groupBlock(name: GroupTree.path(of: item.group, in: groups), symbol: item.group.symbol, color: item.group.color.color,
-                                       tasks: rest.filter { $0.groupID == item.group.uuid }, day: day)
-                        }
-                        groupBlock(name: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .secondary,
-                                   tasks: rest.filter { $0.groupID == nil }, day: day)
-                    } label: {
-                        Label("Everything else · \(rest.count)", systemImage: "tray.full")
-                    }
-                }
+                let shownAbove = suggested.union(important.map(\.uuid)).union(ongoing.map(\.uuid))
+                browseSections(rest.filter { !shownAbove.contains($0.uuid) }, day: day)
             }
             #if os(iOS)
             .listStyle(.insetGrouped)
@@ -125,14 +118,86 @@ struct PlanView: View {
         }
     }
 
+    // MARK: - Browse All Tasks
+
+    /// Top-level lines among `tasks` (matching the search), with their block's numbers.
+    private func browseData(_ tasks: [TaskItem], needle: String) -> (shown: [TaskItem], styles: [UUID: RowStyle]) {
+        var styles: [UUID: RowStyle] = [:]
+        var roots: [TaskItem] = []
+        for section in Dictionary(grouping: allOpen.activeOnly(groups), by: \.groupID).values {
+            for row in PageBuilder.taskRows(section, options: PageBuilder.Options()) {
+                guard case .task(let task, let depth, let style) = row, depth == 0 else { continue }
+                styles[task.uuid] = style
+                roots.append(task)
+            }
+        }
+        let wanted = Set(tasks.map(\.uuid))
+        let shown = roots.filter { wanted.contains($0.uuid) && (needle.isEmpty || $0.trimmedTitle.lowercased().contains(needle)) }
+        return (shown, styles)
+    }
+
+    /// A line's Power Hours: its subtasks' total when it has them, else its own.
+    private static func hours(_ task: TaskItem, _ styles: [UUID: RowStyle]) -> Double {
+        if let style = styles[task.uuid], style.subtaskCount > 0, style.blockEstimate > 0 { return style.blockEstimate }
+        return task.estimate
+    }
+
+    /// Every other open task, a section per group (or priority, deadline, size). Only top-level
+    /// lines are listed, with their subtasks counted and their Power Hours added up; planning
+    /// one plans its subtasks too. Sections open on tap; a search opens them all.
     @ViewBuilder
-    private func groupBlock(name: String, symbol: String, color: Color, tasks: [TaskItem], day: Date) -> some View {
-        if !tasks.isEmpty {
-            Label(name, systemImage: symbol)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(color)
-            ForEach(rankedTop(tasks, day: day), id: \.uuid) { task in
-                PlanRow(task: task, isPlanned: false, day: day)
+    private func browseSections(_ tasks: [TaskItem], day: Date) -> some View {
+        let browse = PlanBrowse(rawValue: browseRaw) ?? .group
+        let needle = browseSearch.trimmingCharacters(in: .whitespaces).lowercased()
+        let data = browseData(tasks, needle: needle)
+        let sections = browse.sections(data.shown, groups: groups.activeOnly, today: day).filter { !$0.tasks.isEmpty }
+
+        Section {
+            Picker("Browse by", selection: $browseRaw) {
+                ForEach(PlanBrowse.allCases) { option in
+                    Text(option.title).tag(option.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            TextField("Search all tasks", text: $browseSearch)
+        } header: {
+            Text("Browse All Tasks · \(data.shown.count)")
+        } footer: {
+            Text("Tap a section to open it, then tap a task to plan it (its subtasks come along).")
+        }
+        ForEach(sections, id: \.key) { section in
+            let isOpen = !needle.isEmpty || expanded.contains(section.key)
+            let hours = section.tasks.reduce(0) { $0 + Self.hours($1, data.styles) }
+            Section {
+                if isOpen {
+                    ForEach(rankedTop(section.tasks, day: day), id: \.uuid) { task in
+                        PlanRow(task: task, isPlanned: false, day: day, style: data.styles[task.uuid])
+                    }
+                }
+            } header: {
+                Button {
+                    withAnimation(.snappy) {
+                        if expanded.contains(section.key) { expanded.remove(section.key) } else { expanded.insert(section.key) }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: section.symbol)
+                            .foregroundStyle(section.color)
+                        Text(section.title)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text(hours > 0 ? "\(section.tasks.count) · \(PowerHours.format(hours))" : "\(section.tasks.count)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .rotationEffect(.degrees(isOpen ? 90 : 0))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .textCase(nil)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -213,8 +278,16 @@ struct PlanRow: View {
     let task: TaskItem
     let isPlanned: Bool
     let day: Date
+    /// Subtask count and Power Hours total for a top-level line.
+    var style: RowStyle?
 
     @Environment(AppModel.self) private var app
+
+    private var rowStyle: RowStyle {
+        var value = style ?? RowStyle()
+        value.showGroup = true
+        return value
+    }
 
     var body: some View {
         Button {
@@ -236,7 +309,12 @@ struct PlanRow: View {
                             .foregroundStyle(.primary)
                             .multilineTextAlignment(.leading)
                     }
-                    TaskMetaLine(task: task, style: RowStyle(showGroup: true), today: app.dayStart, showAge: false)
+                    TaskMetaLine(task: task, style: rowStyle, today: app.dayStart, showAge: false)
+                    if let style, style.subtaskCount > 0 {
+                        Text("\(style.subtaskCount - style.subtasksDone) of \(style.subtaskCount) subtasks open")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
                 if let planned = task.plannedDay, !isPlanned {
@@ -253,5 +331,42 @@ struct PlanRow: View {
         .buttonStyle(.plain)
         .sensoryFeedback(.selection, trigger: isPlanned)
         .accessibilityHint(isPlanned ? "Takes it off this day" : "Plans it for this day")
+    }
+}
+
+/// How Plan's "Browse All Tasks" is split into sections.
+enum PlanBrowse: String, CaseIterable, Identifiable {
+    case group, priority, deadline, size
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .group: "Group"
+        case .priority: "Priority"
+        case .deadline: "Deadline"
+        case .size: "Size"
+        }
+    }
+
+    func sections(_ tasks: [TaskItem], groups: [TaskGroup], today: Date) -> [LabeledSection] {
+        switch self {
+        case .group:
+            // Every group and subgroup on its own, in sidebar order, named with its path.
+            var result: [LabeledSection] = [
+                (key: "quick", title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, tasks: tasks.filter { $0.groupID == nil })
+            ]
+            for item in GroupTree.ordered(groups) {
+                result.append((key: item.group.uuid.uuidString, title: GroupTree.path(of: item.group, in: groups), symbol: item.group.symbol,
+                               color: item.group.color.color, tasks: tasks.filter { $0.groupID == item.group.uuid }))
+            }
+            return result
+        case .priority:
+            return Sections.byPriority(tasks, groups: groups, includeNone: true)
+        case .deadline:
+            return Sections.byDeadline(tasks, groups: groups, today: today, includeNone: true)
+        case .size:
+            return Sections.bySize(tasks)
+        }
     }
 }

@@ -277,6 +277,8 @@ struct MatrixPageView: View {
     @AppStorage("matrixScope") private var onlyToday = false
     @State private var selectedID: UUID?
     @State private var dragging: (id: UUID, cell: MatrixGeometry.Cell)?
+    /// A crowded spot that was tapped: its tasks, to pick one.
+    @State private var cluster: MatrixCluster?
 
     private var scoped: [TaskItem] {
         let openTasks = allOpen.activeOnly(groups)
@@ -311,7 +313,12 @@ struct MatrixPageView: View {
     private func grid(tasks: [TaskItem]) -> some View {
         MatrixBoard { size in
             let points = restingPoints(tasks, size: size)
-            let sides = labelSides(tasks, points: points, size: size)
+            // Three or more tasks in one cell become one bubble with a count (the picked or
+            // dragged task stays a dot of its own).
+            let crowded = crowdedCells(tasks)
+            let active = Set([selectedID, dragging?.id].compactMap { $0 })
+            let hidden = Set(crowded.values.flatMap { $0 }.map(\.uuid)).subtracting(active)
+            let sides = labelSides(tasks, points: points, size: size, skipping: hidden)
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { location in
@@ -327,7 +334,20 @@ struct MatrixPageView: View {
                     selectedID = id
                     return true
                 }
-            ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
+            ForEach(crowded.keys.sorted(), id: \.self) { key in
+                if let members = crowded[key], let first = members.first {
+                    let cell = MatrixGeometry.cell(of: first, today: app.dayStart)
+                    let best = members.map { $0.matrixScore(today: app.dayStart) }.max() ?? 0
+                    MatrixClusterBubble(count: members.filter { !active.contains($0.uuid) }.count, color: Matrix.color(forScore: best))
+                        .position(MatrixGeometry.center(of: cell, in: size))
+                        .onTapGesture {
+                            cluster = MatrixCluster(id: key, cell: cell, taskIDs: members.map(\.uuid))
+                        }
+                        .accessibilityLabel("\(members.count) tasks, \(MatrixGeometry.describe(cell))")
+                        .accessibilityAddTraits(.isButton)
+                }
+            }
+            ForEach(Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }, id: \.element.uuid) { index, task in
                 let point = shownPoint(task, resting: points[index], size: size)
                 MatrixDot(
                     point: point,
@@ -356,7 +376,7 @@ struct MatrixPageView: View {
                     .accessibilityLabel(task.trimmedTitle)
                     .accessibilityValue(MatrixGeometry.describe(shownCell(task)))
             }
-            ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
+            ForEach(Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }, id: \.element.uuid) { index, task in
                 let isActive = selectedID == task.uuid || dragging?.id == task.uuid
                 let point = shownPoint(task, resting: points[index], size: size)
                 // Picked or dragged tasks always show their title; the others only when it fits.
@@ -370,6 +390,37 @@ struct MatrixPageView: View {
         .sensoryFeedback(.selection, trigger: dragging?.cell.key)
         .aspectRatio(1.3, contentMode: .fit)
         .frame(maxWidth: 680, maxHeight: 380)
+        .sheet(item: $cluster) { cluster in
+            NavigationStack {
+                List(tasks.filter { cluster.taskIDs.contains($0.uuid) }, id: \.uuid) { task in
+                    Button {
+                        selectedID = task.uuid
+                        self.cluster = nil
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
+                                .foregroundStyle(.primary)
+                            TaskMetaLine(task: task, style: RowStyle(showGroup: true), today: app.dayStart, showAge: false)
+                        }
+                    }
+                }
+                .navigationTitle(MatrixGeometry.describe(cluster.cell))
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { self.cluster = nil }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Cells holding three or more tasks.
+    private func crowdedCells(_ tasks: [TaskItem]) -> [Int: [TaskItem]] {
+        Dictionary(grouping: tasks) { MatrixGeometry.cell(of: $0, today: app.dayStart).key }.filter { $0.value.count >= 3 }
     }
 
     /// The cell a task shows in: where it's being dragged, else where it ranks.
@@ -397,10 +448,10 @@ struct MatrixPageView: View {
     /// Up to five of the top-ranked tasks get their title beside the dot, on whichever side fits
     /// inside the grid without covering another title or another task's dot. Higher-ranked tasks
     /// pick first; a title that fits nowhere is left out. The value is true for the right side.
-    private func labelSides(_ tasks: [TaskItem], points: [CGPoint], size: CGSize) -> [UUID: Bool] {
+    private func labelSides(_ tasks: [TaskItem], points: [CGPoint], size: CGSize, skipping hidden: Set<UUID> = []) -> [UUID: Bool] {
         var placed: [CGRect] = []
         var sides: [UUID: Bool] = [:]
-        for (index, task) in tasks.enumerated().prefix(12) where sides.count < 5 {
+        for (index, task) in tasks.enumerated().prefix(16) where sides.count < 5 && !hidden.contains(task.uuid) {
             let point = points[index]
             let width = min(142, CGFloat(task.trimmedTitle.count) * 6 + 12)
             let preferRight = point.x < size.width * 0.55
@@ -450,5 +501,30 @@ struct MatrixPageView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
+    }
+}
+
+/// A crowded spot on the grid, tapped open.
+struct MatrixCluster: Identifiable {
+    let id: Int
+    let cell: MatrixGeometry.Cell
+    let taskIDs: [UUID]
+}
+
+/// Several tasks in one cell: one bubble with their number.
+struct MatrixClusterBubble: View {
+    let count: Int
+    let color: Color
+
+    var body: some View {
+        Text("\(count)")
+            .font(.caption.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .frame(width: 26, height: 26)
+            .background(Circle().fill(color.gradient))
+            .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: 2))
+            .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+            .contentShape(Circle())
     }
 }

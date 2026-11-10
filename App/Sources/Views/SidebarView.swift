@@ -14,6 +14,8 @@ struct SidebarView: View {
     private var allOpen: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
+    @Query(filter: #Predicate<SavedView> { $0.deletedAt == nil }, sort: \SavedView.sortOrder)
+    private var views: [SavedView]
     @State private var groupPendingDelete: TaskGroup?
 
     var body: some View {
@@ -32,7 +34,33 @@ struct SidebarView: View {
         let tree = GroupTree.ordered(groups)
         let off = GroupTree.inactiveIDs(groups)
 
+        let favoriteGroups = tree.map(\.group).filter(\.isFavorite)
+        let favoriteViews = views.filter(\.isFavorite)
+
         sidebarList(selection: usesSelection ? $app.selection : nil) {
+            if !favoriteGroups.isEmpty || !favoriteViews.isEmpty {
+                Section("Favorites") {
+                    ForEach(favoriteGroups, id: \.uuid) { group in
+                        NavigationLink(value: SidebarItem.group(group.uuid)) {
+                            SidebarRow(title: group.displayName, symbol: group.symbol, color: group.color.color,
+                                       count: allOpen.filter { $0.groupID == group.uuid }.count)
+                        }
+                        .contextMenu {
+                            Button {
+                                app.store.setFavorite(group, false)
+                            } label: {
+                                Label("Remove from Favorites", systemImage: "star.slash")
+                            }
+                        }
+                    }
+                    ForEach(favoriteViews, id: \.uuid) { view in
+                        NavigationLink(value: SidebarItem.view(view.uuid)) {
+                            SidebarRow(title: view.displayName, symbol: view.symbol, color: view.color.color, count: 0)
+                        }
+                        .contextMenu { viewMenu(view) }
+                    }
+                }
+            }
             Section {
                 if showsDayPages {
                     NavigationLink(value: SidebarItem.today) {
@@ -41,6 +69,14 @@ struct SidebarView: View {
                     NavigationLink(value: SidebarItem.plan) {
                         SidebarRow(title: "Plan", symbol: "calendar.badge.plus", color: .indigo, count: tomorrowCount, shortcut: "⌘2")
                     }
+                }
+                if showsDayPages {
+                    NavigationLink(value: SidebarItem.overview) {
+                        SidebarRow(title: "Overview", symbol: "chart.pie.fill", color: .mint, count: 0, shortcut: "⇧⌘O")
+                    }
+                }
+                NavigationLink(value: SidebarItem.allTasks) {
+                    SidebarRow(title: "All Tasks", symbol: "tray.full.fill", color: .blue, count: openTasks.count, shortcut: "⇧⌘A")
                 }
                 NavigationLink(value: SidebarItem.upcoming) {
                     SidebarRow(title: "Upcoming", symbol: "calendar", color: .red, count: dueCount, countIsAlert: dueCount > 0, shortcut: "⌘3")
@@ -96,6 +132,11 @@ struct SidebarView: View {
                             Label(group.isActive ? "Switch Off" : "Switch On", systemImage: group.isActive ? "pause.circle" : "play.circle")
                         }
                         Button {
+                            app.store.setFavorite(group, !group.isFavorite)
+                        } label: {
+                            Label(group.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: group.isFavorite ? "star.slash" : "star")
+                        }
+                        Button {
                             app.groupEditor = .edit(group)
                         } label: {
                             Label("Edit Group…", systemImage: "pencil")
@@ -137,6 +178,17 @@ struct SidebarView: View {
                                 count: openTasks.filter { $0.tags.contains(tag) }.count
                             )
                         }
+                    }
+                }
+            }
+
+            if !views.isEmpty {
+                Section("Views") {
+                    ForEach(views, id: \.uuid) { view in
+                        NavigationLink(value: SidebarItem.view(view.uuid)) {
+                            SidebarRow(title: view.displayName, symbol: view.isFavorite ? "star.fill" : view.symbol, color: view.color.color, count: 0)
+                        }
+                        .contextMenu { viewMenu(view) }
                     }
                 }
             }
@@ -197,6 +249,21 @@ struct SidebarView: View {
 }
 
 extension SidebarView {
+    @ViewBuilder
+    func viewMenu(_ view: SavedView) -> some View {
+        Button {
+            app.store.setFavorite(view, !view.isFavorite)
+        } label: {
+            Label(view.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: view.isFavorite ? "star.slash" : "star")
+        }
+        Button(role: .destructive) {
+            if app.selection == .view(view.uuid) { app.go(.allTasks) }
+            app.store.deleteView(view)
+        } label: {
+            Label("Delete View", systemImage: "trash")
+        }
+    }
+
     @ViewBuilder
     func sidebarList<Content: View>(selection: Binding<SidebarItem?>?, @ViewBuilder content: () -> Content) -> some View {
         if let selection {

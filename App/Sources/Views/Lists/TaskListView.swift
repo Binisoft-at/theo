@@ -51,6 +51,15 @@ struct TaskListView<Header: View>: View {
                     .overlay(alignment: .top) {
                         if insertBeforeFirst && rows.first?.id == row.id { InsertionLine() }
                     }
+                    #if os(macOS)
+                    // Hover the bottom edge of a line: an accent line with a +; click it to add a
+                    // task (or subtask) right there.
+                    .overlay(alignment: .bottom) {
+                        HoverInsertLine {
+                            insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
+                        }
+                    }
+                    #endif
             }
             .onMove(perform: allowsReorder ? move : nil)
         }
@@ -105,6 +114,8 @@ struct TaskListView<Header: View>: View {
             if let oldValue, oldValue != newValue, let task = lookupTask(oldValue) {
                 app.store.applyInlineShortcuts(task)
                 app.store.discardIfEmpty(task)
+                // Leaving a line saves it at once, so it syncs to the other devices right away.
+                app.store.save()
             }
         }
         .onChange(of: app.pendingEditTaskID) { _, id in
@@ -221,6 +232,7 @@ struct TaskListView<Header: View>: View {
                     }
                     .tint(.indigo)
                 }
+                #if os(iOS)
                 if depth > 0 {
                     Button {
                         withAnimation(.snappy) { app.store.indent(task, by: -1) }
@@ -229,8 +241,20 @@ struct TaskListView<Header: View>: View {
                     }
                     .tint(.gray)
                 }
+                #endif
             }
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: Self.fullSwipeLeft(depth: depth)) {
+                #if os(macOS)
+                // Two fingers on the trackpad: swipe right indents, swipe left outdents.
+                if depth > 0 {
+                    Button {
+                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                    } label: {
+                        Label("Outdent", systemImage: "arrow.turn.up.left")
+                    }
+                    .tint(.indigo)
+                }
+                #endif
                 Button(role: .destructive) {
                     app.delete([task])
                 } label: {
@@ -644,6 +668,17 @@ struct TaskListView<Header: View>: View {
         insertAfterID = nil
         insertBeforeFirst = false
         guard isVisible, let point = insertionPoint(at: location) else { return false }
+        insertTask(between: point, entry: entry)
+        return true
+    }
+
+    private func rowAfter(_ row: ListRow) -> ListRow? {
+        guard let index = rows.firstIndex(where: { $0.id == row.id }), index + 1 < rows.count else { return nil }
+        return rows[index + 1]
+    }
+
+    /// Adds a task between two rows (see `insertTask(at:entry:)`).
+    private func insertTask(between point: (above: ListRow?, below: ListRow?), entry: ParsedEntry?) {
         let aboveTask = point.above?.task
         let belowTask = point.below?.task
         let title = entry?.title ?? ""
@@ -680,13 +715,22 @@ struct TaskListView<Header: View>: View {
         }
         if let plansFor { app.store.plan([new], for: plansFor) }
         if entry == nil { beginEdit(new) }
-        return true
     }
 
     /// A neighbour's place in the ranking; finished tasks don't count.
     private func rankOf(_ task: TaskItem?) -> Matrix.Rank? {
         guard let task, !task.isDone else { return nil }
         return Matrix.Rank(importance: task.importance, days: Matrix.daysUntil(task.dueDate, today: app.dayStart))
+    }
+
+    /// A full swipe left: Delete on iPhone; on the Mac only Outdent (for subtasks), so a
+    /// trackpad swipe never deletes.
+    private static func fullSwipeLeft(depth: Int) -> Bool {
+        #if os(macOS)
+        return depth > 0
+        #else
+        return true
+        #endif
     }
 
     private static func depth(of row: ListRow?) -> Int? {
@@ -736,6 +780,39 @@ extension TaskListView where Header == EmptyView {
 final class RowFrames {
     var byID: [String: CGRect] = [:]
 }
+
+#if os(macOS)
+/// A thin strip along a row's bottom edge: hovered, it shows where a new task would go.
+struct HoverInsertLine: View {
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Color.clear
+                .contentShape(Rectangle())
+            if hovering {
+                HStack(spacing: 0) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.tint)
+                        .background(Circle().fill(.background))
+                    Rectangle()
+                        .fill(.tint)
+                        .frame(height: 2)
+                }
+                .transition(.opacity)
+            }
+        }
+        .frame(height: 8)
+        .onHover { hovering = $0 }
+        .onTapGesture(perform: action)
+        .help("Add a task here")
+        .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+}
+#endif
 
 /// Where a dragged-in task will land.
 struct InsertionLine: View {

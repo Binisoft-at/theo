@@ -29,6 +29,9 @@ struct MenuBarLabel: View {
 /// the same "reopen" Apple event a click on the Dock icon sends.
 final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // CloudKit's silent pushes: changes from the iPhone arrive within seconds instead of
+        // whenever the Mac happens to check.
+        NSApplication.shared.registerForRemoteNotifications()
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             guard !MainWindow.isVisible else { return }

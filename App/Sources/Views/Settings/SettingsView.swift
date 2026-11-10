@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import TheoCore
 
 struct SettingsView: View {
@@ -21,6 +22,8 @@ struct SettingsView: View {
     @AppStorage(Prefs.reviewShare) private var reviewShare = true
     @AppStorage(Prefs.reviewTasks) private var reviewTasks = true
     @AppStorage(Prefs.reviewCompareDays) private var reviewCompareDays = 7
+    @State private var restoreCandidate: URL?
+    @State private var pickBackupFile = false
 
     var body: some View {
         Form {
@@ -173,6 +176,77 @@ struct SettingsView: View {
                 Text("A hands-on tour of adding, subtasks, priorities, gestures and undo, on a practice page.")
             }
 
+            Section {
+                LabeledContent("Last backup") {
+                    Text(app.backups.lastBackup.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Not yet")
+                }
+                Button {
+                    do {
+                        try app.backups.backUpNow()
+                        app.show("Backed up", symbol: "externaldrive.fill.badge.checkmark")
+                    } catch {
+                        app.show("Backup failed: \(error.localizedDescription)", symbol: "exclamationmark.triangle.fill")
+                    }
+                } label: {
+                    Label("Back Up Now", systemImage: "externaldrive.badge.plus")
+                }
+                if let latest = app.backups.files.first {
+                    ShareLink(item: latest) {
+                        Label("Export Latest Backup…", systemImage: "square.and.arrow.up")
+                    }
+                }
+                if !app.backups.files.isEmpty {
+                    Menu {
+                        ForEach(app.backups.files.prefix(14), id: \.self) { url in
+                            Button(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "Theo Backup ", with: "")) {
+                                restoreCandidate = url
+                            }
+                        }
+                    } label: {
+                        Label("Restore a Backup…", systemImage: "clock.arrow.circlepath")
+                    }
+                }
+                Button {
+                    pickBackupFile = true
+                } label: {
+                    Label("Restore from File…", systemImage: "doc.badge.arrow.up")
+                }
+                #if os(macOS)
+                Button {
+                    app.backups.revealInFinder()
+                } label: {
+                    Label("Show Backups in Finder", systemImage: "folder")
+                }
+                #endif
+                if let error = app.backups.lastError {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            } header: {
+                Text("Backups")
+            } footer: {
+                #if os(iOS)
+                Text("Besides iCloud, Theo writes a full copy of all tasks and groups every day and keeps the last \(BackupManager.keep). They're in Files → On My iPhone → Theo → Backups, and in your iPhone's own backup. Restoring replaces everything, after one more copy of what's there now.")
+                #else
+                Text("Besides iCloud, Theo writes a full copy of all tasks and groups every day and keeps the last \(BackupManager.keep). Restoring replaces everything, after one more copy of what's there now.")
+                #endif
+            }
+            .confirmationDialog(
+                "Restore this backup?",
+                isPresented: Binding(get: { restoreCandidate != nil }, set: { if !$0 { restoreCandidate = nil } }),
+                titleVisibility: .visible,
+                presenting: restoreCandidate
+            ) { url in
+                Button("Replace Everything with It", role: .destructive) { restore(url) }
+                Button("Cancel", role: .cancel) {}
+            } message: { url in
+                Text("All tasks, groups and views are replaced with “\(url.deletingPathExtension().lastPathComponent)”. What's there now is backed up first.")
+            }
+            .fileImporter(isPresented: $pickBackupFile, allowedContentTypes: [.json]) { result in
+                if case .success(let url) = result { restoreCandidate = url }
+            }
+
             Section("Data") {
                 Button {
                     #if os(iOS)
@@ -205,6 +279,15 @@ struct SettingsView: View {
         .frame(width: 480)
         .frame(minHeight: 560)
         #endif
+    }
+
+    private func restore(_ url: URL) {
+        do {
+            let count = try app.backups.restore(from: url)
+            app.show("Restored \(count) tasks", symbol: "clock.arrow.circlepath")
+        } catch {
+            app.show("Couldn't restore: \(error.localizedDescription)", symbol: "exclamationmark.triangle.fill")
+        }
     }
 
     private func hourLabel(_ hour: Int) -> String {

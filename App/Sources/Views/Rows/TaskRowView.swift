@@ -26,9 +26,13 @@ struct TaskRowView: View {
 
     private var displayDone: Bool { task.isDone || checkedPreview }
 
+    /// A line with subtasks reads like a small group: bolder, with its progress underneath.
+    private var isParent: Bool { style.subtaskCount > 0 }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             CheckCircle(done: displayDone, priority: task.priority, action: tapCheck)
+                .scaleEffect(depth > 0 ? 0.86 : 1, anchor: .center)
                 .padding(.top, -3)
                 .padding(.leading, -4)
 
@@ -41,6 +45,10 @@ struct TaskRowView: View {
                         .lineLimit(1)
                 }
                 TaskMetaLine(task: task, style: style, today: today, showAge: showAge)
+                if isParent && !task.isDone {
+                    SubtaskProgress(done: style.subtasksDone, total: style.subtaskCount)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -62,13 +70,9 @@ struct TaskRowView: View {
                 .accessibilityLabel("Details")
             }
         }
-        .padding(.leading, CGFloat(depth) * 26)
-        .overlay(alignment: .leading) {
-            if depth > 0 {
-                IndentGuides(depth: depth)
-            }
-        }
-        .padding(.vertical, 3)
+        // Subtasks step in by one circle's width per level: the hierarchy shows in the indent alone.
+        .padding(.leading, CGFloat(depth) * 30)
+        .padding(.vertical, depth > 0 ? 1 : 3)
         .opacity(task.isDone && !isEditing ? 0.75 : 1)
         .animation(.snappy(duration: 0.25), value: displayDone)
     }
@@ -95,6 +99,7 @@ struct TaskRowView: View {
                     #endif
             } else {
                 Text(task.title.isEmpty ? "New Task" : task.title)
+                    .font(isParent ? .body.weight(.semibold) : (depth > 0 ? .callout : .body))
                     .strikethrough(displayDone, color: .secondary)
                     .foregroundStyle(displayDone || task.title.isEmpty ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -176,8 +181,12 @@ struct TaskMetaLine: View {
         return planned
     }
 
-    /// "0,5 PH", or "0,2 / 0,5 PH" once focus time has been booked on it.
+    /// "0,5 PH", or "0,2 / 0,5 PH" once focus time has been booked on it. A line with
+    /// subtasks shows the total of everything still open in it: "Σ 1,5 PH".
     private var estimateText: String? {
+        if style.subtaskCount > 0, style.blockEstimate > 0, !task.isDone {
+            return "Σ " + PowerHours.format(style.blockEstimate)
+        }
         let focused = task.focusSeconds / (PowerHours.minutesPerPH * 60)
         switch (task.estimate > 0, focused >= 0.05) {
         case (true, true): return PowerHours.number(focused) + " / " + PowerHours.format(task.estimate)
@@ -318,6 +327,27 @@ struct SubtaskBadge: View {
 }
 
 /// Thin vertical lines that show which parent a nested line belongs to.
+/// A thin bar under a parent line: how much of its subtasks is done.
+struct SubtaskProgress: View {
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.15))
+                Capsule()
+                    .fill(Color.accentColor.opacity(0.8))
+                    .frame(width: total > 0 ? geo.size.width * CGFloat(done) / CGFloat(total) : 0)
+            }
+        }
+        .frame(maxWidth: 160)
+        .frame(height: 3)
+        .animation(.snappy, value: done)
+        .accessibilityHidden(true)
+    }
+}
+
 struct IndentGuides: View {
     let depth: Int
 

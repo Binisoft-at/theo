@@ -114,6 +114,8 @@ jobs:
           shoot matrix-light -TheoScreen matrix
           shoot plan-light -TheoScreen plan
           shoot review-light -TheoScreen review
+          shoot overview-light -TheoScreen overview
+          shoot alltasks-light -TheoScreen alltasks
           shoot work-light -TheoScreen work
           shoot radial-light -TheoScreen today -TheoRadialDemo
           shoot tour-light -TheoTour

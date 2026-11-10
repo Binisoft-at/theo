@@ -1,8 +1,14 @@
 #if os(iOS)
 import UIKit
 
-/// Handles the Home Screen quick action ("Quick Entry").
+/// Handles the Home Screen quick action ("Quick Entry"), and registers for the silent pushes
+/// CloudKit sends when something changed on another device, so changes arrive right away.
 final class TheoAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        application.registerForRemoteNotifications()
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
