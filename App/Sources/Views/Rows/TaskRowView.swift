@@ -38,9 +38,17 @@ struct TaskRowView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 titleLine
-                if showNotesPreview, !isEditing, let preview = task.notesPreview {
+                if isEditing {
+                    // The description, right under the title while the line is being edited.
+                    TextField("Description", text: notesBinding, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .theoFont(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1...8)
+                        .focused(focus, equals: Self.notesFocusID(task))
+                } else if showNotesPreview, let preview = task.notesPreview {
                     Text(preview)
-                        .font(.subheadline)
+                        .theoFont(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -72,7 +80,12 @@ struct TaskRowView: View {
         }
         // Subtasks step in by one circle's width per level: the hierarchy shows in the indent alone.
         .padding(.leading, CGFloat(depth) * 30)
-        .padding(.vertical, depth > 0 ? 1 : 3)
+        // The row has no insets of its own (see TaskListView), so its edges are the divider lines.
+        .padding(.vertical, depth > 0 ? 6 : 9)
+        // The divider starts where the text does and runs to the end, the same span the
+        // insert line uses.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in Self.textLeading(depth: depth) }
+        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width }
         .opacity(task.isDone && !isEditing ? 0.75 : 1)
         .animation(.snappy(duration: 0.25), value: displayDone)
     }
@@ -82,16 +95,23 @@ struct TaskRowView: View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             if task.priority != .normal {
                 Text(task.priority.marks)
-                    .font(.body.weight(.heavy))
+                    .theoFont(.body, weight: .heavy)
                     .foregroundStyle(task.priority.color)
             }
             if isEditing {
                 TextField("New Task", text: titleBinding, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .theoFont(isParent ? .body : (depth > 0 ? .callout : .body), weight: isParent ? .semibold : nil)
                     .focused(focus, equals: task.rowID)
                     .onSubmit { onSplit([""]) }
                     .onKeyPress(.tab, phases: .down) { press in
                         onIndent(press.modifiers.contains(.shift) ? -1 : 1)
+                        return .handled
+                    }
+                    // ⇧Return: on to the description.
+                    .onKeyPress(.return, phases: .down) { press in
+                        guard press.modifiers.contains(.shift) else { return .ignored }
+                        focus.wrappedValue = Self.notesFocusID(task)
                         return .handled
                     }
                     #if os(iOS)
@@ -99,12 +119,29 @@ struct TaskRowView: View {
                     #endif
             } else {
                 Text(task.title.isEmpty ? "New Task" : task.title)
-                    .font(isParent ? .body.weight(.semibold) : (depth > 0 ? .callout : .body))
+                    .theoFont(isParent ? .body : (depth > 0 ? .callout : .body), weight: isParent ? .semibold : nil)
                     .strikethrough(displayDone, color: .secondary)
                     .foregroundStyle(displayDone || task.title.isEmpty ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// Where a row's text (and its divider) starts: past the indent and the check circle.
+    static func textLeading(depth: Int) -> CGFloat { 34 + CGFloat(depth) * 30 }
+
+    /// Focus ID of a task's description field (the title's is `rowID`).
+    static func notesFocusID(_ task: TaskItem) -> String { "n-" + task.uuid.uuidString }
+
+    private var notesBinding: Binding<String> {
+        Binding(
+            get: { task.notes },
+            set: { newValue in
+                guard newValue != task.notes else { return }
+                task.notes = newValue
+                task.touch()
+            }
+        )
     }
 
     private var titleBinding: Binding<String> {
@@ -257,7 +294,7 @@ struct TaskMetaLine: View {
                     .accessibilityHint("\(proposal.group.displayName) suggests other values")
                 }
             }
-            .font(.caption.weight(.medium))
+            .theoFont(.caption, weight: .medium)
             .labelStyle(CompactLabelStyle())
             .lineLimit(1)
             .foregroundStyle(.secondary)

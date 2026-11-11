@@ -8,6 +8,7 @@ struct SettingsView: View {
 
     @AppStorage(Prefs.appearance) private var appearanceRaw = AppearanceChoice.system.rawValue
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    @AppStorage(Prefs.textSize) private var textSizeRaw = TextSizeChoice.platformDefault.rawValue
     @AppStorage(Prefs.dayStartHour) private var dayStartHour = 4
     @AppStorage(Prefs.showAge) private var showAge = true
     @AppStorage(Prefs.showNotesPreview) private var showNotesPreview = true
@@ -34,6 +35,17 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+
+                Picker("Text Size", selection: $textSizeRaw) {
+                    ForEach(TextSizeChoice.allCases) { choice in
+                        Text(choice.title).tag(choice.rawValue)
+                    }
+                }
+                #if os(macOS)
+                Text("⌘+ and ⌘− change it from anywhere, ⌘0 goes back to Large.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                #endif
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Accent Color")

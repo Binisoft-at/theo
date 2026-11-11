@@ -11,6 +11,7 @@ struct RootView: View {
     #endif
     @AppStorage(Prefs.appearance) private var appearanceRaw = AppearanceChoice.system.rawValue
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    @AppStorage(Prefs.textSize) private var textSizeRaw = TextSizeChoice.platformDefault.rawValue
 
     private let clock = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -96,6 +97,7 @@ struct RootView: View {
     var body: some View {
         @Bindable var app = app
         navigation
+        .theoTextSize(TextSizeChoice(rawValue: textSizeRaw) ?? .platformDefault)
         .tint(accent.color)
         .preferredColorScheme(appearance.colorScheme)
         .modifier(AppChrome(app: app, accent: accent.color))

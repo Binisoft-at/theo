@@ -16,6 +16,8 @@ public struct ParsedEntry: Equatable, Sendable {
     public var recurrence: Recurrence?
     /// An ongoing task ("∞", "laufend", "ongoing"): never finished, each check-off is logged.
     public var ongoing: Bool
+    /// A description typed after " // " ("Call bank // ask about the fee").
+    public var notes: String
 
     public init(
         title: String,
@@ -28,7 +30,8 @@ public struct ParsedEntry: Equatable, Sendable {
         groupName: String? = nil,
         estimate: Double? = nil,
         recurrence: Recurrence? = nil,
-        ongoing: Bool = false
+        ongoing: Bool = false,
+        notes: String = ""
     ) {
         self.title = title
         self.priority = priority
@@ -41,6 +44,7 @@ public struct ParsedEntry: Equatable, Sendable {
         self.estimate = estimate
         self.recurrence = recurrence
         self.ongoing = ongoing
+        self.notes = notes
     }
 
     public var hasExtras: Bool {
@@ -58,6 +62,7 @@ public struct ParsedEntry: Equatable, Sendable {
 /// - `0,5PH` / `(1PH)` set the estimate in Power Hours
 /// - `daily`, `weekly`, `every 3 days`, `täglich` ... make it repeat
 /// - `∞`, `laufend`, `ongoing` or `andauernd` make it an ongoing task
+/// - everything after ` // ` is the task's description
 public enum QuickParser {
     public struct GroupRef: Sendable {
         public let id: UUID
@@ -94,10 +99,13 @@ public enum QuickParser {
 
     private static let detector: NSDataDetector? = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
 
-    public static func parse(_ text: String, groups: [GroupRef], options: Options = .all, now: Date = Date()) -> ParsedEntry {
-        var entry = ParsedEntry(title: text.trimmingCharacters(in: .whitespacesAndNewlines))
+    public static func parse(_ fullText: String, groups: [GroupRef], options: Options = .all, now: Date = Date()) -> ParsedEntry {
+        let split = splitNote(fullText)
+        var entry = ParsedEntry(title: split.title.trimmingCharacters(in: .whitespacesAndNewlines))
+        entry.notes = split.note
         var kept: [String] = []
-        var source = text
+        var source = split.title
+        let text = split.title
 
         if options.contains(.exactDates) || options.contains(.dates), let found = exactDate(in: source) {
             entry.due = found.date
@@ -165,6 +173,14 @@ public enum QuickParser {
             entry.title = text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return entry
+    }
+
+    /// "Call bank // ask about the fee" → ("Call bank", "ask about the fee"). Links like
+    /// "https://…" aren't split: the separator needs a space on both sides.
+    public static func splitNote(_ text: String) -> (title: String, note: String) {
+        guard let range = text.range(of: " // ") else { return (text, "") }
+        let note = text[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return (String(text[..<range.lowerBound]), note)
     }
 
     /// `📅 2026-11-04` or `due:2026-11-04`.

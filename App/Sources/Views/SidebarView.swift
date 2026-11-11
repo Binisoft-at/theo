@@ -300,22 +300,24 @@ struct SidebarRow: View {
         HStack {
             Label {
                 Text(title)
+                    .theoFont(.body)
                     .lineLimit(1)
             } icon: {
                 Image(systemName: symbol)
+                    .theoFont(.body)
                     .foregroundStyle(color)
             }
             Spacer()
             if count > 0 {
                 Text("\(count)")
-                    .font(.subheadline.weight(countIsAlert ? .semibold : .regular))
+                    .theoFont(.subheadline, weight: countIsAlert ? .semibold : .regular)
                     .monospacedDigit()
                     .foregroundStyle(countIsAlert ? Color.red : Color.secondary)
             }
             #if os(macOS)
             if let shortcut {
                 Text(shortcut)
-                    .font(.caption2)
+                    .theoFont(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(minWidth: 22, alignment: .trailing)
             }

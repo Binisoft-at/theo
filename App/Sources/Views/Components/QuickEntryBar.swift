@@ -200,6 +200,7 @@ struct QuickEntryBar: View {
             insertHandle
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
+                .theoFont(.body)
                 .lineLimit(1...5)
                 .focused($focused)
                 .onSubmit(add)
@@ -260,6 +261,20 @@ struct QuickEntryBar: View {
                 }
                 if entry.ongoing {
                     removableChip("∞ Ongoing", color: .teal) { disabled.insert(.ongoing) }
+                }
+                if !isMultiline {
+                    // A description in one tap: everything after " // " goes there.
+                    Button {
+                        if !text.contains(" // ") {
+                            text = text.trimmingCharacters(in: .whitespaces) + " // "
+                        }
+                        focused = true
+                    } label: {
+                        chipLabel(entry.notes.isEmpty ? "Description" : "Description ✓", symbol: "text.alignleft",
+                                  color: .indigo, active: !entry.notes.isEmpty)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Adds “ // ” to the text; what you type after it becomes the description")
                 }
                 ForEach(entry.tags, id: \.self) { tag in
                     removableChip("#" + tag, color: TheoColor.forTag(tag).color) { disabled.insert(.tags) }

@@ -74,6 +74,16 @@ struct TheoCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
         }
 
+        CommandGroup(after: .toolbar) {
+            Button("Bigger Text") { TextSizeChoice.step(1) }
+                .keyboardShortcut("+")
+            Button("Smaller Text") { TextSizeChoice.step(-1) }
+                .keyboardShortcut("-")
+            Button("Standard Text Size") { TextSizeChoice.reset() }
+                .keyboardShortcut("0")
+            Divider()
+        }
+
         CommandMenu("Go") {
             Button("Today") { app.go(.today) }
                 .keyboardShortcut("1")

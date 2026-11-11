@@ -40,6 +40,9 @@
 - **Tasks with subtasks**: the parent shows the open Power Hours of everything under it (Σ) and a progress bar; subtasks are simply indented, with no guide lines. On the Mac, two fingers swipe right to indent and left to outdent, and hovering between lines shows a + to add a task there. Crowded Matrix cells become one bubble with a count.
 - **Stats on every list**: groups and All Tasks show what's open, the Power Hours left, overdue, due within a week and done today.
 - **Backups**: besides iCloud, a full JSON copy every day (the last 30 kept), Back Up Now, export, and restore (Settings → Backups; on iPhone also in Files → On My iPhone → Theo).
+- **Descriptions in passing**: `Call bank // ask about the fee` puts everything after ` // ` into the description (the Description chip adds the separator); while editing a line its description field sits right under the title (⇧Return or the ≡ keyboard button jumps there).
+- **Text size**: Settings → Appearance → Text Size (Small to Huge; System follows Dynamic Type on iPhone). On the Mac, where text styles don't follow Dynamic Type, lists, rows, headers, the sidebar and the entry bar scale with it; ⌘+ / ⌘− / ⌘0. The Mac starts at Large.
+- **Precise insert line**: rows sit flush, so the divider is the row edge; the insert line (drag on iPhone, hover on the Mac) lights up exactly that divider, from where the text starts, with a small + tab.
 - **Group Today your way**: ranked, by group, by group and subgroup, priority, deadline, tag or size (Power Hours).
 - **Swipe right = subtask** of the line above (again to take it back out); swipe left for Delete, Tomorrow and +1 Day / Deadline.
 - **Navigation**: Liquid Glass tab bar on iPhone (Today, Plan, Lists, Search); sidebar on iPad and Mac with the shortcuts in grey.

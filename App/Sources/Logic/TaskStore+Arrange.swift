@@ -198,6 +198,7 @@ extension TaskStore {
             task.estimate = parsed.estimate ?? (line.done || underEstimate ? 0 : PowerHours.defaultForNewTasks)
             if parsed.estimate != nil { estimatedAbove.append(line.indent) }
             if parsed.ongoing { task.isOngoing = true }
+            if !parsed.notes.isEmpty { task.notes = parsed.notes }
             lastTask = task
             task.importance = Matrix.importance(for: parsed.priority, current: Matrix.defaultImportance)
             task.dueDate = parsed.due

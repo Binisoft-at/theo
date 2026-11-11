@@ -24,6 +24,17 @@ struct OngoingImportTests {
         #expect(entry.title == "laufende Kosten prüfen")
     }
 
+    @Test func descriptionAfterDoubleSlash() {
+        let entry = QuickParser.parse("Call bank tomorrow !! // ask about the fee, and the card", groups: [])
+        #expect(entry.title == "Call bank")
+        #expect(entry.notes == "ask about the fee, and the card")
+        #expect(entry.priority == .medium)
+        #expect(entry.due != nil)
+        let link = QuickParser.parse("Read https://example.com/a//b", groups: [])
+        #expect(link.notes.isEmpty)
+        #expect(link.title == "Read https://example.com/a//b")
+    }
+
     @Test func noteLinesBelongToTheTaskAbove() {
         let text = """
         # Office

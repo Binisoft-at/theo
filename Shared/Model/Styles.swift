@@ -178,6 +178,8 @@ enum Prefs {
     static let breakMinutes = "breakMinutes"
     /// Power Hours every new task starts with (0 = none).
     static let defaultEstimate = "defaultEstimate"
+    /// Theo's text size (`TextSizeChoice`).
+    static let textSize = "textSize"
     /// All Tasks' current filters, grouping and order (`TaskQuery.raw`).
     static let allTasksQuery = "allTasks.query"
     /// What the day review shows.

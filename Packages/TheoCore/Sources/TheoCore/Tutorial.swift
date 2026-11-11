@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 6
+    public static let version = 7
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -333,6 +333,13 @@ public enum TutorialCatalog {
             title: "The big picture",
             body: "The Overview tab sums it all up: what's open and how big, what's due in the next two weeks, every group with its size and what's pressing, the priorities, ongoing work and the biggest open blocks. Tap any card to open the list behind it. A task with subtasks shows their Power Hours added up (Σ).",
             macBody: "Overview (⇧⌘O) sums it all up: what's open and how big, what's due in the next two weeks, every group with its size and what's pressing, the priorities, ongoing work and the biggest open blocks. Click any card to open the list behind it. Hover between two lines and click the + to add a task right there; swipe right or left with two fingers to indent or outdent.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "description", since: 7, symbol: "text.alignleft",
+            title: "A description in passing",
+            body: "Type “ // ” in the bottom bar (or tap Description) and whatever follows becomes the task's description: “Call bank // ask about the fee”. While editing a task, the description sits right under its title; the ≡ button above the keyboard jumps there. Text too small or too big? Settings → Appearance → Text Size.",
+            macBody: "Type “ // ” in the bottom bar and whatever follows becomes the task's description: “Call bank // ask about the fee”. While editing a task, the description sits right under its title; ⇧Return jumps there. ⌘+ and ⌘− make all text bigger or smaller, ⌘0 resets it.",
             goal: .none
         ),
         TutorialStep(

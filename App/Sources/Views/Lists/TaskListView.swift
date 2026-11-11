@@ -46,17 +46,22 @@ struct TaskListView<Header: View>: View {
                     // A row scrolled out of view keeps no stale position for drops.
                     .onDisappear { frames.byID[row.id] = nil }
                     .overlay(alignment: .bottom) {
-                        if insertAfterID == row.id { InsertionLine() }
+                        if insertAfterID == row.id { InsertionLine(leading: Self.lineLeading(row), edge: .bottom) }
                     }
                     .overlay(alignment: .top) {
-                        if insertBeforeFirst && rows.first?.id == row.id { InsertionLine() }
+                        if insertBeforeFirst && rows.first?.id == row.id { InsertionLine(leading: Self.lineLeading(row), edge: .top) }
                     }
                     #if os(macOS)
-                    // Hover the bottom edge of a line: an accent line with a +; click it to add a
+                    // Hover just above or below a divider: it lights up with a +; click to add a
                     // task (or subtask) right there.
                     .overlay(alignment: .bottom) {
-                        HoverInsertLine {
+                        HoverInsertLine(leading: Self.lineLeading(row), edge: .bottom) {
                             insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        HoverInsertLine(leading: Self.lineLeading(row), edge: .top) {
+                            insertTask(between: (above: rowBefore(row), below: row), entry: nil)
                         }
                     }
                     #endif
@@ -65,6 +70,8 @@ struct TaskListView<Header: View>: View {
         }
         #if os(iOS)
         .listStyle(.plain)
+        // Rows as tall as their content: their edges are where the dividers are.
+        .environment(\.defaultMinListRowHeight, 1)
         .environment(\.editMode, .constant(app.isSelecting ? .active : .inactive))
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
@@ -86,6 +93,7 @@ struct TaskListView<Header: View>: View {
         }
         #else
         .listStyle(.inset)
+        .environment(\.defaultMinListRowHeight, 1)
         .contextMenu(forSelectionType: String.self) { ids in
             selectionMenu(ids)
         } primaryAction: { ids in
@@ -112,8 +120,12 @@ struct TaskListView<Header: View>: View {
         .onChange(of: focusedID) { oldValue, newValue in
             if let newValue, newValue == pendingEditID { pendingEditID = nil }
             if let oldValue, oldValue != newValue, let task = lookupTask(oldValue) {
-                app.store.applyInlineShortcuts(task)
-                app.store.discardIfEmpty(task)
+                // Between a line's title and its description it's still the same line.
+                let staysOnLine = newValue.flatMap(lookupTask)?.uuid == task.uuid
+                if !staysOnLine {
+                    app.store.applyInlineShortcuts(task)
+                    app.store.discardIfEmpty(task)
+                }
                 // Leaving a line saves it at once, so it syncs to the other devices right away.
                 app.store.save()
             }
@@ -223,6 +235,7 @@ struct TaskListView<Header: View>: View {
             )
             .moveDisabled(!allowsReorder || task.isDone || isEditing(task))
             // Swipe right: tuck under the line above (or take a subtask back out).
+            .listRowInsets(EdgeInsets(top: 0, leading: Self.rowInset, bottom: 0, trailing: Self.rowInset))
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if let parent = lineAbove(task) {
                     Button {
@@ -378,6 +391,12 @@ struct TaskListView<Header: View>: View {
     @ViewBuilder
     private func keyboardTools(_ task: TaskItem) -> some View {
         Button {
+            focusedID = focusedID == TaskRowView.notesFocusID(task) ? task.rowID : TaskRowView.notesFocusID(task)
+        } label: {
+            Image(systemName: "text.alignleft")
+        }
+        .accessibilityLabel("Description")
+        Button {
             withAnimation(.snappy) { app.store.indent(task, by: -1) }
         } label: {
             Image(systemName: "decrease.indent")
@@ -507,7 +526,7 @@ struct TaskListView<Header: View>: View {
     }
 
     private func isEditing(_ task: TaskItem) -> Bool {
-        focusedID == task.rowID || pendingEditID == task.rowID
+        focusedID == task.rowID || focusedID == TaskRowView.notesFocusID(task) || pendingEditID == task.rowID
     }
 
     private func beginEdit(_ task: TaskItem) {
@@ -672,6 +691,17 @@ struct TaskListView<Header: View>: View {
         return true
     }
 
+    private func rowBefore(_ row: ListRow) -> ListRow? {
+        guard let index = rows.firstIndex(where: { $0.id == row.id }), index > 0 else { return nil }
+        return rows[index - 1]
+    }
+
+    /// Where a row's divider (and so the insert line) starts.
+    private static func lineLeading(_ row: ListRow) -> CGFloat {
+        if case .task(_, let depth, _) = row { return TaskRowView.textLeading(depth: depth) }
+        return 30
+    }
+
     private func rowAfter(_ row: ListRow) -> ListRow? {
         guard let index = rows.firstIndex(where: { $0.id == row.id }), index + 1 < rows.count else { return nil }
         return rows[index + 1]
@@ -711,6 +741,7 @@ struct TaskListView<Header: View>: View {
             if let estimate = entry.estimate { new.estimate = estimate }
             new.recurrence = entry.recurrence
             if entry.ongoing { new.isOngoing = true }
+            if !entry.notes.isEmpty { new.notes = entry.notes }
             app.store.save()
         }
         if let plansFor { app.store.plan([new], for: plansFor) }
@@ -721,6 +752,15 @@ struct TaskListView<Header: View>: View {
     private func rankOf(_ task: TaskItem?) -> Matrix.Rank? {
         guard let task, !task.isDone else { return nil }
         return Matrix.Rank(importance: task.importance, days: Matrix.daysUntil(task.dueDate, today: app.dayStart))
+    }
+
+    /// Side insets of a task row. Its top and bottom have none, so the row's edge is the divider.
+    private static var rowInset: CGFloat {
+        #if os(macOS)
+        10
+        #else
+        16
+        #endif
     }
 
     /// A full swipe left: Delete on iPhone; on the Mac only Outdent (for subtasks), so a
@@ -752,6 +792,10 @@ struct TaskListView<Header: View>: View {
         for row in rows {
             if case .task(let task, _, _) = row, task.rowID == id { return task }
         }
+        // A description field ("n-" + the task's ID).
+        if id.hasPrefix("n-"), let uuid = UUID(uuidString: String(id.dropFirst(2))) {
+            return app.store.task(id: uuid)
+        }
         if id.hasPrefix("t-"), let uuid = UUID(uuidString: String(id.dropFirst(2))) {
             return app.store.task(id: uuid)
         }
@@ -782,51 +826,53 @@ final class RowFrames {
 }
 
 #if os(macOS)
-/// A thin strip along a row's bottom edge: hovered, it shows where a new task would go.
+/// A thin strip along a row's top or bottom edge: hovered, the divider there lights up with a +,
+/// and a click adds a task right there.
 struct HoverInsertLine: View {
+    let leading: CGFloat
+    let edge: VerticalEdge
     let action: () -> Void
 
     @State private var hovering = false
 
     var body: some View {
-        ZStack(alignment: .leading) {
+        ZStack(alignment: edge == .bottom ? .bottom : .top) {
             Color.clear
                 .contentShape(Rectangle())
             if hovering {
-                HStack(spacing: 0) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.tint)
-                        .background(Circle().fill(.background))
-                    Rectangle()
-                        .fill(.tint)
-                        .frame(height: 2)
-                }
-                .transition(.opacity)
+                InsertionLine(leading: leading, edge: edge)
+                    .transition(.opacity)
             }
         }
-        .frame(height: 8)
+        .frame(height: 7)
         .onHover { hovering = $0 }
         .onTapGesture(perform: action)
         .help("Add a task here")
-        .animation(.easeOut(duration: 0.12), value: hovering)
+        .animation(.easeOut(duration: 0.1), value: hovering)
     }
 }
 #endif
 
-/// Where a dragged-in task will land.
+/// Where a new task will land: the divider itself in the accent colour, from where the text
+/// starts to the end, with a small + tab sitting on it just before the text.
 struct InsertionLine: View {
+    var leading: CGFloat = 34
+    var edge: VerticalEdge = .bottom
+
     var body: some View {
-        HStack(spacing: 0) {
-            Circle()
-                .strokeBorder(.tint, lineWidth: 2)
-                .frame(width: 10, height: 10)
+        ZStack(alignment: edge == .bottom ? .bottomLeading : .topLeading) {
             Rectangle()
                 .fill(.tint)
                 .frame(height: 2)
+                .padding(.leading, leading)
+            Image(systemName: "plus")
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 14, height: 14)
+                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.tint))
+                .padding(.leading, max(0, leading - 16))
         }
-        .padding(.leading, 6)
-        .offset(y: 5)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .allowsHitTesting(false)
         .transition(.opacity)
     }

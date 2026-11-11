@@ -43,11 +43,11 @@ struct SectionHeaderRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: symbol)
-                    .font(.headline)
+                    .theoFont(.headline)
                     .foregroundStyle(color)
                     .frame(minWidth: 22)
                 Text(title)
-                    .font(info.level == 0 ? .title3.weight(.bold) : .headline)
+                    .theoFont(info.level == 0 ? .title3 : .headline, weight: info.level == 0 ? .bold : .semibold)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 if let project, let due = project.dueDate {
@@ -61,7 +61,7 @@ struct SectionHeaderRow: View {
                 Spacer(minLength: 8)
                 if info.openEstimate > 0 {
                     Text(PowerHours.format(info.openEstimate))
-                        .font(.caption.weight(.semibold))
+                        .theoFont(.caption, weight: .semibold)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 7)
@@ -71,7 +71,7 @@ struct SectionHeaderRow: View {
                 }
                 if total > 0 {
                     Text(info.doneCount > 0 ? "\(info.doneCount)/\(total)" : "\(info.openCount)")
-                        .font(.subheadline.weight(.medium))
+                        .theoFont(.subheadline, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())

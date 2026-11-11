@@ -96,6 +96,7 @@ struct TaskStore {
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         if entry.ongoing { task.isOngoing = true }
+        if !entry.notes.isEmpty { task.notes = entry.notes }
         applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         save()
         return task
@@ -170,6 +171,7 @@ struct TaskStore {
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         task.plannedDay = parent.plannedDay
         if entry.ongoing { task.isOngoing = true }
+        if !entry.notes.isEmpty { task.notes = entry.notes }
         applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
         if parent.isDone {
             parent.isDone = false
