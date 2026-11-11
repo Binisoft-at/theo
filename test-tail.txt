@@ -1,0 +1,150 @@
+◇ Test case passing 1 argument text → "Check the account ∞" to ongoingWordsMarkTheTask(text:) started.
+◇ Test case passing 1 argument text → "Konto prüfen laufend" to ongoingWordsMarkTheTask(text:) started.
+◇ Test case passing 1 argument text → "ongoing: inbox zero ongoing" to ongoingWordsMarkTheTask(text:) started.
+◇ Test case passing 1 argument text → "Mails andauernd" to ongoingWordsMarkTheTask(text:) started.
+◇ Test case passing 2 arguments text → "mail lesen (0,25PH)", expected → 0.25 to findsEstimates(text:expected:) started.
+◇ Test case passing 2 arguments text → "deploy 0.5ph", expected → 0.5 to findsEstimates(text:expected:) started.
+◇ Test case passing 2 arguments text → "haeb app 2 PH", expected → 2.0 to findsEstimates(text:expected:) started.
+◇ Test case passing 2 arguments text → "1,5", expected → 1.5 to parsesCustomInput(text:expected:) started.
+◇ Test case passing 2 arguments text → "0.25", expected → 0.25 to parsesCustomInput(text:expected:) started.
+◇ Test case passing 2 arguments text → "2 PH", expected → 2.0 to parsesCustomInput(text:expected:) started.
+◇ Test case passing 2 arguments text → "pflanzen (1,5PH) heute", expected → 1.5 to findsEstimates(text:expected:) started.
+◇ Test restartForgetsThePreviousStep() started.
+◇ Test deleteThenUndo() started.
+◇ Test earlierTourGetsWhatsNew() started.
+◇ Test addingATask() started.
+◇ Test shortcutsNeedDeadlineAndPriority() started.
+◇ Test stepIDsAreUnique() started.
+◇ Test everyStepIsReleasedAndWritten() started.
+◇ Test tourStartsWithWelcomeAndEndsWithFinish() started.
+◇ Test reorderIgnoresAddingAndRemoving() started.
+◇ Test case passing 2 arguments mark → "!", expected → .low to priorityMarks(mark:expected:) started.
+◇ Test case passing 2 arguments mark → "!!", expected → .medium to priorityMarks(mark:expected:) started.
+◇ Test case passing 2 arguments mark → "!!!", expected → .high to priorityMarks(mark:expected:) started.
+◇ Test case passing 2 arguments mark → "p1", expected → .high to priorityMarks(mark:expected:) started.
+◇ Test case passing 2 arguments mark → "P2", expected → .medium to priorityMarks(mark:expected:) started.
+◇ Test headingLevels() started.
+◇ Test exactDatesNeverGuess() started.
+◇ Test exactDeadlineToken() started.
+✔ Test parsesHeadingsTasksAndNesting() passed after 0.048 seconds.
+✔ Test emptyLinesAreSkipped() passed after 0.048 seconds.
+✔ Test weekdaysSkipTheWeekend() passed after 0.048 seconds.
+✔ Test normalizeKeepsOrder() passed after 0.048 seconds.
+✔ Test rawRoundTrips() passed after 0.048 seconds.
+✔ Test clean() passed after 0.048 seconds.
+✔ Test findsRecurrence(text:expected:) with 6 test cases passed after 0.048 seconds.
+✔ Test priorityCycles() passed after 0.048 seconds.
+✔ Test subtaskMarkers(text:) with 4 test cases passed after 0.048 seconds.
+✔ Test plainLinesCanBeHeadings() passed after 0.048 seconds.
+✔ Test pastedListKeepsNesting() passed after 0.048 seconds.
+✔ Test plainTextIsNotASubtask() passed after 0.048 seconds.
+✔ Test weeklyIsNotWeekday() passed after 0.048 seconds.
+✔ Test markerAloneIsAnEmptySubtask() passed after 0.048 seconds.
+✔ Test nudgesFollowTheTime() passed after 0.048 seconds.
+✔ Test rawRoundTrips() passed after 0.048 seconds.
+✔ Test describesOffsets() passed after 0.048 seconds.
+✔ Test defaultIsAtTheTime() passed after 0.048 seconds.
+✔ Test onlyFutureFireDates() passed after 0.048 seconds.
+✔ Test parserTakesTheRepeatOutOfTheTitle() passed after 0.048 seconds.
+✔ Test ongoingWordsMarkTheTask(text:) with 4 test cases passed after 0.048 seconds.
+✔ Test ordinaryWordsStayInTheTitle() passed after 0.048 seconds.
+✔ Test blankLinesAndBareMarkersAreDropped() passed after 0.048 seconds.
+✔ Test ongoingNeedsItsOption() passed after 0.048 seconds.
+✔ Test noteLinesBelongToTheTaskAbove() passed after 0.048 seconds.
+✔ Test undoWithoutDeleteDoesNotCount() passed after 0.048 seconds.
+✔ Test nestingNeverSkipsALevel() passed after 0.048 seconds.
+✔ Test firstRunGetsEverything() passed after 0.048 seconds.
+✔ Test findsEstimates(text:expected:) with 4 test cases passed after 0.048 seconds.
+✔ Test totalCanBeFiltered() passed after 0.048 seconds.
+✔ Test ignoresWordsThatOnlyContainPH() passed after 0.048 seconds.
+✔ Test parentEstimateCountsOnlyWithoutEstimatedSubtasks() passed after 0.048 seconds.
+✔ Test parsesCustomInput(text:expected:) with 3 test cases passed after 0.048 seconds.
+✔ Test parserTakesTheEstimateOutOfTheTitle() passed after 0.048 seconds.
+✔ Test daysBetweenLogicalDays() passed after 0.048 seconds.
+✔ Test startHourIsClamped() passed after 0.048 seconds.
+✔ Test dayStartArithmetic() passed after 0.048 seconds.
+✔ Test midnightBoundary() passed after 0.048 seconds.
+✔ Test lateNightBelongsToPreviousDay() passed after 0.048 seconds.
+✔ Test dayDelta() passed after 0.048 seconds.
+✔ Test matchingValuesNeedNothing() passed after 0.048 seconds.
+✔ Test ownValuesAreProposalsNotOverwrites() passed after 0.048 seconds.
+✔ Test subgroupsInheritAndOverride() passed after 0.048 seconds.
+✔ Test summaryReadsWell() passed after 0.048 seconds.
+✔ Test aBlankTaskTakesEveryTrait() passed after 0.048 seconds.
+✔ Test sortsByPriorityThenDeadline() passed after 0.048 seconds.
+✔ Test quickDates() passed after 0.048 seconds.
+✔ Test roundTripsAndToleratesOldData() passed after 0.048 seconds.
+✔ Test upToDateGetsNothing() passed after 0.049 seconds.
+✔ Test filtersNarrowDown() passed after 0.048 seconds.
+✔ Test searchLooksAtTitleAndNotes() passed after 0.048 seconds.
+✔ Test depthsAreClampedToOneLevelBelowThePreviousLine() passed after 0.048 seconds.
+✔ Test standardShowsOpenTasks() passed after 0.048 seconds.
+✔ Test manualOrderWinsOverInputOrder() passed after 0.048 seconds.
+✔ Test hidingCompletedDropsTheirSubtasks() passed after 0.048 seconds.
+✔ Test insertionBetweenDeadlinesTakesOneOfThem() passed after 0.048 seconds.
+✔ Test blockEndCoversSubtasks() passed after 0.048 seconds.
+✔ Test solvingImportanceLandsOnTheTarget() passed after 0.048 seconds.
+✔ Test insertionAtTheEdgesAndOverdue() passed after 0.048 seconds.
+✔ Test betweenAveragesNeighbours() passed after 0.048 seconds.
+✔ Test completedLinesSinkWithTheirSubtasks() passed after 0.048 seconds.
+✔ Test tenImportanceLevels() passed after 0.048 seconds.
+✔ Test marksAreACoarseViewOfImportance() passed after 0.048 seconds.
+✔ Test urgencyRoundTripsToDays() passed after 0.048 seconds.
+✔ Test urgencyFollowsTheDeadline() passed after 0.048 seconds.
+✔ Test numbersFollowTheFormat() passed after 0.048 seconds.
+✔ Test quotesOnlyWhenNeeded() passed after 0.048 seconds.
+✔ Test importanceOutranksUrgency() passed after 0.048 seconds.
+✔ Test columns() passed after 0.048 seconds.
+✔ Test disabledOptionsKeepRawText() passed after 0.048 seconds.
+✔ Test formatsInTheGivenLocale() passed after 0.049 seconds.
+✔ Test descriptionAfterDoubleSlash() passed after 0.050 seconds.
+✔ Test plainTextStaysUntouched() passed after 0.048 seconds.
+✔ Test priorityMarks(mark:expected:) with 5 test cases passed after 0.048 seconds.
+✔ Test dateOnlyTextIsKeptAsTitle() passed after 0.048 seconds.
+✔ Test insertionRanksBetweenWithoutInventingADeadline() passed after 0.048 seconds.
+✔ Test tagsAreCleanedAndDeduplicated() passed after 0.048 seconds.
+✔ Test groupMatchesByPrefixIgnoringSpaces() passed after 0.048 seconds.
+✔ Test unknownGroupStaysInTitle() passed after 0.048 seconds.
+✔ Test dateWithTimeBecomesDeadline() passed after 0.048 seconds.
+✔ Test signedDeltas() passed after 0.048 seconds.
+✔ Test shareOfTasksDone() passed after 0.048 seconds.
+✔ Test dateWithoutTimeIsStartOfDay() passed after 0.048 seconds.
+✔ Test averageCountsDaysOff() passed after 0.048 seconds.
+✔ Test documentHasHeaderAndCRLF() passed after 0.048 seconds.
+✔ Test openSiblingsFollowTheirRankAndKeepSubtasks() passed after 0.048 seconds.
+✔ Test roundTrips() passed after 0.048 seconds.
+✔ Test comparesWithTheAverage() passed after 0.048 seconds.
+✔ Test keepsTheNewestFiles() passed after 0.048 seconds.
+✔ Test numericHashtagIsNotATag() passed after 0.048 seconds.
+✔ Test addingATask() passed after 0.012 seconds.
+✔ Test earlierTourGetsWhatsNew() passed after 0.012 seconds.
+✔ Test stepIDsAreUnique() passed after 0.012 seconds.
+✔ Test shortcutsNeedDeadlineAndPriority() passed after 0.012 seconds.
+✔ Test everyStepIsReleasedAndWritten() passed after 0.012 seconds.
+✔ Test tourStartsWithWelcomeAndEndsWithFinish() passed after 0.012 seconds.
+✔ Test reorderIgnoresAddingAndRemoving() passed after 0.012 seconds.
+✔ Test restartForgetsThePreviousStep() passed after 0.012 seconds.
+✔ Test deleteThenUndo() passed after 0.012 seconds.
+✔ Test headingLevels() passed after 0.003 seconds.
+✔ Test exactDatesNeverGuess() passed after 0.003 seconds.
+✔ Suite "NotesImport" passed after 0.053 seconds.
+✔ Test exactDeadlineToken() passed after 0.003 seconds.
+✔ Suite "Recurrence" passed after 0.053 seconds.
+✔ Suite "Tags" passed after 0.053 seconds.
+✔ Suite "Composer" passed after 0.053 seconds.
+✔ Suite "Ongoing tasks and import notes" passed after 0.053 seconds.
+✔ Suite "Reminders" passed after 0.053 seconds.
+✔ Suite "Power Hours" passed after 0.053 seconds.
+✔ Suite "Group traits" passed after 0.053 seconds.
+✔ Suite "Task queries" passed after 0.053 seconds.
+✔ Suite "DayBoundary" passed after 0.053 seconds.
+✔ Suite "Checklist" passed after 0.053 seconds.
+✔ Suite "Matrix" passed after 0.053 seconds.
+✔ Suite "CSV" passed after 0.053 seconds.
+✔ Suite "QuickParser" passed after 0.053 seconds.
+✔ Suite "Ranked order" passed after 0.053 seconds.
+✔ Suite "Backups" passed after 0.052 seconds.
+✔ Suite "Day review" passed after 0.052 seconds.
+✔ Suite "Exact dates and nested import" passed after 0.053 seconds.
+✔ Suite "Tutorial" passed after 0.053 seconds.
+✔ Test run with 102 tests in 19 suites passed after 0.053 seconds.
