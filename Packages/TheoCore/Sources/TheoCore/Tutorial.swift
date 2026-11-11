@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 7
+    public static let version = 8
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -340,6 +340,13 @@ public enum TutorialCatalog {
             title: "A description in passing",
             body: "Type “ // ” in the bottom bar (or tap Description) and whatever follows becomes the task's description: “Call bank // ask about the fee”. While editing a task, the description sits right under its title; the ≡ button above the keyboard jumps there. Text too small or too big? Settings → Appearance → Text Size.",
             macBody: "Type “ // ” in the bottom bar and whatever follows becomes the task's description: “Call bank // ask about the fee”. While editing a task, the description sits right under its title; ⇧Return jumps there. ⌘+ and ⌘− make all text bigger or smaller, ⌘0 resets it.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "quick-edit", since: 8, symbol: "slider.horizontal.3",
+            title: "Change a task in one tap",
+            body: "Touch and hold a task → Quick Edit: done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours and group, each one tap, in colour. Everything else is under Details.",
+            macBody: "Right-click a task: its quick actions open right above it in colour (done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours, group). Select a task and its full details sit in the column on the right, editable in place (⌥⌘I shows or hides it). Control-click still opens the full menu.",
             goal: .none
         ),
         TutorialStep(

@@ -5,6 +5,8 @@ import TheoCore
 struct TaskMenuItems: View {
     let tasks: [TaskItem]
     var onEdit: (() -> Void)?
+    /// Opens the colourful quick-action panel above the line.
+    var onQuickEdit: (() -> Void)?
 
     @Environment(AppModel.self) private var app
 
@@ -12,6 +14,11 @@ struct TaskMenuItems: View {
     private var allDone: Bool { tasks.allSatisfy(\.isDone) }
 
     var body: some View {
+        if let onQuickEdit {
+            Button(action: onQuickEdit) {
+                Label("Quick Edit…", systemImage: "slider.horizontal.3")
+            }
+        }
         // One tap from the menu: ! / !! / !!!. Tapping the current level clears it.
         ControlGroup {
             ForEach([Priority.low, .medium, .high]) { level in

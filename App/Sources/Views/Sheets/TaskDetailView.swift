@@ -5,6 +5,8 @@ import TheoCore
 /// Full editor for one task.
 struct TaskDetailView: View {
     @Bindable var task: TaskItem
+    /// Shown inside another view (the Mac's inspector) rather than as its own sheet.
+    var embedded = false
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -28,187 +30,196 @@ struct TaskDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        CheckCircle(done: task.isDone, priority: task.priority) {
-                            withAnimation(.snappy) { app.store.toggle(task) }
-                        }
-                        TextField("Title", text: $task.title, axis: .vertical)
-                            .font(.title3.weight(.semibold))
-                            .textFieldStyle(.plain)
-                    }
-                    TextField("Notes", text: $task.notes, axis: .vertical)
-                        .lineLimit(3...12)
-                }
-
-                if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
-                    Section {
-                        Text(proposal.traits.summary.joined(separator: " · "))
-                            .font(.subheadline)
-                        HStack {
-                            Button("Apply") {
-                                withAnimation(.snappy) { app.store.acceptProposal(task, proposal.traits) }
+        if embedded {
+            form
+        } else {
+            NavigationStack {
+                form
+                    .navigationTitle("Details")
+                    #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") {
+                                task.touch()
+                                app.store.save()
+                                dismiss()
                             }
-                            .buttonStyle(.glassProminent)
-                            Button("Keep Mine") {
-                                withAnimation(.snappy) { app.store.dismissProposal(task) }
-                            }
-                            .buttonStyle(.glass)
                         }
-                    } header: {
-                        Label("\(proposal.group.displayName) suggests", systemImage: "wand.and.stars")
-                    } footer: {
-                        Text("This group gives its tasks these values. This task already had its own, so nothing was changed.")
                     }
+            }
+            #if os(macOS)
+            .frame(minWidth: 460, minHeight: 560)
+            #else
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            #endif
+        }
+    }
+
+    /// Every field of the task, editable in place.
+    private var form: some View {
+        Form {
+            Section {
+                HStack(alignment: .top, spacing: 10) {
+                    CheckCircle(done: task.isDone, priority: task.priority) {
+                        withAnimation(.snappy) { app.store.toggle(task) }
+                    }
+                    TextField("Title", text: $task.title, axis: .vertical)
+                        .font(.title3.weight(.semibold))
+                        .textFieldStyle(.plain)
                 }
+                TextField("Notes", text: $task.notes, axis: .vertical)
+                    .lineLimit(3...12)
+            }
 
-                subtaskSection
-
+            if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
                 Section {
-                    Picker("Priority", selection: priorityBinding) {
-                        ForEach(Priority.allCases) { priority in
-                            Text(priority == .normal ? "None" : priority.marks).tag(priority)
+                    Text(proposal.traits.summary.joined(separator: " · "))
+                        .font(.subheadline)
+                    HStack {
+                        Button("Apply") {
+                            withAnimation(.snappy) { app.store.acceptProposal(task, proposal.traits) }
                         }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
-                        LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
+                        .buttonStyle(.glassProminent)
+                        Button("Keep Mine") {
+                            withAnimation(.snappy) { app.store.dismissProposal(task) }
+                        }
+                        .buttonStyle(.glass)
                     }
                 } header: {
-                    Text("Importance")
-                }
-
-                Section("Deadline") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(QuickDate.allCases) { quick in
-                                let date = quick.date(from: app.dayStart)
-                                ChipButton(title: quick.title, symbol: quick.symbol, color: .orange, isOn: isDue(on: date)) {
-                                    app.store.setDue([task], isDue(on: date) ? nil : date)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    .scrollClipDisabled()
-                    Toggle(isOn: hasDueBinding) {
-                        Label("Deadline", systemImage: "calendar")
-                    }
-                    if task.dueDate != nil {
-                        DatePicker(
-                            "Date",
-                            selection: dueBinding,
-                            displayedComponents: task.dueHasTime ? [.date, .hourAndMinute] : [.date]
-                        )
-                        Toggle(isOn: $task.dueHasTime) {
-                            Label("Time", systemImage: "clock")
-                        }
-                    }
-                    Toggle(isOn: plannedBinding) {
-                        Label("Planned", systemImage: "calendar.badge.plus")
-                    }
-                    if let planned = task.plannedDay {
-                        DatePicker(
-                            "For",
-                            selection: Binding(
-                                get: { planned },
-                                set: { app.store.plan([task], for: $0) }
-                            ),
-                            displayedComponents: [.date]
-                        )
-                    }
-                }
-
-                TaskPlanningSections(task: task)
-
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { task.isOngoing },
-                        set: { app.store.setOngoing([task], $0) }
-                    )) {
-                        Label("Ongoing", systemImage: "infinity")
-                    }
-                    if task.isOngoing, let last = task.lastDoneAt {
-                        LabeledContent("Last done", value: last.formatted(date: .abbreviated, time: .shortened))
-                    }
+                    Label("\(proposal.group.displayName) suggests", systemImage: "wand.and.stars")
                 } footer: {
-                    Text("For work that never ends, like checking the account or answering mail: checking it off logs it for the day (with its Power Hours) and the task stays.")
+                    Text("This group gives its tasks these values. This task already had its own, so nothing was changed.")
                 }
+            }
 
-                Section("Organize") {
-                    Picker(selection: groupBinding) {
-                        Label("Quick Entry", systemImage: "tray.and.arrow.down").tag(UUID?.none)
-                        ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
-                            Label(GroupTree.path(of: item.group, in: groups), systemImage: item.group.symbol).tag(UUID?.some(item.group.uuid))
-                        }
-                    } label: {
-                        Label("Group", systemImage: "folder")
+            subtaskSection
+
+            Section {
+                Picker("Priority", selection: priorityBinding) {
+                    ForEach(Priority.allCases) { priority in
+                        Text(priority == .normal ? "None" : priority.marks).tag(priority)
                     }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Tags", systemImage: "number")
-                        if !task.tags.isEmpty {
-                            FlowTags(tags: task.tags) { tag in
-                                task.tags = task.tags.filter { $0 != tag }
-                                task.touch()
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
+                    LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
+                }
+            } header: {
+                Text("Importance")
+            }
+
+            Section("Deadline") {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(QuickDate.allCases) { quick in
+                            let date = quick.date(from: app.dayStart)
+                            ChipButton(title: quick.title, symbol: quick.symbol, color: .orange, isOn: isDue(on: date)) {
+                                app.store.setDue([task], isDue(on: date) ? nil : date)
                             }
                         }
-                        TextField("Add tag", text: $newTag)
-                            .textFieldStyle(.roundedBorder)
-                            .onSubmit(addTag)
-                            #if os(iOS)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            #endif
+                    }
+                    .padding(.vertical, 2)
+                }
+                .scrollClipDisabled()
+                Toggle(isOn: hasDueBinding) {
+                    Label("Deadline", systemImage: "calendar")
+                }
+                if task.dueDate != nil {
+                    DatePicker(
+                        "Date",
+                        selection: dueBinding,
+                        displayedComponents: task.dueHasTime ? [.date, .hourAndMinute] : [.date]
+                    )
+                    Toggle(isOn: $task.dueHasTime) {
+                        Label("Time", systemImage: "clock")
                     }
                 }
+                Toggle(isOn: plannedBinding) {
+                    Label("Planned", systemImage: "calendar.badge.plus")
+                }
+                if let planned = task.plannedDay {
+                    DatePicker(
+                        "For",
+                        selection: Binding(
+                            get: { planned },
+                            set: { app.store.plan([task], for: $0) }
+                        ),
+                        displayedComponents: [.date]
+                    )
+                }
+            }
 
-                Section {
-                    LabeledContent("Created", value: task.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    if let completed = task.completedAt {
-                        LabeledContent("Completed", value: completed.formatted(date: .abbreviated, time: .shortened))
-                    } else {
-                        let days = DayBoundary.current.days(from: task.createdAt, to: app.dayStart)
-                        if days > 0 {
-                            LabeledContent("Carried over", value: days == 1 ? "1 day" : "\(days) days")
+            TaskPlanningSections(task: task)
+
+            Section {
+                Toggle(isOn: Binding(
+                    get: { task.isOngoing },
+                    set: { app.store.setOngoing([task], $0) }
+                )) {
+                    Label("Ongoing", systemImage: "infinity")
+                }
+                if task.isOngoing, let last = task.lastDoneAt {
+                    LabeledContent("Last done", value: last.formatted(date: .abbreviated, time: .shortened))
+                }
+            } footer: {
+                Text("For work that never ends, like checking the account or answering mail: checking it off logs it for the day (with its Power Hours) and the task stays.")
+            }
+
+            Section("Organize") {
+                Picker(selection: groupBinding) {
+                    Label("Quick Entry", systemImage: "tray.and.arrow.down").tag(UUID?.none)
+                    ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
+                        Label(GroupTree.path(of: item.group, in: groups), systemImage: item.group.symbol).tag(UUID?.some(item.group.uuid))
+                    }
+                } label: {
+                    Label("Group", systemImage: "folder")
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Tags", systemImage: "number")
+                    if !task.tags.isEmpty {
+                        FlowTags(tags: task.tags) { tag in
+                            task.tags = task.tags.filter { $0 != tag }
+                            task.touch()
                         }
                     }
+                    TextField("Add tag", text: $newTag)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit(addTag)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        #endif
                 }
-                .foregroundStyle(.secondary)
+            }
 
-                Section {
-                    Button(role: .destructive) {
-                        let target = task
-                        dismiss()
-                        app.delete([target])
-                    } label: {
-                        Label("Delete Task", systemImage: "trash")
+            Section {
+                LabeledContent("Created", value: task.createdAt.formatted(date: .abbreviated, time: .shortened))
+                if let completed = task.completedAt {
+                    LabeledContent("Completed", value: completed.formatted(date: .abbreviated, time: .shortened))
+                } else {
+                    let days = DayBoundary.current.days(from: task.createdAt, to: app.dayStart)
+                    if days > 0 {
+                        LabeledContent("Carried over", value: days == 1 ? "1 day" : "\(days) days")
                     }
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle("Details")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        task.touch()
-                        app.store.save()
-                        dismiss()
-                    }
+            .foregroundStyle(.secondary)
+
+            Section {
+                Button(role: .destructive) {
+                    let target = task
+                    if !embedded { dismiss() }
+                    app.delete([target])
+                } label: {
+                    Label("Delete Task", systemImage: "trash")
                 }
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 560)
-        #else
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        #endif
+        .formStyle(.grouped)
     }
 
     private var subtaskSection: some View {

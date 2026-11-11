@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 import SwiftData
 import TheoCore
 
@@ -27,6 +30,11 @@ struct TaskListView<Header: View>: View {
     @State private var insertBeforeFirst = false
     @State private var isVisible = false
     @State private var token = UUID()
+    /// The task whose quick-action panel is open (right-click on the Mac, Quick Edit on iPhone).
+    @State private var actionTaskID: UUID?
+    #if os(macOS)
+    @State private var rightClick = RightClickMonitor()
+    #endif
 
     private var placement: NewTaskPlacement { NewTaskPlacement(rawValue: placementRaw) ?? .bottom }
 
@@ -94,6 +102,9 @@ struct TaskListView<Header: View>: View {
         #else
         .listStyle(.inset)
         .environment(\.defaultMinListRowHeight, 1)
+        // A readable width on a big screen: lines don't stretch across the whole window.
+        .frame(maxWidth: 920)
+        .frame(maxWidth: .infinity)
         .contextMenu(forSelectionType: String.self) { ids in
             selectionMenu(ids)
         } primaryAction: { ids in
@@ -141,8 +152,14 @@ struct TaskListView<Header: View>: View {
         .onAppear {
             isVisible = true
             registerInsertHandler()
+            #if os(macOS)
+            startRightClick()
+            #endif
         }
         .onDisappear {
+            #if os(macOS)
+            rightClick.stop()
+            #endif
             isVisible = false
             if app.insertHandlerOwner == token {
                 app.insertHandler = nil
@@ -236,6 +253,10 @@ struct TaskListView<Header: View>: View {
             .moveDisabled(!allowsReorder || task.isDone || isEditing(task))
             // Swipe right: tuck under the line above (or take a subtask back out).
             .listRowInsets(EdgeInsets(top: 0, leading: Self.rowInset, bottom: 0, trailing: Self.rowInset))
+            .popover(isPresented: Binding(get: { actionTaskID == task.uuid }, set: { if !$0 { actionTaskID = nil } }), arrowEdge: .top) {
+                TaskActionPanel(tasks: actionTargets(for: task)) { actionTaskID = nil }
+                    .presentationCompactAdaptation(.popover)
+            }
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if let parent = lineAbove(task) {
                     Button {
@@ -299,7 +320,7 @@ struct TaskListView<Header: View>: View {
             }
             #if os(iOS)
             .contextMenu {
-                TaskMenuItems(tasks: [task], onEdit: { beginEdit(task) })
+                TaskMenuItems(tasks: [task], onEdit: { beginEdit(task) }, onQuickEdit: { actionTaskID = task.uuid })
             }
             #endif
 
@@ -691,6 +712,31 @@ struct TaskListView<Header: View>: View {
         return true
     }
 
+    /// The panel acts on the whole selection when the line is part of it, else on the line.
+    private func actionTargets(for task: TaskItem) -> [TaskItem] {
+        let selected = app.selectedTasks
+        if selected.count > 1, selected.contains(where: { $0 === task }) { return selected }
+        return [task]
+    }
+
+    #if os(macOS)
+    /// A right-click on a task opens the colourful quick actions above it instead of the plain
+    /// menu (Control-click still shows the menu).
+    private func startRightClick() {
+        rightClick.handler = { event in
+            guard isVisible, let content = event.window?.contentView else { return false }
+            var point = content.convert(event.locationInWindow, from: nil)
+            if !content.isFlipped { point.y = content.bounds.height - point.y }
+            guard let hit = frames.byID.first(where: { $0.key.hasPrefix("t-") && $0.value.contains(point) }),
+                  let uuid = UUID(uuidString: String(hit.key.dropFirst(2))) else { return false }
+            if !app.selectedRowIDs.contains(hit.key) { app.selectedRowIDs = [hit.key] }
+            actionTaskID = uuid
+            return true
+        }
+        rightClick.start()
+    }
+    #endif
+
     private func rowBefore(_ row: ListRow) -> ListRow? {
         guard let index = rows.firstIndex(where: { $0.id == row.id }), index > 0 else { return nil }
         return rows[index - 1]
@@ -826,6 +872,28 @@ final class RowFrames {
 }
 
 #if os(macOS)
+/// Watches right-clicks in the app's windows; the handler returns true when it took one.
+@MainActor
+final class RightClickMonitor {
+    var handler: ((NSEvent) -> Bool)?
+    private var token: Any?
+
+    func start() {
+        guard token == nil else { return }
+        token = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let handler = self?.handler else { return event }
+                return handler(event) ? nil : event
+            }
+        }
+    }
+
+    func stop() {
+        if let token { NSEvent.removeMonitor(token) }
+        token = nil
+    }
+}
+
 /// A thin strip along a row's top or bottom edge: hovered, the divider there lights up with a +,
 /// and a click adds a task right there.
 struct HoverInsertLine: View {

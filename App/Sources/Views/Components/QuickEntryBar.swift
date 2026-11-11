@@ -157,6 +157,11 @@ struct QuickEntryBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
+        #if os(macOS)
+        // As wide as the list above it, not the whole window.
+        .frame(maxWidth: 920)
+        .frame(maxWidth: .infinity)
+        #endif
         .animation(.snappy(duration: 0.25), value: text.isEmpty)
         .animation(.snappy(duration: 0.25), value: focused)
         .animation(.snappy(duration: 0.25), value: confirmation?.id)

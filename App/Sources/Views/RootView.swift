@@ -91,6 +91,26 @@ struct RootView: View {
                         DayPageView(day: day)
                     }
             }
+            #if os(macOS)
+            // The space a wide window has to spare goes to the selected task's details.
+            .inspector(isPresented: $app.showInspector) {
+                TaskInspector()
+                    .inspectorColumnWidth(min: 280, ideal: 340, max: 480)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        app.showInspector.toggle()
+                    } label: {
+                        Label(app.showInspector ? "Hide Details" : "Show Details", systemImage: "sidebar.trailing")
+                    }
+                    .help("Details of the selected task (⌥⌘I)")
+                }
+            }
+            .onChange(of: app.showInspector) { _, shown in
+                UserDefaults.standard.set(shown, forKey: "inspector.shown")
+            }
+            #endif
         }
     }
 

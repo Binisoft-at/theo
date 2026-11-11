@@ -43,6 +43,8 @@
 - **Descriptions in passing**: `Call bank // ask about the fee` puts everything after ` // ` into the description (the Description chip adds the separator); while editing a line its description field sits right under the title (⇧Return or the ≡ keyboard button jumps there).
 - **Text size**: Settings → Appearance → Text Size (Small to Huge; System follows Dynamic Type on iPhone). On the Mac, where text styles don't follow Dynamic Type, lists, rows, headers, the sidebar and the entry bar scale with it; ⌘+ / ⌘− / ⌘0. The Mac starts at Large.
 - **Precise insert line**: rows sit flush, so the divider is the row edge; the insert line (drag on iPhone, hover on the Mac) lights up exactly that divider, from where the text starts, with a small + tab.
+- **Quick actions in colour**: right-click a task on the Mac (Quick Edit from the long-press menu on iPhone) and a panel opens right above it: done, today/tomorrow, subtask, ongoing, focus, details, delete, plus one-tap priority, deadline, Power Hours and group. With several selected it acts on all of them.
+- **Mac layout**: lists and the entry bar keep a readable width; the space to the right holds an inspector with the selected task's full details, editable in place (⌥⌘I), or the day at a glance when nothing is selected.
 - **Group Today your way**: ranked, by group, by group and subgroup, priority, deadline, tag or size (Power Hours).
 - **Swipe right = subtask** of the line above (again to take it back out); swipe left for Delete, Tomorrow and +1 Day / Deadline.
 - **Navigation**: Liquid Glass tab bar on iPhone (Today, Plan, Lists, Search); sidebar on iPad and Mac with the shortcuts in grey.

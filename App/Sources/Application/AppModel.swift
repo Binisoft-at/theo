@@ -124,6 +124,8 @@ final class AppModel {
     var radialPick: RadialPick?
     /// The day whose review is open (today's, or a past day's from History).
     var reviewDay: DayRef?
+    /// The Mac's inspector column: the selected task's details, editable in place.
+    var showInspector = UserDefaults.standard.object(forKey: "inspector.shown") as? Bool ?? true
     /// The window's visible part in global coordinates, above the keyboard when it's up.
     @ObservationIgnored var visibleFrame: CGRect = .zero
     /// Set by the list on screen: inserts a task where the + was dropped; false if nowhere.

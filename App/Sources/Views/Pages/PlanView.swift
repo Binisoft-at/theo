@@ -74,6 +74,9 @@ struct PlanView: View {
             }
             #if os(iOS)
             .listStyle(.insetGrouped)
+            #else
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
             #endif
         }
         .navigationTitle("Plan")
