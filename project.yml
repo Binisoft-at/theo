@@ -131,6 +131,9 @@ targets:
         INFOPLIST_FILE: Config/iOS/TheoWidgets-Info.plist
         CODE_SIGN_ENTITLEMENTS: Config/iOS/TheoWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
         SKIP_INSTALL: YES
 
   # Mac desktop and Notification Center widgets.
@@ -144,7 +147,6 @@ targets:
       - path: Shared/Logic/WidgetSnapshot.swift
     settings:
       base:
-        PRODUCT_NAME: TheoWidgets
         PRODUCT_BUNDLE_IDENTIFIER: $(WIDGETS_BUNDLE_ID)
         INFOPLIST_FILE: Config/macOS/TheoWidgets-Info.plist
         CODE_SIGN_ENTITLEMENTS: Config/macOS/TheoWidgets.entitlements
