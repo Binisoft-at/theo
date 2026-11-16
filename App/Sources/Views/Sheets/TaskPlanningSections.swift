@@ -17,8 +17,9 @@ struct TaskPlanningSections: View {
     @State private var showsRanking = false
     /// Counts taps on the Power Hours chips, for the iPhone's selection tick.
     @State private var estimateTick = 0
-    /// The accent chosen in Settings: the matrix dot takes a colour rather than the tint.
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    /// The accent chosen in Settings: the matrix dot takes a colour rather than the tint. The
+    /// app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
 
     private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
 
