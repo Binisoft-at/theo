@@ -340,13 +340,21 @@ struct AppChrome: ViewModifier {
             }
         }
         .padding(.bottom, 84)
-        .animation(Motion.resolved(app.toast == nil ? Motion.tap : Motion.celebrate), value: app.toast?.id)
+        .animation(toastAnimation, value: app.toast?.id)
+    }
+
+    /// A confirmation springs in; a warning comes in smoothly, without the playfulness; going
+    /// away is quick.
+    private var toastAnimation: Animation {
+        guard let toast = app.toast else { return Motion.resolved(Motion.tap) }
+        return Motion.resolved(toast.isWarning ? Motion.layout : Motion.celebrate)
     }
 
     /// In: up from a little below, growing from its bottom edge, fading in. Out: a shorter way
-    /// down, fading.
+    /// down, fading. With Reduce Motion it only fades.
     private static var toastTransition: AnyTransition {
-        .asymmetric(
+        guard !Motion.reduceMotion else { return .opacity }
+        return .asymmetric(
             insertion: .offset(y: 32).combined(with: .scale(scale: 0.9, anchor: .bottom)).combined(with: .opacity),
             removal: .offset(y: 16).combined(with: .scale(scale: 0.96, anchor: .bottom)).combined(with: .opacity)
         )
@@ -366,7 +374,7 @@ struct AppChrome: ViewModifier {
 }
 
 /// A toast that, once it has risen into place, gives its symbol one small bounce: the
-/// confirmation lands with it.
+/// confirmation lands with it. Warnings don't bounce.
 private struct LandingToast: View {
     let toast: Toast
     let dismiss: () -> Void
@@ -379,7 +387,7 @@ private struct LandingToast: View {
             .task {
                 // After the spring has carried it up, not while it's still rising.
                 try? await Task.sleep(for: .milliseconds(180))
-                if !Motion.reduceMotion { landed = true }
+                if !toast.isWarning && !Motion.reduceMotion { landed = true }
             }
     }
 }

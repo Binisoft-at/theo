@@ -121,15 +121,15 @@ struct WatchProgressRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.accentColor.opacity(0.22), lineWidth: 5)
+                .stroke(TintShapeStyle.tint.opacity(0.22), lineWidth: 5)
             Circle()
                 .trim(from: 0, to: CGFloat(min(max(progress, 0), 1)))
-                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .stroke(TintShapeStyle.tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             if isComplete {
                 Image(systemName: "checkmark")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.tint)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
         }

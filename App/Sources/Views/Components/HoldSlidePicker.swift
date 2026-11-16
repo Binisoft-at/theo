@@ -140,75 +140,148 @@ struct HoldSlidePicker<Label: View>: View {
     }
 }
 
-/// The arc of a pick in progress, over the whole window.
+/// The arc of a pick in progress, over the whole window. The options fan out from the control
+/// into a soft channel along the arc; the channel fills in the tint up to the option pointed at,
+/// which lights up (a tick for each step), and the value reads in the middle of the arc.
 struct RadialPickerOverlay: View {
     let pick: RadialPick
+    /// False for the first moment: the options start at the control and spread out along the
+    /// arc from there, so it's clear where they come from.
+    @State private var fanned = false
+
+    /// The channel the options sit in, a little wider than they are.
+    private static let channelWidth: CGFloat = 44
 
     var body: some View {
         GeometryReader { geo in
-            let origin = geo.frame(in: .global).origin
-            let layout = pick.layout
-            let local = { (point: CGPoint) in CGPoint(x: point.x - origin.x, y: point.y - origin.y) }
-            ZStack {
-                // Dims the page a little so the options read clearly over it.
-                Rectangle()
-                    .fill(Color.black.opacity(0.16))
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                // A faint arc the options sit on, and the line to the one pointed at.
-                Path { path in
-                    path.addArc(center: local(layout.origin), radius: layout.radius,
-                                startAngle: .degrees(-layout.startAngle), endAngle: .degrees(-layout.endAngle), clockwise: false)
-                }
-                .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 30, lineCap: .round))
-                if let selection = pick.selection {
-                    Path { path in
-                        path.move(to: local(layout.origin))
-                        path.addLine(to: local(layout.position(of: selection)))
-                    }
-                    .stroke(Color.accentColor.opacity(0.5), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [3, 4]))
-                }
-                ForEach(pick.options.indices, id: \.self) { index in
-                    let isSelected = pick.selection == index
-                    Text(pick.options[index])
-                        .font(.callout.weight(isSelected ? .bold : .semibold))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .fixedSize()
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
-                        .padding(.horizontal, 8)
-                        .frame(minWidth: 34, minHeight: 34)
-                        .background(Capsule().fill(isSelected ? Color.accentColor : Color.clear))
-                        .glassEffect(.regular, in: .capsule)
-                        .scaleEffect(isSelected ? 1.22 : 1)
-                        .position(local(layout.position(of: index)))
-                }
-                // What it will be, in the middle of the arc.
-                VStack(spacing: 2) {
-                    Text(pick.selection.map { pick.options[$0] } ?? "–")
-                        .font(.title2.weight(.bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    if !pick.title.isEmpty {
-                        Text(pick.title)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .glassEffect(.regular, in: .rect(cornerRadius: 14))
-                .position(local(CGPoint(
-                    x: layout.origin.x + layout.radius * 0.45 * CGFloat(cos((layout.startAngle + layout.endAngle) / 2 * .pi / 180)),
-                    y: layout.origin.y - layout.radius * 0.5
-                )))
-            }
-            .animation(.snappy(duration: 0.14), value: pick.selection)
+            arc(offset: geo.frame(in: .global).origin, size: geo.size)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .sensoryFeedback(.selection, trigger: pick.selection)
-        .sensoryFeedback(.impact(weight: .light), trigger: pick.id)
-        .transition(.scale(scale: 0.85).combined(with: .opacity))
+        .sensoryFeedback(.impact(weight: .light), trigger: fanned) { _, new in new }
+        .transition(.opacity)
+        .onAppear { fanned = true }
+    }
+
+    /// Everything in the overlay's own coordinates (`offset` is its global origin).
+    private func arc(offset: CGPoint, size: CGSize) -> some View {
+        let layout = pick.layout
+        let control = CGPoint(x: layout.origin.x - offset.x, y: layout.origin.y - offset.y)
+        return ZStack {
+            // Dims the page a little so the options read clearly over it.
+            Rectangle()
+                .fill(Color.black.opacity(0.16))
+                .frame(width: size.width, height: size.height)
+                .position(x: size.width / 2, y: size.height / 2)
+            track(layout, at: control)
+            ForEach(pick.options.indices, id: \.self) { index in
+                option(index, layout: layout, offset: offset)
+            }
+            readout(layout, offset: offset)
+        }
+        .animation(Motion.resolved(Motion.tap), value: pick.selection)
+    }
+
+    /// The channel along the arc, and its part from the first option up to the one pointed at,
+    /// filled in the tint: how far up the scale the pick is.
+    private func track(_ layout: RadialLayout, at control: CGPoint) -> some View {
+        let start = Self.outlineFraction(layout.startAngle)
+        let end = Self.outlineFraction(layout.endAngle)
+        let reach: CGFloat = pick.selection.map { Self.outlineFraction(layout.angle(of: $0)) } ?? start
+        let side: CGFloat = layout.radius * 2
+        let stroke = StrokeStyle(lineWidth: Self.channelWidth, lineCap: .round)
+        return ZStack {
+            Circle()
+                .trim(from: start, to: end)
+                .stroke(Color.primary.opacity(0.1), style: stroke)
+            Circle()
+                .trim(from: start, to: reach)
+                .stroke(TintShapeStyle.tint.opacity(0.25), style: stroke)
+                .opacity(pick.selection == nil ? 0 : 1)
+        }
+        .frame(width: side, height: side)
+        .position(control)
+    }
+
+    /// Where an angle of the arc (degrees, counter-clockwise from the right) falls along a
+    /// `Circle`'s outline, which starts on the right and runs clockwise on screen.
+    private static func outlineFraction(_ angle: Double) -> CGFloat {
+        CGFloat((360 - angle) / 360)
+    }
+
+    /// One option, flying out from the control to its place on the arc as the pick opens (one
+    /// after the other, quickly); with Reduce Motion they fade in where they belong.
+    private func option(_ index: Int, layout: RadialLayout, offset: CGPoint) -> some View {
+        let spread = fanned || Motion.reduceMotion
+        let point = spread ? layout.position(of: index) : layout.origin
+        let stagger = Motion.resolved(Motion.tap).delay(Double(index) * 0.015)
+        return RadialOptionLabel(text: pick.options[index], isSelected: pick.selection == index)
+            .scaleEffect(spread ? 1 : 0.4)
+            .opacity(fanned ? 1 : 0)
+            .position(x: point.x - offset.x, y: point.y - offset.y)
+            .animation(stagger, value: fanned)
+    }
+
+    /// What it will be, in the middle of the arc: the value (a word in full) over what's picked.
+    private func readout(_ layout: RadialLayout, offset: CGPoint) -> some View {
+        let middle: Double = (layout.startAngle + layout.endAngle) / 2 * Double.pi / 180
+        let x: CGFloat = layout.origin.x + layout.radius * 0.45 * CGFloat(cos(middle)) - offset.x
+        let y: CGFloat = layout.origin.y - layout.radius * 0.5 - offset.y
+        return VStack(spacing: 2) {
+            Text(pick.selection.map { pick.options[$0] } ?? "–")
+                .theoFont(.title2, weight: .bold, design: .rounded)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            if !pick.title.isEmpty {
+                Text(pick.title)
+                    .theoFont(.caption2, weight: .medium)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .position(x: x, y: y)
+    }
+}
+
+/// One option on the arc: a glass circle (a capsule for longer numbers). The one pointed at fills
+/// with the accent and grows a little. A word ("Custom…") would crowd its neighbours, so it shows
+/// as … on the arc and reads in full in the middle.
+private struct RadialOptionLabel: View {
+    let text: String
+    let isSelected: Bool
+
+    @Environment(\.self) private var environment
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
+
+    private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
+
+    var body: some View {
+        let ink: Color = isSelected ? accent.onFillForeground(in: environment) : Color.primary
+        return content
+            .theoFont(.callout, weight: .semibold, design: .rounded)
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
+            .foregroundStyle(ink)
+            .padding(.horizontal, 8)
+            .frame(minWidth: 36, minHeight: 36)
+            .background {
+                Capsule()
+                    .fill(accent.opacity(isSelected ? 1 : 0))
+            }
+            .glassEffect(.regular, in: .capsule)
+            .scaleEffect(isSelected ? 1.2 : 1)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if text.hasSuffix("…") {
+            Image(systemName: "ellipsis")
+        } else {
+            Text(text)
+        }
     }
 }

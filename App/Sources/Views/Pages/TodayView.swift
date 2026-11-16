@@ -301,6 +301,8 @@ struct TodayHeader: View {
     @State private var carryHiddenHere = false
     /// Goes up each time the last task planned for the day gets done: the ring bounces once.
     @State private var dayCompletions = 0
+    /// The pointer is over the ring (Mac, iPad): a faint disc shows it's a button.
+    @State private var hoversRing = false
 
     private var total: Int { open + done }
 
@@ -396,6 +398,10 @@ struct TodayHeader: View {
                     .padding(.horizontal, 6)
             }
             .frame(width: 44, height: 44)
+            .background {
+                Circle().fill(Color.secondary.opacity(hoversRing ? 0.1 : 0))
+            }
+            .animation(Motion.hover, value: hoversRing)
             .phaseAnimator([false, true], trigger: dayCompletions) { content, raised in
                 content.scaleEffect(raised ? lift : 1)
             } animation: { _ in
@@ -404,6 +410,9 @@ struct TodayHeader: View {
             .contentShape(Circle())
         }
         .buttonStyle(.pressable)
+        .onHover { inside in
+            hoversRing = inside
+        }
         .accessibilityLabel("Day review")
         .accessibilityValue("\(done) of \(total) done")
         .accessibilityHint("Shows what got done today")
@@ -637,6 +646,7 @@ struct PlanPrompt: View {
                 } label: {
                     Label("Plan Today", systemImage: "calendar.badge.plus")
                         .theoFont(.body, weight: .semibold)
+                        .modifier(OnAccentForeground())
                         .frame(minWidth: 160)
                 }
                 .buttonStyle(.borderedProminent)
@@ -714,7 +724,7 @@ struct SearchResultsView: View {
     private func rows(open: [TaskItem], finished: [TaskItem]) -> [ListRow] {
         var sections = Sections.byGroup(open, groups: groups)
         if showsFinished || open.isEmpty {
-            sections.append((key: "finished", title: "Finished", symbol: "checkmark.circle", color: .green, tasks: finished))
+            sections.append((key: "finished", title: "Finished", symbol: "checkmark.circle", color: Tint.done, tasks: finished))
         }
         return PageBuilder.labeled(sections, options: PageBuilder.Options(completed: .bottom, rankDay: app.dayStart))
     }
@@ -746,8 +756,9 @@ struct SearchResultsView: View {
 
 /// A line of text with numbers in it: its digits keep their width, and when the line changes
 /// the figures roll to their new values instead of jumping (a short cross-fade under Reduce
-/// Motion). For a number standing on its own, `rollingNumber` does the same.
-private struct RollingFigures: ViewModifier {
+/// Motion). For a number standing on its own, `rollingNumber` does the same. Used by the
+/// pages (Today, History, the day review).
+struct RollingFigures: ViewModifier {
     let text: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -757,6 +768,18 @@ private struct RollingFigures: ViewModifier {
             .monospacedDigit()
             .contentTransition(.numericText())
             .animation(reduceMotion ? Motion.reduced : Motion.tap, value: text)
+    }
+}
+
+/// The words of a button filled with the accent (`.borderedProminent`): dark on Notes Yellow,
+/// where white wouldn't read, white on the other accents, the way the chips do it. A modifier
+/// of its own, so only the button's words follow the environment, not the whole page.
+struct OnAccentForeground: ViewModifier {
+    @Environment(\.self) private var environment
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle((AccentChoice(rawValue: accentRaw) ?? .notes).color.onFillForeground(in: environment))
     }
 }
 

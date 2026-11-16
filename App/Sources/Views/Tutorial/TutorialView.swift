@@ -236,7 +236,8 @@ struct TutorialStage: View {
 
     private func evaluate(_ snapshot: TutorialSnapshot) {
         guard !isMet, step.goal != .none, tracker.isMet(step.goal, now: snapshot) else { return }
-        withAnimation(.snappy) { isMet = true }
+        // A small moment of joy: the card's symbol turns into a check and bounces.
+        Motion.animate(Motion.celebrate) { isMet = true }
         let current = index
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.4))
@@ -249,7 +250,7 @@ struct TutorialStage: View {
             onClose()
             return
         }
-        withAnimation(.snappy) {
+        Motion.animate(Motion.layout) {
             index += 1
             isMet = false
         }
@@ -258,7 +259,7 @@ struct TutorialStage: View {
 
     private func back() {
         guard index > 0 else { return }
-        withAnimation(.snappy) {
+        Motion.animate(Motion.layout) {
             index -= 1
             isMet = false
         }
@@ -281,7 +282,9 @@ struct CoachLink {
     let action: () -> Void
 }
 
-/// The floating card that explains the current step.
+/// The floating card that explains the current step. A new step's symbol, title and words
+/// blur into place over the old ones while the card takes their size; the step number rolls
+/// and the progress moves along with it. A step done turns the symbol into a bouncing check.
 struct TutorialCoach: View {
     let step: TutorialStep
     let index: Int
@@ -293,6 +296,13 @@ struct TutorialCoach: View {
     var link: CoachLink? = nil
 
     @State private var isFolded = false
+
+    /// The fold and close buttons: a finger's size on iPhone and iPad, a pointer's on the Mac.
+    #if os(macOS)
+    private static let control: CGFloat = 28
+    #else
+    private static let control: CGFloat = 44
+    #endif
 
     private var instructions: String {
         #if os(macOS)
@@ -308,80 +318,179 @@ struct TutorialCoach: View {
         return isMet ? "Next" : "Skip"
     }
 
+    /// Changes with the step and once it's done, so the title blurs over to the new one.
+    private var titleKey: Int {
+        index * 2 + (isMet ? 1 : 0)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: isMet ? "checkmark.circle.fill" : step.symbol)
-                    .theoFont(.title2)
-                    .foregroundStyle(isMet ? Color.green : Color.accentColor)
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 30)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(isMet ? "Nice, that's it!" : step.title)
-                        .theoFont(.headline)
-                    Text("Step \(index + 1) of \(count)")
-                        .theoFont(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                Button {
-                    withAnimation(.snappy) { isFolded.toggle() }
-                } label: {
-                    Image(systemName: isFolded ? "chevron.down" : "chevron.up")
-                        .frame(width: 30, height: 30)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(isFolded ? "Show Instructions" : "Hide Instructions")
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .frame(width: 30, height: 30)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Close Tour")
-            }
+        VStack(alignment: .leading, spacing: 10) {
+            header
             if !isFolded {
-                Text(instructions)
-                    .theoFont(.subheadline)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .transition(.opacity)
-                if let link {
-                    Button(action: link.action) {
-                        Label(link.title, systemImage: link.symbol)
-                            .theoFont(.subheadline, weight: .semibold)
-                    }
-                    .buttonStyle(.borderless)
-                    .transition(.opacity)
-                }
-                HStack(spacing: 12) {
-                    ProgressView(value: Double(index + 1), total: Double(count))
-                    if index > 0 {
-                        Button("Back", action: onBack)
-                            .buttonStyle(.borderless)
-                    }
-                    if step.goal != .none && !isMet {
-                        // Skipping is fine, but doing the step is the main path.
-                        Button(action: onNext) {
-                            Text(nextTitle)
-                                .frame(minWidth: 52)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(instructions)
+                        .theoFont(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(index)
+                        .transition(.blurReplace)
+                    if let link {
+                        Button(action: link.action) {
+                            Label(link.title, systemImage: link.symbol)
+                                .theoFont(.subheadline, weight: .semibold)
                         }
-                        .buttonStyle(.glass)
-                    } else {
-                        Button(action: onNext) {
-                            Text(nextTitle)
-                                .frame(minWidth: 64)
-                        }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.borderless)
+                        .transition(.opacity)
                     }
+                    controls
                 }
+                .transition(.opacity)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .glassEffect(.regular, in: .rect(cornerRadius: 22))
         .padding(.horizontal, 12)
-        .padding(.top, 6)
-        .padding(.bottom, 4)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
         .sensoryFeedback(.success, trigger: isMet) { _, new in new }
-        .animation(.snappy, value: index)
+        .animation(Motion.resolved(Motion.layout), value: index)
+    }
+
+    /// The step's symbol, its title and "Step 3 of 12", then fold and close.
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(systemName: isMet ? "checkmark.circle.fill" : step.symbol)
+                .theoFont(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isMet ? AnyShapeStyle(Tint.done) : AnyShapeStyle(TintShapeStyle.tint))
+                .contentTransition(.symbolEffect(.replace))
+                // Only once it's done: a new step's symbol is a new view, so it doesn't bounce.
+                .symbolEffect(.bounce, value: isMet)
+                .frame(width: 32)
+                .id(index)
+                .transition(.blurReplace)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isMet ? "Nice, that's it!" : step.title)
+                    .theoFont(.headline)
+                    .id(titleKey)
+                    .transition(.blurReplace)
+                Text("Step \(index + 1) of \(count)")
+                    .theoFont(.caption)
+                    .foregroundStyle(.secondary)
+                    .rollingNumber(index)
+            }
+            Spacer(minLength: 4)
+            HStack(spacing: 0) {
+                Button {
+                    Motion.animate(Motion.list) { isFolded.toggle() }
+                } label: {
+                    // One chevron that turns over, so it shows which way the card goes.
+                    Image(systemName: "chevron.up")
+                        .theoFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isFolded ? 180 : 0))
+                        .frame(width: Self.control, height: Self.control)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(isFolded ? "Show Instructions" : "Hide Instructions")
+                .help(isFolded ? "Show Instructions" : "Hide Instructions")
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .theoFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(.secondary)
+                        .frame(width: Self.control, height: Self.control)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Close Tour")
+                .help("Close Tour")
+            }
+        }
+    }
+
+    /// Where the tour is, Back, and the way on: a quiet Skip while the step waits to be tried,
+    /// the accent's Next once it's done.
+    private var controls: some View {
+        HStack(spacing: 12) {
+            TourProgress(index: index, count: count)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if index > 0 {
+                Button("Back", action: onBack)
+                    .buttonStyle(.borderless)
+                    .transition(.opacity)
+            }
+            if step.goal != .none && !isMet {
+                // Skipping is fine, but doing the step is the main path.
+                Button(action: onNext) {
+                    Text(nextTitle)
+                        .frame(minWidth: 52)
+                }
+                .buttonStyle(.glass)
+            } else {
+                Button(action: onNext) {
+                    Text(nextTitle)
+                        .frame(minWidth: 64)
+                }
+                .buttonStyle(.glassProminent)
+            }
+        }
+        .theoFont(.subheadline, weight: .semibold)
+    }
+}
+
+/// How far the tour has got. A few steps (What's New): a dot each, the current one drawn out
+/// into a pill that moves on from dot to dot. The whole tour: a slim track that fills.
+private struct TourProgress: View {
+    let index: Int
+    let count: Int
+
+    /// More steps than this get the track: their dots wouldn't fit beside the buttons.
+    private static let maxDots = 9
+
+    var body: some View {
+        Group {
+            if count <= Self.maxDots {
+                dots
+            } else {
+                track
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Progress")
+        .accessibilityValue("Step \(index + 1) of \(count)")
+    }
+
+    private var dots: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<count, id: \.self) { step in
+                Capsule()
+                    .fill(.tint)
+                    .opacity(dotOpacity(step))
+                    .frame(width: step == index ? 18 : 6, height: 6)
+            }
+        }
+    }
+
+    /// The current step full, the ones done half, the ones ahead faint: one colour, so moving
+    /// on fades smoothly from dot to dot.
+    private func dotOpacity(_ step: Int) -> Double {
+        if step == index { return 1 }
+        return step < index ? 0.5 : 0.2
+    }
+
+    private var track: some View {
+        GeometryReader { geo in
+            let fraction = CGFloat(index + 1) / CGFloat(max(count, 1))
+            Capsule()
+                .fill(.tint)
+                .frame(width: max(geo.size.height, geo.size.width * fraction))
+        }
+        .frame(height: 5)
+        .background {
+            Capsule()
+                .fill(Color.secondary.opacity(0.16))
+        }
     }
 }

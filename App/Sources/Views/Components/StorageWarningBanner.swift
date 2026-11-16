@@ -21,6 +21,13 @@ struct StorageWarningBanner: View {
         }
     }
 
+    #if os(iOS)
+    /// The ✕ gets a full touch target without making the banner taller.
+    private static let hideTarget: CGFloat = 44
+    #else
+    private static let hideTarget: CGFloat = 28
+    #endif
+
     var body: some View {
         if let warning {
             switch warning {
@@ -35,6 +42,7 @@ struct StorageWarningBanner: View {
                 )
             case .notSyncing:
                 if !hidden {
+                    // Put away, it slides up out of sight and the page moves up with it.
                     banner(
                         symbol: "icloud.slash",
                         title: "Not syncing with your other devices",
@@ -43,17 +51,23 @@ struct StorageWarningBanner: View {
                         color: .orange,
                         canHide: true
                     )
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
         }
     }
 
     private func banner(symbol: String, title: String, message: String, detail: String?, color: Color, canHide: Bool) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        // Red is strong enough for white text; orange stays a tint so the text reads in light and dark.
+        let ink: Color = canHide ? Color.primary : Color.white
+        let detailInk: AnyShapeStyle = canHide ? AnyShapeStyle(HierarchicalShapeStyle.secondary) : AnyShapeStyle(Color.white.opacity(0.75))
+        let rendering: SymbolRenderingMode = canHide ? .hierarchical : .monochrome
+        return HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .theoFont(.title3)
+                .symbolRenderingMode(rendering)
                 .foregroundStyle(canHide ? color : Color.white)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .theoFont(.subheadline, weight: .semibold)
                 Text(message)
@@ -61,31 +75,21 @@ struct StorageWarningBanner: View {
                 if let detail, !detail.isEmpty {
                     Text(detail)
                         .theoFont(.caption)
-                        .opacity(0.8)
+                        .foregroundStyle(detailInk)
                         .lineLimit(3)
                         .textSelection(.enabled)
+                        .padding(.top, 2)
                 }
             }
-            .foregroundStyle(canHide ? Color.primary : Color.white)
+            .foregroundStyle(ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             if canHide {
-                Button {
-                    withAnimation(.snappy) { hidden = true }
-                } label: {
-                    Image(systemName: "xmark")
-                        .theoFont(.caption, weight: .bold)
-                        .foregroundStyle(.secondary)
-                        .padding(4)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Hide until Theo restarts")
+                hideButton
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Red is strong enough for white text; orange stays a tint so the text reads in light and dark.
         .background {
             if canHide {
                 ZStack {
@@ -97,5 +101,24 @@ struct StorageWarningBanner: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// Puts the orange banner away until Theo restarts.
+    private var hideButton: some View {
+        Button {
+            Motion.animate(Motion.layout) { hidden = true }
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .theoFont(.title3)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(width: Self.hideTarget, height: Self.hideTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        // As small as the glyph in the layout, so the banner keeps its height and margins.
+        .padding((28 - Self.hideTarget) / 2)
+        .accessibilityLabel("Hide until Theo restarts")
+        .help("Hide until Theo restarts")
     }
 }

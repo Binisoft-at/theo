@@ -13,6 +13,19 @@ enum MatrixGeometry {
         var key: Int { column * 100 + level }
     }
 
+    /// A dot under a finger snaps from cell to cell with this quick spring, the one curve of
+    /// its own on the grid: it follows the finger, so it has to keep up. Everything that moves
+    /// for any other reason uses `Motion`.
+    static let follow: Animation = .spring(response: 0.2, dampingFraction: 0.7)
+
+    /// Appearing or leaving in its own spot: a dot or a bubble grows out of the cell it belongs
+    /// to (and shrinks back into it), instead of flying in from the middle of the grid.
+    @MainActor
+    static func pop(at point: CGPoint, in size: CGSize) -> AnyTransition {
+        let anchor = UnitPoint(x: point.x / max(size.width, 1), y: point.y / max(size.height, 1))
+        return AnyTransition.scale(scale: 0.4, anchor: anchor).combined(with: .opacity)
+    }
+
     static func cell(at point: CGPoint, in size: CGSize) -> Cell {
         let width = max(size.width, 1) / CGFloat(Matrix.columns)
         let height = max(size.height, 1) / CGFloat(Matrix.levels)
@@ -115,19 +128,26 @@ struct MatrixBoard<Content: View>: View {
     }
 }
 
-/// A task on the grid.
+/// A task on the grid. Picked (or dragged), it grows and lifts on a thicker white ring; under
+/// the pointer it grows a little, so it's clear what a click takes.
 struct MatrixDot: View {
     let point: CGPoint
     let color: Color
     var isSelected = false
     var size: CGFloat = 14
+    /// The pointer is over it (Mac, iPad with a pointer).
+    var isHovered = false
 
     var body: some View {
+        let side: CGFloat = isSelected ? size + 8 : size
         Circle()
             .fill(color)
             .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: isSelected ? 3 : 1.5))
-            .frame(width: isSelected ? size + 8 : size, height: isSelected ? size + 8 : size)
-            .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+            .frame(width: side, height: side)
+            .scaleEffect(isHovered && !isSelected ? 1.25 : 1)
+            .shadow(color: .black.opacity(isSelected ? 0.24 : 0.18), radius: isSelected ? 4 : 2, y: 1)
+            .animation(Motion.resolved(Motion.tap), value: isSelected)
+            .animation(Motion.resolved(Motion.hover), value: isHovered)
             .position(point)
             .allowsHitTesting(false)
     }
@@ -161,6 +181,10 @@ struct MatrixLabel: View {
 struct MatrixDropOverlay: View {
     let drag: MatrixDrag
     @Environment(AppModel.self) private var app
+    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+
+    /// The chosen accent, like every other picked thing on the grid and in its strip.
+    private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
 
     var body: some View {
         ZStack {
@@ -177,23 +201,10 @@ struct MatrixDropOverlay: View {
                         let frame = geo.frame(in: .global)
                         let inside = frame.contains(drag.location)
                         let cell = MatrixGeometry.cell(at: CGPoint(x: drag.location.x - frame.minX, y: drag.location.y - frame.minY), in: size)
-                        ZStack {
-                            if inside {
-                                let center = MatrixGeometry.center(of: cell, in: size)
-                                MatrixDot(point: center, color: Color.accentColor, isSelected: true, size: 18)
-                                    .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
-                                Text(MatrixGeometry.describe(cell))
-                                    .theoFont(.caption, weight: .semibold)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(.regularMaterial, in: Capsule())
-                                    .position(x: min(max(center.x, 80), size.width - 80), y: max(center.y - 36, 14))
-                                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: cell.key)
-                            }
-                        }
-                        .sensoryFeedback(.selection, trigger: inside ? cell.key : -1)
-                        .onAppear { app.matrixCanvasFrame = frame }
-                        .onChange(of: frame) { _, newFrame in app.matrixCanvasFrame = newFrame }
+                        landingSpot(cell, size: size, inside: inside)
+                            .sensoryFeedback(.selection, trigger: inside ? cell.key : -1)
+                            .onAppear { app.matrixCanvasFrame = frame }
+                            .onChange(of: frame) { _, newFrame in app.matrixCanvasFrame = newFrame }
                     }
                 }
                 .aspectRatio(1.1, contentMode: .fit)
@@ -207,15 +218,45 @@ struct MatrixDropOverlay: View {
         .allowsHitTesting(false)
         .transition(.opacity)
     }
+
+    /// Where the task would land, following the finger cell by cell: the dot and a caption
+    /// saying when it's due and how important it is. Both fade out when the finger leaves the
+    /// grid and back in when it returns.
+    private func landingSpot(_ cell: MatrixGeometry.Cell, size: CGSize, inside: Bool) -> some View {
+        let center = MatrixGeometry.center(of: cell, in: size)
+        let snap = Motion.resolved(MatrixGeometry.follow)
+        return ZStack {
+            if inside {
+                MatrixDot(point: center, color: accent, isSelected: true, size: 18)
+                    .animation(snap, value: cell.key)
+                    .transition(MatrixGeometry.pop(at: center, in: size))
+                Text(MatrixGeometry.describe(cell))
+                    .theoFont(.caption, weight: .semibold)
+                    .contentTransition(.numericText())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial, in: Capsule())
+                    .position(x: min(max(center.x, 80), size.width - 80), y: max(center.y - 36, 14))
+                    .animation(snap, value: cell.key)
+                    .transition(.opacity)
+            }
+        }
+        .animation(Motion.resolved(Motion.hover), value: inside)
+    }
 }
 
 /// Places an existing task: touch, slide to the right cell, let go.
 struct MatrixPlacementOverlay: View {
     let task: TaskItem
     @Environment(AppModel.self) private var app
+    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
     @State private var cell: MatrixGeometry.Cell?
 
+    /// The chosen accent, like every other picked thing on the grid and in its strip.
+    private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
+
     var body: some View {
+        let current = cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)
         ZStack {
             Rectangle()
                 .fill(.ultraThinMaterial)
@@ -226,16 +267,16 @@ struct MatrixPlacementOverlay: View {
                     Text(task.trimmedTitle.isEmpty ? "Task" : task.trimmedTitle)
                         .theoFont(.headline)
                         .lineLimit(2)
-                    Text(MatrixGeometry.describe(cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)))
+                    Text(MatrixGeometry.describe(current))
                         .theoFont(.caption)
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())
+                        .animation(Motion.resolved(Motion.tap), value: current.key)
                 }
                 .multilineTextAlignment(.center)
                 MatrixBoard { size in
-                    let current = cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)
-                    MatrixDot(point: MatrixGeometry.center(of: current, in: size), color: Color.accentColor, isSelected: true, size: 18)
-                        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: current.key)
+                    MatrixDot(point: MatrixGeometry.center(of: current, in: size), color: accent, isSelected: true, size: 18)
+                        .animation(Motion.resolved(MatrixGeometry.follow), value: current.key)
                     Color.clear
                         .contentShape(Rectangle())
                         .gesture(
@@ -243,7 +284,7 @@ struct MatrixPlacementOverlay: View {
                                 .onChanged { value in cell = MatrixGeometry.cell(at: value.location, in: size) }
                                 .onEnded { value in
                                     let target = MatrixGeometry.cell(at: value.location, in: size)
-                                    withAnimation(.snappy) {
+                                    Motion.animate(Motion.list) {
                                         app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
                                     }
                                     close()
@@ -262,7 +303,7 @@ struct MatrixPlacementOverlay: View {
     }
 
     private func close() {
-        withAnimation(.snappy) { app.matrixTask = nil }
+        Motion.animate(Motion.layout) { app.matrixTask = nil }
     }
 }
 
@@ -306,7 +347,7 @@ struct MatrixPageView: View {
             // Another row picked in the list below lets go of the picked dot, so a click on
             // the grid never moves a task that isn't the selected one any more.
             if let id = selectedID, let task = allOpen.first(where: { $0.uuid == id }), !ids.contains(task.rowID) {
-                selectedID = nil
+                Motion.animate(Motion.tap) { selectedID = nil }
             }
         }
         #endif
@@ -333,77 +374,17 @@ struct MatrixPageView: View {
             let active = Set([selectedID, dragging?.id].compactMap { $0 })
             let hidden = Set(crowded.values.flatMap { $0 }.map(\.uuid)).subtracting(active)
             let sides = labelSides(tasks, points: points, size: size, skipping: hidden)
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture { location in
-                    // With a task picked in the strip, a tap places it.
-                    guard let id = selectedID, let task = tasks.first(where: { $0.uuid == id }) else { return }
-                    let target = MatrixGeometry.cell(at: location, in: size)
-                    withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
-                }
-                .dropDestination(for: String.self) { items, location in
-                    guard let id = items.first.flatMap(UUID.init(uuidString:)), let task = app.store.task(id: id) else { return false }
-                    let target = MatrixGeometry.cell(at: location, in: size)
-                    withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
-                    selectedID = id
-                    return true
-                }
+            let shown = Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }
+            placementSurface(tasks: tasks, size: size)
             ForEach(crowded.keys.sorted(), id: \.self) { key in
                 if let members = crowded[key], let first = members.first {
-                    let cell = MatrixGeometry.cell(of: first, today: app.dayStart)
-                    let best = members.map { $0.matrixScore(today: app.dayStart) }.max() ?? 0
-                    MatrixClusterBubble(count: members.filter { !active.contains($0.uuid) }.count, color: Matrix.color(forScore: best))
-                        #if os(macOS)
-                        .help(Self.clusterHelp(members.filter { !active.contains($0.uuid) }))
-                        #endif
-                        .position(MatrixGeometry.center(of: cell, in: size))
-                        .onTapGesture {
-                            cluster = MatrixCluster(id: key, cell: cell, taskIDs: members.map(\.uuid))
-                        }
-                        .accessibilityLabel("\(members.count) tasks, \(MatrixGeometry.describe(cell))")
-                        .accessibilityAddTraits(.isButton)
+                    clusterBubble(key: key, members: members, first: first, active: active, size: size)
                 }
             }
-            ForEach(Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }, id: \.element.uuid) { index, task in
-                let point = shownPoint(task, resting: points[index], size: size)
-                MatrixDot(
-                    point: point,
-                    color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
-                    isSelected: selectedID == task.uuid || dragging?.id == task.uuid
-                )
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: shownCell(task).key)
-                Circle()
-                    .fill(Color.white.opacity(0.001))
-                    .frame(width: 30, height: 30)
-                    #if os(macOS)
-                    .help(Self.title(of: task) + " · " + MatrixGeometry.describe(shownCell(task)))
-                    #endif
-                    .onHover { inside in
-                        if inside {
-                            hoveredID = task.uuid
-                        } else if hoveredID == task.uuid {
-                            hoveredID = nil
-                        }
-                    }
-                    .position(point)
-                    .gesture(
-                        DragGesture(minimumDistance: 2)
-                            .onChanged { value in dragging = (task.uuid, MatrixGeometry.cell(at: value.location, in: size)) }
-                            .onEnded { value in
-                                let target = MatrixGeometry.cell(at: value.location, in: size)
-                                withAnimation(.snappy) {
-                                    app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
-                                }
-                                dragging = nil
-                                selectedID = task.uuid
-                            }
-                    )
-                    .simultaneousGesture(TapGesture().onEnded { tapDot(task, listed: listed) })
-                    .accessibilityElement()
-                    .accessibilityLabel(task.trimmedTitle)
-                    .accessibilityValue(MatrixGeometry.describe(shownCell(task)))
+            ForEach(shown, id: \.element.uuid) { index, task in
+                dot(task, point: shownPoint(task, resting: points[index], size: size), size: size, listed: listed)
             }
-            ForEach(Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }, id: \.element.uuid) { index, task in
+            ForEach(shown, id: \.element.uuid) { index, task in
                 let isActive = selectedID == task.uuid || dragging?.id == task.uuid
                 let isHovered = hoveredID == task.uuid
                 let point = shownPoint(task, resting: points[index], size: size)
@@ -411,44 +392,162 @@ struct MatrixPageView: View {
                 // when it fits.
                 let side: Bool? = isActive || isHovered ? (sides[task.uuid] ?? (point.x < size.width * 0.55)) : sides[task.uuid]
                 if let onRight = side {
-                    MatrixLabel(point: point, title: task.trimmedTitle, isSelected: isActive, onRight: onRight)
-                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: shownCell(task).key)
+                    MatrixLabel(point: point, title: Self.title(of: task), isSelected: isActive, onRight: onRight)
+                        .animation(motion(for: task), value: shownCell(task).key)
+                        .transition(.opacity)
                         .zIndex(isActive || isHovered ? 1 : 0)
                 }
             }
         }
         .sensoryFeedback(.selection, trigger: dragging?.cell.key)
+        .animation(Motion.resolved(Motion.list), value: onlyToday)
         .aspectRatio(1.3, contentMode: .fit)
         .frame(maxWidth: 680, maxHeight: 380)
         .sheet(item: $cluster) { cluster in
-            NavigationStack {
-                List(tasks.filter { cluster.taskIDs.contains($0.uuid) }, id: \.uuid) { task in
-                    Button {
-                        selectedID = task.uuid
-                        self.cluster = nil
-                        #if os(macOS)
-                        showOnMac(task, listed: listed)
-                        #endif
-                    } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
-                                .foregroundStyle(.primary)
-                            TaskMetaLine(task: task, style: RowStyle(showGroup: true), today: app.dayStart, showAge: false)
-                        }
+            clusterSheet(cluster, tasks: tasks, listed: listed)
+        }
+    }
+
+    /// The grid itself: with a task picked in the strip a tap places it, and a task from the
+    /// strip can be dropped on it. Either way the dot glides to its new cell.
+    private func placementSurface(tasks: [TaskItem], size: CGSize) -> some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                // With a task picked in the strip, a tap places it.
+                guard let id = selectedID, let task = tasks.first(where: { $0.uuid == id }) else { return }
+                let target = MatrixGeometry.cell(at: location, in: size)
+                Motion.animate(Motion.list) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+            }
+            .dropDestination(for: String.self) { items, location in
+                guard let id = items.first.flatMap(UUID.init(uuidString:)), let task = app.store.task(id: id) else { return false }
+                let target = MatrixGeometry.cell(at: location, in: size)
+                Motion.animate(Motion.list) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+                Motion.animate(Motion.tap) { selectedID = id }
+                return true
+            }
+    }
+
+    /// A crowded spot: one bubble with how many tasks it holds, ringed in the heat of its most
+    /// pressing one. A tap lists them to pick from.
+    private func clusterBubble(key: Int, members: [TaskItem], first: TaskItem, active: Set<UUID>, size: CGSize) -> some View {
+        let cell = MatrixGeometry.cell(of: first, today: app.dayStart)
+        let center = MatrixGeometry.center(of: cell, in: size)
+        let best = members.map { $0.matrixScore(today: app.dayStart) }.max() ?? 0
+        let others = members.filter { !active.contains($0.uuid) }
+        return MatrixClusterBubble(count: others.count, color: Matrix.color(forScore: best))
+            #if os(macOS)
+            .help(Self.clusterHelp(others))
+            #endif
+            .position(center)
+            .onTapGesture {
+                cluster = MatrixCluster(id: key, cell: cell, taskIDs: members.map(\.uuid))
+            }
+            .accessibilityLabel("\(members.count) tasks, \(MatrixGeometry.describe(cell))")
+            .accessibilityAddTraits(.isButton)
+            .transition(MatrixGeometry.pop(at: center, in: size))
+    }
+
+    /// One task's dot, and the larger, invisible circle on top of it that the finger or the
+    /// pointer grabs.
+    @ViewBuilder
+    private func dot(_ task: TaskItem, point: CGPoint, size: CGSize, listed: Set<String>) -> some View {
+        let cell = shownCell(task)
+        let isActive = selectedID == task.uuid || dragging?.id == task.uuid
+        MatrixDot(
+            point: point,
+            color: Matrix.color(forScore: task.matrixScore(today: app.dayStart)),
+            isSelected: isActive,
+            isHovered: hoveredID == task.uuid
+        )
+        .animation(motion(for: task), value: cell.key)
+        .transition(MatrixGeometry.pop(at: point, in: size))
+        Circle()
+            .fill(Color.white.opacity(0.001))
+            .frame(width: 30, height: 30)
+            #if os(macOS)
+            .help(Self.title(of: task) + " · " + MatrixGeometry.describe(cell))
+            #endif
+            .onHover { inside in
+                hover(task, inside)
+            }
+            .position(point)
+            .gesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { value in
+                        follow(task, to: MatrixGeometry.cell(at: value.location, in: size))
                     }
-                }
-                .navigationTitle(MatrixGeometry.describe(cluster.cell))
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { self.cluster = nil }
+                    .onEnded { value in
+                        let target = MatrixGeometry.cell(at: value.location, in: size)
+                        Motion.animate(Motion.list) {
+                            app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
+                        }
+                        dragging = nil
+                        selectedID = task.uuid
+                    }
+            )
+            .simultaneousGesture(TapGesture().onEnded { tapDot(task, listed: listed) })
+            .accessibilityElement()
+            .accessibilityLabel(task.trimmedTitle)
+            .accessibilityValue(MatrixGeometry.describe(cell))
+    }
+
+    /// The dot under a finger keeps up with it (a quick spring, cell by cell); a dot that moves
+    /// for any other reason (placed with a tap, dropped from the strip, ranked anew) glides.
+    private func motion(for task: TaskItem) -> Animation {
+        Motion.resolved(dragging?.id == task.uuid ? MatrixGeometry.follow : Motion.list)
+    }
+
+    /// A dot under the finger: picked up, it grows and its title fades in (instead of popping);
+    /// from then on it follows the finger cell by cell.
+    private func follow(_ task: TaskItem, to cell: MatrixGeometry.Cell) {
+        if dragging == nil {
+            Motion.animate(Motion.tap) { dragging = (task.uuid, cell) }
+        } else {
+            dragging = (task.uuid, cell)
+        }
+    }
+
+    /// The pointer over a dot names it, with a quick fade.
+    private func hover(_ task: TaskItem, _ inside: Bool) {
+        Motion.animate(Motion.hover) {
+            if inside {
+                hoveredID = task.uuid
+            } else if hoveredID == task.uuid {
+                hoveredID = nil
+            }
+        }
+    }
+
+    /// The tasks of a crowded spot, to pick one.
+    private func clusterSheet(_ cluster: MatrixCluster, tasks: [TaskItem], listed: Set<String>) -> some View {
+        NavigationStack {
+            List(tasks.filter { cluster.taskIDs.contains($0.uuid) }, id: \.uuid) { task in
+                Button {
+                    Motion.animate(Motion.tap) { selectedID = task.uuid }
+                    self.cluster = nil
+                    #if os(macOS)
+                    showOnMac(task, listed: listed)
+                    #endif
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(Self.title(of: task))
+                            .foregroundStyle(.primary)
+                        TaskMetaLine(task: task, style: RowStyle(showGroup: true), today: app.dayStart, showAge: false)
                     }
                 }
             }
-            .presentationDetents([.medium, .large])
+            .navigationTitle(MatrixGeometry.describe(cluster.cell))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { self.cluster = nil }
+                }
+            }
         }
+        .presentationDetents([.medium, .large])
     }
 
     /// A dot was tapped (not dragged). Mac: picks it and shows it in the details column, with
@@ -458,19 +557,19 @@ struct MatrixPageView: View {
     private func tapDot(_ task: TaskItem, listed: Set<String>) {
         #if os(macOS)
         if selectedID == task.uuid && app.selectedRowIDs.contains(task.rowID) {
-            selectedID = nil
+            Motion.animate(Motion.tap) { selectedID = nil }
             if app.selectedRowIDs == [task.rowID] { app.selectedRowIDs = [] }
         } else {
-            selectedID = task.uuid
+            Motion.animate(Motion.tap) { selectedID = task.uuid }
             showOnMac(task, listed: listed)
         }
         #else
         if selectedID == task.uuid {
             // Let go too, so a later tap on the grid doesn't move it by surprise.
-            selectedID = nil
+            Motion.animate(Motion.tap) { selectedID = nil }
             app.showDetails(task)
         } else {
-            selectedID = task.uuid
+            Motion.animate(Motion.tap) { selectedID = task.uuid }
         }
         #endif
     }
@@ -556,28 +655,55 @@ struct MatrixPageView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(tasks.prefix(40), id: \.uuid) { task in
-                    Button {
-                        selectedID = selectedID == task.uuid ? nil : task.uuid
-                    } label: {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(Matrix.color(forScore: task.matrixScore(today: app.dayStart)))
-                                .frame(width: 7, height: 7)
-                            Text(task.trimmedTitle)
-                                .lineLimit(1)
-                                .frame(maxWidth: 160)
-                        }
-                        .theoFont(.caption, weight: .medium)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(selectedID == task.uuid ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12)))
-                    }
-                    .buttonStyle(.plain)
-                    .draggable(task.uuid.uuidString)
+                    trayChip(task)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+        }
+    }
+
+    /// A task in the strip: its heat as a small dot (ringed like the dots on the grid) and its
+    /// title. Picked, it's washed and outlined in the accent, like the dot it stands for.
+    private func trayChip(_ task: TaskItem) -> some View {
+        let isPicked: Bool = selectedID == task.uuid
+        return Button {
+            Motion.animate(Motion.tap) { selectedID = isPicked ? nil : task.uuid }
+        } label: {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Matrix.color(forScore: task.matrixScore(today: app.dayStart)))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1))
+                    .frame(width: 8, height: 8)
+                Text(Self.title(of: task))
+                    .lineLimit(1)
+                    .frame(maxWidth: 160)
+            }
+            .theoFont(.caption, weight: isPicked ? .semibold : .medium)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                trayChipFill(isPicked)
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.pressable)
+        .draggable(task.uuid.uuidString)
+        .accessibilityAddTraits(isPicked ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func trayChipFill(_ isPicked: Bool) -> some View {
+        ZStack {
+            Capsule()
+                .fill(Color.secondary.opacity(0.12))
+            Capsule()
+                .fill(.tint)
+                .opacity(isPicked ? 0.2 : 0)
+            Capsule()
+                .strokeBorder(.tint, lineWidth: 1.5)
+                .opacity(isPicked ? 1 : 0)
         }
     }
 }
@@ -589,20 +715,22 @@ struct MatrixCluster: Identifiable {
     let taskIDs: [UUID]
 }
 
-/// Several tasks in one cell: one bubble with their number.
+/// Several tasks in one cell: one bubble with their number, readable on any cell. The number
+/// sits in rounded figures on the page's own background, ringed in the heat of the spot, so it
+/// reads apart from the single dots and rolls when the count changes.
 struct MatrixClusterBubble: View {
     let count: Int
     let color: Color
 
     var body: some View {
         Text("\(count)")
-            .theoFont(.caption, weight: .bold)
-            .monospacedDigit()
-            .foregroundStyle(.white)
-            .frame(width: 26, height: 26)
-            .background(Circle().fill(color.gradient))
-            .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: 2))
-            .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+            .theoFont(.caption, weight: .bold, design: .rounded)
+            .foregroundStyle(.primary)
+            .rollingNumber(count)
+            .frame(width: 28, height: 28)
+            .background(Circle().fill(.background))
+            .overlay(Circle().strokeBorder(color, lineWidth: 3))
+            .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
             .contentShape(Circle())
     }
 }

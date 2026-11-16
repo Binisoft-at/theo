@@ -117,7 +117,9 @@ struct TheoCommands: Commands {
             Button("Standard Text Size") { TextSizeChoice.reset() }
                 .keyboardShortcut("0")
             #if os(macOS)
-            Button(app.showInspector ? "Hide Details" : "Show Details") { app.showInspector.toggle() }
+            Button(app.showInspector ? "Hide Details" : "Show Details") {
+                Motion.animate(Motion.layout) { app.showInspector.toggle() }
+            }
                 .keyboardShortcut("i", modifiers: [.command, .option])
             #endif
             Divider()

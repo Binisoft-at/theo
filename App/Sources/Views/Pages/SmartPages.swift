@@ -155,7 +155,7 @@ struct GroupPageHeader: View {
     @ViewBuilder
     private func groupSummary(_ group: TaskGroup) -> some View {
         HStack(spacing: 12) {
-            iconTile(group)
+            groupIcon(group)
             VStack(alignment: .leading, spacing: 6) {
                 if let due = group.dueDate {
                     deadline(due)
@@ -165,11 +165,6 @@ struct GroupPageHeader: View {
                 }
             }
         }
-        if group.isProject, open + done > 0 {
-            ProgressView(value: Double(done), total: Double(open + done))
-                .tint(group.color.color)
-                .animation(Motion.resolved(Motion.layout), value: done)
-        }
         if !group.notes.isEmpty {
             Text(group.notes)
                 .theoFont(.callout)
@@ -177,6 +172,24 @@ struct GroupPageHeader: View {
         }
         traitsButton(group)
         SubgroupSwitches(parent: group, groups: groups)
+    }
+
+    /// A project wears its progress as a ring around its icon, the way a line with subtasks
+    /// shows its ring; any other group shows just the icon.
+    @ViewBuilder
+    private func groupIcon(_ group: TaskGroup) -> some View {
+        if group.isProject, open + done > 0 {
+            iconTile(group)
+                .padding(4)
+                .overlay {
+                    MiniRing(fraction: Double(done) / Double(open + done), tint: group.color.color, lineWidth: 3)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Project progress")
+                .accessibilityValue("\(done) of \(open + done) done")
+        } else {
+            iconTile(group)
+        }
     }
 
     /// The group's icon on a disc of its colour, like a list in Reminders. The glyph is white,

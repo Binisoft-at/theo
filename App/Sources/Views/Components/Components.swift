@@ -106,8 +106,13 @@ struct ProgressRing: View {
 /// project's tasks. Drawn inside its frame, so it lines up with the text beside it.
 struct MiniRing: View {
     let fraction: Double
-    var tint: Color = .accentColor
+    /// nil = the accent chosen in Settings.
+    var tint: Color? = nil
     var lineWidth: CGFloat = 2
+
+    private var arcStyle: AnyShapeStyle {
+        tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(TintShapeStyle.tint)
+    }
 
     var body: some View {
         let shown = min(max(fraction, 0), 1)
@@ -116,7 +121,7 @@ struct MiniRing: View {
                 .stroke(Color.secondary.opacity(0.25), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: shown)
-                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(arcStyle, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .padding(lineWidth / 2)
@@ -151,7 +156,8 @@ struct ChipButton: View {
     let action: () -> Void
 
     @Environment(\.self) private var environment
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    // The app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
 
     init(title: String, symbol: String? = nil, color: Color = .accentColor, isOn: Bool, action: @escaping () -> Void) {
         self.title = title

@@ -26,7 +26,7 @@ struct QuickEntryBar: View {
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @AppStorage(Prefs.newTaskPlacement) private var placementRaw = NewTaskPlacement.bottom.rawValue
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
 
     @State private var text = ""
     @State private var disabled: QuickParser.Options = []
@@ -226,6 +226,12 @@ struct QuickEntryBar: View {
     /// A chip that comes or goes grows in or shrinks away while the others make room.
     fileprivate static var chipTransition: AnyTransition { AnyTransition.scale(scale: 0.9).combined(with: .opacity) }
 
+    /// What rises out of the bar (the chips, the picks, the confirmation) and sinks back into it;
+    /// with Reduce Motion it only fades.
+    @MainActor fileprivate static var riseTransition: AnyTransition {
+        Motion.reduceMotion ? AnyTransition.opacity : AnyTransition.move(edge: .bottom).combined(with: .opacity)
+    }
+
     // The bar's round controls (+, grid, send): full 44-point touch targets on iPhone and iPad,
     // with the bar as tall as before and the text keeping its margins; compact on the Mac.
     #if os(iOS)
@@ -246,11 +252,11 @@ struct QuickEntryBar: View {
         VStack(spacing: 8) {
             if let confirmation {
                 confirmationRow(confirmation)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(Self.riseTransition)
             }
             if focused {
                 aboveField
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(Self.riseTransition)
             }
             field
         }
@@ -344,7 +350,7 @@ struct QuickEntryBar: View {
                 .theoFont(.title2)
                 .foregroundStyle(.tint)
                 .frame(minWidth: Self.handleSide, minHeight: Self.handleSide)
-                .modifier(HoverFill(shape: Circle()))
+                .modifier(ComposerHoverFill(shape: Circle()))
         }
         .accessibilityLabel(isMultiline ? "Add \(Self.openLines(Composer.lines(text)).count) Tasks" : "Add Task")
         .accessibilityHint("Touch and hold, then slide toward a value to set the Power Hours")
@@ -363,7 +369,7 @@ struct QuickEntryBar: View {
                 ComposerSuggestionStrip(items: items, highlightedID: highlightedID(in: items), accent: accent) { item in
                     accept(item)
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(Self.riseTransition)
             } else {
                 controls
                     .transition(.opacity)
@@ -497,7 +503,7 @@ struct QuickEntryBar: View {
         let lineCount: Int = isMultiline ? Self.openLines(Composer.lines(text)).count : 0
         return HStack(spacing: 8) {
             if isMultiline {
-                chipLabel("\(lineCount) tasks", symbol: "list.bullet.indent", color: accent, active: true, number: Double(lineCount))
+                chipLabel("\(lineCount) tasks", symbol: "list.bullet.indent", color: accent, active: true, colorsTitle: false, number: Double(lineCount))
                     .transition(Self.chipTransition)
             } else {
                 subtaskChip
@@ -516,7 +522,7 @@ struct QuickEntryBar: View {
                     .transition(Self.chipTransition)
             }
             if let matrixChoice {
-                removableChip(MatrixGeometry.describe(matrixChoice), symbol: "square.grid.3x3.fill", color: accent) {
+                removableChip(MatrixGeometry.describe(matrixChoice), symbol: "square.grid.3x3.fill", color: accent, colorsTitle: false) {
                     self.matrixChoice = nil
                 }
                 .transition(Self.chipTransition)
@@ -574,7 +580,7 @@ struct QuickEntryBar: View {
             }
             focused = true
         } label: {
-            chipLabel("Description", symbol: "text.alignleft", color: accent, active: hasNotes)
+            chipLabel("Description", symbol: "text.alignleft", color: accent, active: hasNotes, colorsTitle: false)
         }
         .buttonStyle(.plain)
         .accessibilityValue(hasNotes ? "Added" : "")
@@ -587,7 +593,8 @@ struct QuickEntryBar: View {
             Button {
                 subtaskOff = true
             } label: {
-                chipLabel("Under “\(parent.trimmedTitle)”", symbol: "arrow.turn.down.right", color: accent, active: true, removable: true)
+                chipLabel("Under “\(parent.trimmedTitle)”", symbol: "arrow.turn.down.right", color: accent, active: true, removable: true,
+                          colorsTitle: false)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Adds it as a normal task instead")
@@ -645,18 +652,9 @@ struct QuickEntryBar: View {
     /// waits in the bar, and the + bounces back once the line is in. A tap just starts typing.
     private var insertHandle: some View {
         let carrying = app.insertDragLocation != nil
-        let isSubtask = subtaskParent != nil
-        return Image(systemName: isSubtask ? "arrow.turn.down.right" : "plus.circle.fill")
-            .theoFont(.title2)
-            .foregroundStyle(.tint)
-            .contentTransition(.symbolEffect(.replace))
-            .symbolEffect(.bounce, value: addedCount + insertDrops)
-            .opacity(carrying ? 0.3 : 1)
-            .scaleEffect(carrying ? 0.8 : 1)
-            .animation(Motion.resolved(Motion.tap), value: carrying)
-            .animation(Motion.resolved(Motion.tap), value: isSubtask)
+        return insertGlyph(carrying: carrying)
             .frame(minWidth: Self.handleSide, minHeight: Self.handleSide)
-            .modifier(HoverFill(shape: Circle()))
+            .modifier(ComposerHoverFill(shape: Circle()))
             .contentShape(Rectangle())
             .onTapGesture { focused = true }
             .highPriorityGesture(insertDrag)
@@ -666,6 +664,22 @@ struct QuickEntryBar: View {
             .accessibilityLabel("New task")
             .accessibilityHint("Drag up between two tasks to add one there")
             .help("Drag between two tasks to add one there")
+    }
+
+    /// The + (an arrow while a "- " subtask is typed, morphing between the two). While it's out
+    /// with the finger only a faint one stays behind; it bounces with every task added.
+    private func insertGlyph(carrying: Bool) -> some View {
+        let isSubtask = subtaskParent != nil
+        let animation = Motion.resolved(Motion.tap)
+        return Image(systemName: isSubtask ? "arrow.turn.down.right" : "plus.circle.fill")
+            .theoFont(.title2)
+            .foregroundStyle(.tint)
+            .contentTransition(.symbolEffect(.replace))
+            .symbolEffect(.bounce, value: addedCount + insertDrops)
+            .opacity(carrying ? 0.3 : 1)
+            .scaleEffect(carrying ? 0.8 : 1)
+            .animation(animation, value: carrying)
+            .animation(animation, value: isSubtask)
     }
 
     /// The + travelling with the finger over a list (see `insertHandle`).
@@ -880,15 +894,9 @@ struct QuickEntryBar: View {
     /// Drag it onto the full-screen grid; tapping only explains it, so it never gets in the way.
     /// Once a cell is picked it fills in the accent.
     private var matrixHandle: some View {
-        let placed = matrixChoice != nil
-        let style: AnyShapeStyle = placed ? AnyShapeStyle(TintShapeStyle.tint) : AnyShapeStyle(HierarchicalShapeStyle.secondary)
-        return Image(systemName: placed ? "square.grid.3x3.fill" : "square.grid.3x3")
-            .theoFont(.body, weight: .medium)
-            .foregroundStyle(style)
-            .contentTransition(.symbolEffect(.replace))
-            .animation(Motion.resolved(Motion.tap), value: placed)
+        matrixGlyph
             .frame(width: Self.handleSide, height: Self.handleSide)
-            .modifier(HoverFill(shape: Circle()))
+            .modifier(ComposerHoverFill(shape: Circle()))
             .contentShape(Rectangle())
             .gesture(matrixHandleDrag)
             .onTapGesture {
@@ -899,6 +907,16 @@ struct QuickEntryBar: View {
             .accessibilityLabel("Urgency and importance")
             .accessibilityHint("Drag onto the grid to set the deadline and importance")
             .help("Drag onto the grid to set when it's due and how important it is")
+    }
+
+    private var matrixGlyph: some View {
+        let placed = matrixChoice != nil
+        let style: AnyShapeStyle = placed ? AnyShapeStyle(TintShapeStyle.tint) : AnyShapeStyle(HierarchicalShapeStyle.secondary)
+        return Image(systemName: placed ? "square.grid.3x3.fill" : "square.grid.3x3")
+            .theoFont(.body, weight: .medium)
+            .foregroundStyle(style)
+            .contentTransition(.symbolEffect(.replace))
+            .animation(Motion.resolved(Motion.tap), value: placed)
     }
 
     /// The task travelling with the finger onto the grid (see `matrixHandle`).
@@ -922,61 +940,90 @@ struct QuickEntryBar: View {
         if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { add() }
     }
 
-    private func removableChip(_ title: String, color: Color, onRemove: @escaping () -> Void) -> some View {
+    private func removableChip(_ title: String, symbol: String? = nil, color: Color, colorsTitle: Bool = true,
+                               onRemove: @escaping () -> Void) -> some View {
         Button(action: onRemove) {
-            chipLabel(title, symbol: nil, color: color, active: true, removable: true)
+            chipLabel(title, symbol: symbol, color: color, active: true, removable: true, colorsTitle: colorsTitle)
         }
         .buttonStyle(.plain)
     }
 
-    private func chipLabel(_ title: String, symbol: String?, color: Color, active: Bool, removable: Bool = false) -> some View {
+    /// A chip: a small glass capsule. Picked or read from the text, it wears the colour of what
+    /// it means; otherwise it stays grey. A group's colour, and the accent (which can be a light
+    /// yellow), go only on the icon and the glass (`colorsTitle: false`), so the words stay in
+    /// the text colour. With `number`, the value in its title rolls when it changes; other titles
+    /// cross-fade.
+    private func chipLabel(_ title: String, symbol: String?, color: Color, active: Bool, removable: Bool = false,
+                           colorsTitle: Bool = true, number: Double? = nil) -> some View {
         let glass: Glass = active ? Glass.regular.tint(color.opacity(0.15)).interactive() : Glass.regular.interactive()
+        let ink: AnyShapeStyle = active ? AnyShapeStyle(color) : AnyShapeStyle(HierarchicalShapeStyle.secondary)
+        let titleInk: AnyShapeStyle = active && !colorsTitle ? AnyShapeStyle(HierarchicalShapeStyle.primary) : ink
+        let change: ContentTransition = number.map { ContentTransition.numericText(value: $0) } ?? .opacity
         return HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).imageScale(.small) }
+            if let symbol {
+                Image(systemName: symbol)
+                    .imageScale(.small)
+                    .foregroundStyle(ink)
+            }
             Text(title)
                 .lineLimit(1)
-            if removable { Image(systemName: "xmark").imageScale(.small).opacity(0.6) }
+                .foregroundStyle(titleInk)
+                .contentTransition(change)
+            if removable {
+                Image(systemName: "xmark")
+                    .imageScale(.small)
+                    .foregroundStyle(titleInk)
+                    .opacity(0.6)
+            }
         }
         .theoFont(.caption, weight: .semibold)
-        .foregroundStyle(active ? color : Color.secondary)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .modifier(ComposerHoverFill(shape: Capsule()))
         .glassEffect(glass, in: .capsule)
     }
 
+    /// "Added to Work · due Friday" with Undo (and Show, Off Plan). It slides up from behind the
+    /// chips; while it's up, each new add bounces its check and cross-fades the words.
     private func confirmationRow(_ confirmation: Confirmation) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.tint)
+                .symbolEffect(.bounce, value: confirmation.id)
             Text(confirmation.message)
                 .theoFont(.footnote, weight: .medium)
                 .lineLimit(2)
+                .contentTransition(.opacity)
             Spacer(minLength: 4)
-            HStack(spacing: 12) {
-                if confirmation.offersOffPlan, let task = confirmation.tasks.first {
-                    Button("Off Plan") {
-                        app.plan([task], for: nil)
-                        self.confirmation = nil
-                    }
-                    .foregroundStyle(.secondary)
-                    .accessibilityHint("Takes it off today's plan; it stays due on its day")
-                }
-                if confirmation.showsReveal, let task = confirmation.tasks.first {
-                    Button("Show") {
-                        app.reveal(task)
-                    }
-                }
-                Button("Undo") {
-                    undo(confirmation)
-                }
-            }
-            .theoFont(.footnote, weight: .semibold)
-            .buttonStyle(.borderless)
-            .fixedSize()
+            confirmationButtons(confirmation)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .glassEffect(.regular, in: .rect(cornerRadius: 18))
+    }
+
+    private func confirmationButtons(_ confirmation: Confirmation) -> some View {
+        HStack(spacing: 12) {
+            if confirmation.offersOffPlan, let task = confirmation.tasks.first {
+                Button("Off Plan") {
+                    Motion.animate(Motion.list) { app.plan([task], for: nil) }
+                    self.confirmation = nil
+                }
+                .foregroundStyle(.secondary)
+                .accessibilityHint("Takes it off today's plan; it stays due on its day")
+            }
+            if confirmation.showsReveal, let task = confirmation.tasks.first {
+                Button("Show") {
+                    app.reveal(task)
+                }
+            }
+            Button("Undo") {
+                undo(confirmation)
+            }
+        }
+        .theoFont(.footnote, weight: .semibold)
+        .buttonStyle(.borderless)
+        .fixedSize()
     }
 
     // MARK: - Actions
@@ -1012,7 +1059,7 @@ struct QuickEntryBar: View {
                 entry.due = Calendar.current.startOfDay(for: app.dayStart)
             }
             if let subtaskParent {
-                let task = withAnimation(.snappy) { app.store.addSubtask(entry, to: subtaskParent) }
+                let task = Motion.animate(Motion.list) { app.store.addSubtask(entry, to: subtaskParent) }
                 if app.collapsedTaskIDs.contains(subtaskParent.uuid) { app.toggleSubtasks(subtaskParent) }
                 created = [task]
                 parent = subtaskParent
@@ -1020,7 +1067,7 @@ struct QuickEntryBar: View {
                 let groupID = targetGroupID
                 entry.groupID = groupID
                 let placement = NewTaskPlacement(rawValue: placementRaw) ?? .bottom
-                let task = withAnimation(.snappy) { app.store.addTask(entry, defaultGroupID: groupID, placement: placement) }
+                let task = Motion.animate(Motion.list) { app.store.addTask(entry, defaultGroupID: groupID, placement: placement) }
                 lastParent = task
                 created = [task]
             }
@@ -1090,7 +1137,7 @@ struct QuickEntryBar: View {
     private func addLines(_ lines: [Composer.Line]) -> [TaskItem] {
         var created: [TaskItem] = []
         var parents: [TaskItem] = []
-        withAnimation(.snappy) {
+        Motion.animate(Motion.list) {
             for line in lines {
                 var entry = QuickParser.parse(line.title, groups: groupRefs, options: options, now: app.dayStart)
                 guard !entry.title.isEmpty else { continue }
@@ -1144,14 +1191,14 @@ struct QuickEntryBar: View {
     }
 
     private func undo(_ confirmation: Confirmation) {
-        withAnimation(.snappy) { app.store.purge(confirmation.tasks) }
+        Motion.animate(Motion.list) { app.store.purge(confirmation.tasks) }
         if let lastParent, confirmation.tasks.contains(where: { $0 === lastParent }) { self.lastParent = nil }
         self.confirmation = nil
     }
 }
 
-/// One pick above the composer: a group (its colour and path) or a tag (how many open tasks
-/// have it).
+/// One pick above the composer: a group (its icon in its colour, and its path) or a tag (how
+/// many open tasks have it).
 private struct ComposerSuggestion: Identifiable {
     let id: String
     /// "Work › Admin" or "#invoices".
@@ -1159,6 +1206,8 @@ private struct ComposerSuggestion: Identifiable {
     /// What replaces the word being typed: "@Work/Admin", "#invoices".
     let insertion: String
     let color: Color
+    /// A group's icon; a tag has none.
+    let symbol: String?
     let isGroup: Bool
     /// Open tasks with the tag.
     let count: Int?
@@ -1173,56 +1222,79 @@ private struct ComposerSuggestion: Identifiable {
 }
 
 /// The `@group` / `#tag` picks while one is typed: a tap puts it in the text. Scrolls sideways
-/// when there's no room; on the Mac the highlighted one is what Tab or Return takes.
+/// when there's no room; on the Mac the highlighted one is what Tab or Return takes. As more is
+/// typed, picks that no longer fit shrink away and the others close up; ↓ ↑ glide the
+/// highlight from pick to pick and keep it in view.
 private struct ComposerSuggestionStrip: View {
     let items: [ComposerSuggestion]
     let highlightedID: String?
+    let accent: Color
     let onPick: (ComposerSuggestion) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(items) { item in
-                    pickButton(item)
-                }
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                picks
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
+            .scrollClipDisabled()
+            .onChange(of: highlightedID) { _, id in
+                guard let id else { return }
+                Motion.animate(Motion.tap) { proxy.scrollTo(id) }
+            }
         }
-        .scrollClipDisabled()
+    }
+
+    private var picks: some View {
+        let animation = Motion.resolved(Motion.tap)
+        let ids = items.map(\.id)
+        return HStack(spacing: 8) {
+            ForEach(items) { item in
+                pickButton(item)
+                    .transition(QuickEntryBar.chipTransition)
+            }
+        }
+        .animation(animation, value: ids)
+        .animation(animation, value: highlightedID)
     }
 
     private func pickButton(_ item: ComposerSuggestion) -> some View {
-        Button {
+        let highlighted = item.id == highlightedID
+        return Button {
             onPick(item)
         } label: {
-            ComposerSuggestionLabel(item: item, highlighted: item.id == highlightedID)
+            ComposerSuggestionLabel(item: item, highlighted: highlighted, accent: accent)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(item.accessibilityText)
         .accessibilityHint(item.isGroup ? "Files the task in this group" : "Adds this tag")
+        .accessibilityAddTraits(highlighted ? .isSelected : [])
     }
 }
 
-/// A capsule like the chips: colour dot and path for a group, the tag and its count for a tag.
+/// A capsule like the chips: a group's icon in its colour and its path in the text colour, or
+/// the tag in its colour and how many open tasks have it. The highlighted one (what the Mac's
+/// Tab or Return takes) wears an accent tint and ring.
 private struct ComposerSuggestionLabel: View {
     let item: ComposerSuggestion
     let highlighted: Bool
+    let accent: Color
 
     var body: some View {
-        let glass: Glass = highlighted ? Glass.regular.tint(Color.accentColor.opacity(0.25)).interactive() : Glass.regular.interactive()
-        let ring: Color = highlighted ? Color.accentColor.opacity(0.7) : Color.clear
-        return HStack(spacing: 5) {
-            if item.isGroup {
-                Circle()
-                    .fill(item.color)
-                    .frame(width: 8, height: 8)
+        let glass: Glass = highlighted ? Glass.regular.tint(accent.opacity(0.22)).interactive() : Glass.regular.interactive()
+        return HStack(spacing: 4) {
+            if let symbol = item.symbol {
+                Image(systemName: symbol)
+                    .imageScale(.small)
+                    .foregroundStyle(item.color)
             }
             Text(item.title)
                 .lineLimit(1)
-                .foregroundStyle(item.isGroup ? Color.primary : item.color)
+                .foregroundStyle(titleStyle)
             if let count = item.count {
                 Text("\(count)")
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         }
@@ -1230,11 +1302,34 @@ private struct ComposerSuggestionLabel: View {
         .opacity(item.dimmed ? 0.5 : 1)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .modifier(ComposerHoverFill(shape: Capsule()))
         .glassEffect(glass, in: .capsule)
         .overlay {
             Capsule()
-                .strokeBorder(ring, lineWidth: 1.5)
+                .strokeBorder(accent.opacity(highlighted ? 0.8 : 0), lineWidth: 1.5)
         }
         .contentShape(Capsule())
+    }
+
+    /// A group's path stays in the text colour (its colour is on its icon); a tag shows its own.
+    private var titleStyle: AnyShapeStyle {
+        item.isGroup ? AnyShapeStyle(HierarchicalShapeStyle.primary) : AnyShapeStyle(item.color)
+    }
+}
+
+/// The hover fill of the composer's own controls on the Mac (and on the iPad with a pointer): a
+/// soft grey behind the control while the pointer is over it.
+private struct ComposerHoverFill<S: Shape>: ViewModifier {
+    let shape: S
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                shape
+                    .fill(Color.secondary.opacity(hovering ? 0.14 : 0))
+                    .animation(Motion.hover, value: hovering)
+            }
+            .onHover { hovering = $0 }
     }
 }

@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// Create or edit a group: name, icon, color, project settings.
+/// Create or edit a group: name, icon, color, project settings. The group's icon sits large at
+/// the top in its colour and changes as you pick, like a new list in Reminders.
 struct GroupEditorView: View {
     let target: GroupEditorTarget
 
@@ -26,7 +27,11 @@ struct GroupEditorView: View {
     @State private var traitTags = ""
     @State private var traitDueDays = -1
     @State private var loaded = false
+    /// Counts colour and icon picks, for the iPhone's selection tick.
+    @State private var pickTick = 0
     @FocusState private var nameFocused: Bool
+    /// The selection ring and disc glide from one choice to the next.
+    @Namespace private var pickerSpace
 
     private var existing: TaskGroup? {
         if case .edit(let group) = target { return group }
@@ -45,125 +50,20 @@ struct GroupEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    HStack(spacing: 14) {
-                        Image(systemName: symbol)
-                            .theoFont(.title2)
-                            .foregroundStyle(.white)
-                            .frame(width: 52, height: 52)
-                            .background(Circle().fill(color.color.gradient))
-                        TextField("Group name", text: $name)
-                            .theoFont(.title3, weight: .semibold)
-                            .textFieldStyle(.plain)
-                            .focused($nameFocused)
-                            .onSubmit(save)
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section("Color") {
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(TheoColor.allCases) { option in
-                            Button {
-                                color = option
-                            } label: {
-                                Circle()
-                                    .fill(option.color.gradient)
-                                    .frame(width: 32, height: 32)
-                                    .overlay {
-                                        if option == color {
-                                            Circle().strokeBorder(Color.primary.opacity(0.6), lineWidth: 2.5).padding(-4)
-                                        }
-                                    }
-                                    .frame(width: 40, height: 40)
-                                    .contentShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(option.title)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section("Icon") {
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(GroupSymbols.all, id: \.self) { option in
-                            Button {
-                                symbol = option
-                            } label: {
-                                Image(systemName: option)
-                                    .font(.body)
-                                    .frame(width: 40, height: 40)
-                                    .foregroundStyle(option == symbol ? Color.white : Color.primary)
-                                    .background(Circle().fill(option == symbol ? AnyShapeStyle(color.color) : AnyShapeStyle(Color.secondary.opacity(0.12))))
-                                    .contentShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section {
-                    Picker(selection: $parentID) {
-                        Text("Top Level").tag(UUID?.none)
-                        ForEach(parentOptions, id: \.group.uuid) { option in
-                            Text(String(repeating: "   ", count: option.level) + option.group.displayName)
-                                .tag(UUID?.some(option.group.uuid))
-                        }
-                    } label: {
-                        Label("Inside", systemImage: "folder")
-                    }
-                } footer: {
-                    Text("Put a group inside another one to make it a subgroup.")
-                }
-
-                Section {
-                    Toggle(isOn: $isActive) {
-                        Label("On", systemImage: isActive ? "play.circle" : "pause.circle")
-                    }
-                } footer: {
-                    Text("Switched off, its tasks (and its subgroups') stay out of Today, Plan, Upcoming and the other lists until you switch it back on. They stay on its own page.")
-                }
-
+                headerSection
+                colorSection
+                iconSection
+                parentSection
+                activeSection
                 traitsSection
-
-                Section {
-                    Toggle(isOn: $isProject) {
-                        Label("Project", systemImage: "chart.bar.fill")
-                    }
-                    if isProject {
-                        Toggle(isOn: $hasDue) {
-                            Label("Deadline", systemImage: "flag.checkered")
-                        }
-                        if hasDue {
-                            DatePicker("Date", selection: $due, displayedComponents: [.date])
-                        }
-                    }
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(2...6)
-                } footer: {
-                    Text("Projects show a progress bar and an optional deadline.")
-                }
-
-                if let existing {
-                    Section {
-                        Button(role: .destructive) {
-                            dismiss()
-                            app.store.deleteGroup(existing, keepTasks: true)
-                            if app.selection == .group(existing.uuid) { app.go(.today) }
-                            let model = app
-                            model.show("Group deleted · tasks moved to Quick Entry", symbol: "trash.fill") {
-                                model.store.restoreGroup(existing)
-                            }
-                        } label: {
-                            Label("Delete Group (Keep Tasks)", systemImage: "trash")
-                        }
-                    }
-                }
+                projectSection
+                deleteSection
             }
             .formStyle(.grouped)
             .theoBodyFont()
+            #if os(iOS)
+            .sensoryFeedback(.selection, trigger: pickTick)
+            #endif
             .navigationTitle(existing != nil ? "Edit Group" : (parentID == nil ? "New Group" : "New Subgroup"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -184,27 +84,161 @@ struct GroupEditorView: View {
         #endif
     }
 
+    // MARK: - Look
+
+    /// The group as it will look: its icon in its colour, and its name.
+    private var headerSection: some View {
+        Section {
+            VStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 80, height: 80)
+                    .background(Circle().fill(color.color.gradient))
+                    .shadow(color: color.color.opacity(0.3), radius: 8, y: 4)
+                    .accessibilityHidden(true)
+                TextField("Group name", text: $name)
+                    .theoFont(.title3, weight: .semibold)
+                    .multilineTextAlignment(.center)
+                    .textFieldStyle(.plain)
+                    .focused($nameFocused)
+                    .onSubmit(save)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.secondary.opacity(0.1)))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        }
+    }
+
+    private var colorSection: some View {
+        Section("Color") {
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(TheoColor.allCases) { option in
+                    colorSwatch(option)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// A colour to pick; the ring around the chosen one glides to the next.
+    private func colorSwatch(_ option: TheoColor) -> some View {
+        let selected = option == color
+        return Button {
+            guard !selected else { return }
+            pickTick += 1
+            Motion.animate(Motion.tap) { color = option }
+        } label: {
+            ZStack {
+                if selected {
+                    Circle()
+                        .strokeBorder(Color.primary.opacity(0.55), lineWidth: 2.5)
+                        .matchedGeometryEffect(id: "colorRing", in: pickerSpace)
+                }
+                Circle()
+                    .fill(option.color.gradient)
+                    .padding(4)
+            }
+            .frame(width: 40, height: 40)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel(option.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var iconSection: some View {
+        Section("Icon") {
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(GroupSymbols.all, id: \.self) { option in
+                    iconChoice(option)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// An icon to pick; the chosen one sits on a disc in the group's colour, which glides to
+    /// the next.
+    private func iconChoice(_ option: String) -> some View {
+        let selected = option == symbol
+        return Button {
+            guard !selected else { return }
+            pickTick += 1
+            Motion.animate(Motion.tap) { symbol = option }
+        } label: {
+            Image(systemName: option)
+                .font(.body)
+                .foregroundStyle(selected ? Color.white : Color.primary)
+                .frame(width: 40, height: 40)
+                .background {
+                    ZStack {
+                        Circle().fill(Color.secondary.opacity(0.12))
+                        if selected {
+                            Circle()
+                                .fill(color.color.gradient)
+                                .matchedGeometryEffect(id: "iconDisc", in: pickerSpace)
+                        }
+                    }
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: - Place
+
+    private var parentSection: some View {
+        Section {
+            Picker(selection: $parentID.animation(Motion.resolved(Motion.list))) {
+                Text("Top Level").tag(UUID?.none)
+                ForEach(parentOptions, id: \.group.uuid) { option in
+                    Text(String(repeating: "   ", count: option.level) + option.group.displayName)
+                        .tag(UUID?.some(option.group.uuid))
+                }
+            } label: {
+                SheetRowLabel("Inside", symbol: "folder", color: Tint.move)
+            }
+        } footer: {
+            Text("Put a group inside another one to make it a subgroup.")
+        }
+    }
+
+    private var activeSection: some View {
+        Section {
+            Toggle(isOn: $isActive.animation(Motion.resolved(Motion.tap))) {
+                SheetRowLabel("On", symbol: isActive ? "play.circle" : "pause.circle")
+            }
+        } footer: {
+            Text("Switched off, its tasks (and its subgroups') stay out of Today, Plan, Upcoming and the other lists until you switch it back on. They stay on its own page.")
+        }
+    }
+
     /// Traits new and moved tasks inherit.
     private var traitsSection: some View {
         Section {
-            Picker(selection: $traitLevel) {
+            Picker(selection: $traitLevel.animation(Motion.resolved(Motion.list))) {
                 Text("None").tag(0)
                 ForEach((1...Matrix.levels).reversed(), id: \.self) { level in
                     Text(Self.levelTitle(level)).tag(level)
                 }
             } label: {
-                Label("Importance", systemImage: "exclamationmark.3")
+                SheetRowLabel("Importance", symbol: "exclamationmark", color: Tint.priority)
             }
-            Picker(selection: $traitEstimate) {
+            Picker(selection: $traitEstimate.animation(Motion.resolved(Motion.list))) {
                 Text("None").tag(-1.0)
                 Text("No estimate").tag(0.0)
                 ForEach(PowerHours.presets, id: \.self) { value in
                     Text(PowerHours.format(value)).tag(value)
                 }
             } label: {
-                Label("Power Hours", systemImage: "timer")
+                SheetRowLabel("Power Hours", symbol: "timer", color: Tint.powerHours)
             }
-            Picker(selection: $traitDueDays) {
+            Picker(selection: $traitDueDays.animation(Motion.resolved(Motion.list))) {
                 Text("None").tag(-1)
                 Text("Today").tag(0)
                 Text("Tomorrow").tag(1)
@@ -212,10 +246,10 @@ struct GroupEditorView: View {
                     Text("In \(days) days").tag(days)
                 }
             } label: {
-                Label("Deadline", systemImage: "calendar")
+                SheetRowLabel("Deadline", symbol: "calendar", color: Tint.deadline)
             }
             HStack {
-                Label("Tags", systemImage: "number")
+                SheetRowLabel("Tags", symbol: "number")
                 TextField("e.g. work, calls", text: $traitTags)
                     .multilineTextAlignment(.trailing)
                     #if os(iOS)
@@ -226,22 +260,66 @@ struct GroupEditorView: View {
             if let parent = groups.first(where: { $0.uuid == parentID }) {
                 let inherited = app.store.traits(of: parent)
                 if !inherited.isEmpty {
-                    Label("Inherits from \(parent.displayName): " + inherited.summary.joined(separator: " · "), systemImage: "arrow.turn.down.right")
-                        .theoFont(.caption)
-                        .foregroundStyle(.secondary)
+                    Label {
+                        Text("Inherits from \(parent.displayName): " + inherited.summary.joined(separator: " · "))
+                    } icon: {
+                        SheetRowIcon("arrow.turn.down.right")
+                    }
+                    .theoFont(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             if let existing, !existing.liveTasks.filter({ !$0.isDone }).isEmpty, !currentTraits.isEmpty {
                 Button {
                     applyToExisting(existing)
                 } label: {
-                    Label("Apply to the \(existing.liveTasks.filter { !$0.isDone }.count) Open Tasks Here", systemImage: "wand.and.stars")
+                    SheetRowLabel("Apply to the \(existing.liveTasks.filter { !$0.isDone }.count) Open Tasks Here", action: "wand.and.stars")
                 }
             }
         } header: {
             Text("Tasks Placed Here Get")
         } footer: {
             Text("New and moved tasks take these where they have nothing of their own. Where a task already has something else, it shows a suggestion instead and keeps its own. Subgroups inherit these unless they set their own.")
+        }
+    }
+
+    private var projectSection: some View {
+        Section {
+            Toggle(isOn: $isProject.animation(Motion.resolved(Motion.list))) {
+                SheetRowLabel("Project", symbol: "chart.bar.fill")
+            }
+            if isProject {
+                Toggle(isOn: $hasDue.animation(Motion.resolved(Motion.list))) {
+                    SheetRowLabel("Deadline", symbol: "calendar", color: Tint.deadline)
+                }
+                if hasDue {
+                    DatePicker(selection: $due, displayedComponents: [.date]) {
+                        SheetRowLabel("Date")
+                    }
+                }
+            }
+            TextField("Notes", text: $notes, axis: .vertical)
+                .lineLimit(2...6)
+        } footer: {
+            Text("Projects show how far along they are, and an optional deadline.")
+        }
+    }
+
+    @ViewBuilder private var deleteSection: some View {
+        if let existing {
+            Section {
+                Button(role: .destructive) {
+                    dismiss()
+                    app.store.deleteGroup(existing, keepTasks: true)
+                    if app.selection == .group(existing.uuid) { app.go(.today) }
+                    let model = app
+                    model.show("Group deleted · tasks moved to Quick Entry", symbol: "trash.fill") {
+                        model.store.restoreGroup(existing)
+                    }
+                } label: {
+                    Label("Delete Group (Keep Tasks)", systemImage: "trash")
+                }
+            }
         }
     }
 

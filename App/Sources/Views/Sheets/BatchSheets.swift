@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// Move one or more tasks into a group (or back to Quick Entry).
+/// Move one or more tasks into a group (or back to Quick Entry). Each group shows its icon on a
+/// small disc in its colour, like the lists in Reminders.
 struct MoveSheet: View {
     let batch: TaskBatch
 
@@ -22,13 +23,23 @@ struct MoveSheet: View {
                             adds: traits(of: item.group).summary)
                             .padding(.leading, CGFloat(item.level) * 16)
                     }
+                } footer: {
+                    if groups.isEmpty {
+                        Text(batch.tasks.count == 1
+                            ? "No groups yet. Name one below and the task moves into it."
+                            : "No groups yet. Name one below and the tasks move into it.")
+                    }
                 }
                 Section("New Group") {
-                    HStack {
-                        TextField("Group name", text: $newGroupName)
-                            .onSubmit(createAndMove)
-                        Button("Create", action: createAndMove)
-                            .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Label {
+                        HStack {
+                            TextField("Group name", text: $newGroupName)
+                                .onSubmit(createAndMove)
+                            Button("Create", action: createAndMove)
+                                .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    } icon: {
+                        MoveSheetGroupDisc(symbol: "plus", color: .gray)
                     }
                 }
             }
@@ -54,7 +65,7 @@ struct MoveSheet: View {
         let current = batch.tasks.allSatisfy { $0.groupID == id }
         return Button {
             // app.move shows "Moved to …" with Undo.
-            withAnimation(.snappy) { app.move(batch.tasks, toGroup: id) }
+            Motion.animate(Motion.list) { app.move(batch.tasks, toGroup: id) }
             // On the Mac the list moves the selection on to the next line itself.
             #if os(iOS)
             app.endSelection()
@@ -72,16 +83,19 @@ struct MoveSheet: View {
                         }
                     }
                 } icon: {
-                    Image(systemName: symbol).foregroundStyle(color)
+                    MoveSheetGroupDisc(symbol: symbol, color: color)
                 }
                 Spacer()
                 if current {
-                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.tint)
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(current ? .isSelected : [])
     }
 
     /// A group's traits with what it inherits from the groups it sits in (like
@@ -102,7 +116,7 @@ struct MoveSheet: View {
         let name = newGroupName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
         let group = app.store.addGroup(name: name, symbol: "list.bullet", color: TheoColor.forTag(name.lowercased()))
-        withAnimation(.snappy) { app.move(batch.tasks, toGroup: group.uuid) }
+        Motion.animate(Motion.list) { app.move(batch.tasks, toGroup: group.uuid) }
         #if os(iOS)
         app.endSelection()
         #endif
@@ -110,7 +124,29 @@ struct MoveSheet: View {
     }
 }
 
-/// Deadline picker with quick choices.
+/// A group's icon in white on a small disc in its colour.
+private struct MoveSheetGroupDisc: View {
+    let symbol: String
+    let color: Color
+
+    #if os(macOS)
+    @Environment(\.textScale) private var textScale
+    private var size: CGFloat { 20 * textScale }
+    #else
+    @ScaledMetric(relativeTo: .body) private var size: CGFloat = 28
+    #endif
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.46, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(Circle().fill(color.gradient))
+            .accessibilityHidden(true)
+    }
+}
+
+/// Deadline picker with quick choices. Blue, the deadline's colour everywhere.
 struct DateSheet: View {
     let batch: TaskBatch
 
@@ -126,26 +162,29 @@ struct DateSheet: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(QuickDate.allCases) { quick in
-                                ChipButton(title: quick.title, symbol: quick.symbol, isOn: false) {
-                                    apply(quick.date(from: app.dayStart), time: false)
+                                let day = quick.date(from: app.dayStart)
+                                ChipButton(title: quick.title, symbol: quick.symbol, color: Tint.deadline, isOn: allDue(on: day)) {
+                                    apply(day, time: false)
                                 }
                             }
                         }
                     }
+                    .scrollClipDisabled()
                     .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
                 }
                 Section {
                     DatePicker("Date", selection: $date, displayedComponents: withTime ? [.date, .hourAndMinute] : [.date])
                         .datePickerStyle(.graphical)
-                    Toggle(isOn: $withTime) {
-                        Label("Include Time", systemImage: "clock")
+                        .tint(Tint.deadline)
+                    Toggle(isOn: $withTime.animation(Motion.resolved(Motion.list))) {
+                        SheetRowLabel("Include Time", symbol: "clock", color: Tint.deadline)
                     }
                 }
                 if batch.tasks.contains(where: { $0.dueDate != nil }) {
                     Section {
                         Button(role: .destructive) {
                             // The selection stays, so more changes can follow.
-                            app.store.setDue(batch.tasks, nil)
+                            Motion.animate(Motion.list) { app.store.setDue(batch.tasks, nil) }
                             dismiss()
                         } label: {
                             Label("Remove Deadline", systemImage: "calendar.badge.minus")
@@ -182,8 +221,16 @@ struct DateSheet: View {
         #endif
     }
 
+    /// Every task is already due that day: its chip shows it.
+    private func allDue(on day: Date) -> Bool {
+        guard !batch.tasks.isEmpty else { return false }
+        return batch.tasks.allSatisfy { task in
+            task.dueDate.map { Calendar.current.isDate($0, inSameDayAs: day) } ?? false
+        }
+    }
+
     private func apply(_ date: Date, time: Bool) {
-        app.store.setDue(batch.tasks, date, hasTime: time)
+        Motion.animate(Motion.list) { app.store.setDue(batch.tasks, date, hasTime: time) }
         dismiss()
     }
 }
@@ -197,6 +244,8 @@ struct TagSheet: View {
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
     private var openTasks: [TaskItem]
     @State private var newTag = ""
+    /// Counts tag taps, for the iPhone's selection tick.
+    @State private var pickTick = 0
 
     var body: some View {
         let known = Sections.tags(in: openTasks)
@@ -215,25 +264,23 @@ struct TagSheet: View {
                             .disabled(Tags.clean(newTag).isEmpty)
                     }
                 }
-                if !known.isEmpty {
+                if known.isEmpty {
+                    Section {
+                        EmptyHint(symbol: "number", title: "No tags yet",
+                                  message: "Add one above. The tags on your open tasks show up here, one tap to add or remove.")
+                            .listRowBackground(Color.clear)
+                    }
+                } else {
                     Section("Tags") {
                         ForEach(known, id: \.self) { tag in
-                            let all = batch.tasks.allSatisfy { $0.tags.contains(tag) }
-                            Button {
-                                toggle(tag, on: !all)
-                            } label: {
-                                HStack {
-                                    TagChip(tag: tag, compact: false)
-                                    Spacer()
-                                    if all { Image(systemName: "checkmark").foregroundStyle(.tint) }
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                            tagRow(tag)
                         }
                     }
                 }
             }
+            #if os(iOS)
+            .sensoryFeedback(.selection, trigger: pickTick)
+            #endif
             .navigationTitle("Tags")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -254,10 +301,33 @@ struct TagSheet: View {
         #endif
     }
 
+    /// A tag in its colour, with a check when every task has it. A tap adds or removes it.
+    private func tagRow(_ tag: String) -> some View {
+        let all = batch.tasks.allSatisfy { $0.tags.contains(tag) }
+        return Button {
+            pickTick += 1
+            Motion.animate(Motion.tap) { toggle(tag, on: !all) }
+        } label: {
+            HStack {
+                TagChip(tag: tag, compact: false)
+                Spacer()
+                if all {
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.tint)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(all ? .isSelected : [])
+    }
+
     private func addNew() {
         let tag = Tags.clean(newTag)
         guard !tag.isEmpty else { return }
-        toggle(tag, on: true)
+        Motion.animate(Motion.list) { toggle(tag, on: true) }
         newTag = ""
     }
 
