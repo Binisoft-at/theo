@@ -204,7 +204,6 @@ struct TaskListView<Header: View>: View {
 
     // MARK: - Rows
 
-    @ViewBuilder
     /// One row with its frame tracking, drop lines and (on the Mac) the hover insert zone.
     /// A function of its own, with small typed steps, so the type checker stays fast.
     private func decoratedRow(_ row: ListRow) -> some View {
@@ -245,6 +244,7 @@ struct TaskListView<Header: View>: View {
         #endif
     }
 
+    @ViewBuilder
     private func rowView(_ row: ListRow) -> some View {
         switch row {
         case .header(let info):
