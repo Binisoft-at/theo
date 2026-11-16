@@ -147,6 +147,8 @@ struct TutorialStage: View {
         }
         .onChange(of: index) { _, _ in
             applyGrouping()
+            // The steps after the Plan ones happen on the practice page again.
+            if !Self.planSteps.contains(step.id), app.selection == SidebarItem.plan { closePlan() }
         }
     }
 

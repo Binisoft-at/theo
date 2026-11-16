@@ -268,7 +268,7 @@ struct TheoCommands: Commands {
                 #if os(macOS)
                 if isEditingText {
                     // ⌘⌫ while typing deletes back to the start of the line, as everywhere on the Mac.
-                    _ = NSApp.sendAction(#selector(NSResponder.deleteToBeginningOfLine(_:)), to: nil, from: nil)
+                    _ = NSApp.sendAction(#selector(NSStandardKeyBindingResponding.deleteToBeginningOfLine(_:)), to: nil, from: nil)
                     return
                 }
                 #endif

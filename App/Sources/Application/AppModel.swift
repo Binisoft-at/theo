@@ -248,6 +248,8 @@ final class AppModel {
     var todayKey: Date { Calendar.current.startOfDay(for: dayStart) }
 
     func plan(_ tasks: [TaskItem], for day: Date?) {
+        // Nothing selected (⌥⌘D, ⌥⌘L): no "0 planned" message.
+        guard !tasks.isEmpty else { return }
         // The store plans whole blocks (subtasks too) and starts or ends each line's run of
         // plans, so Undo puts back both values for every line it can touch. Old ongoing logs
         // inside a block keep their day, unless one was passed in itself.
@@ -343,6 +345,7 @@ final class AppModel {
     /// Files tasks under another group, with Undo. Arriving there can add the group's traits
     /// (importance, PH, tags, a deadline) and a suggestion; Undo takes those back too.
     func move(_ tasks: [TaskItem], toGroup groupID: UUID?) {
+        guard !tasks.isEmpty else { return }
         var seen = Set<ObjectIdentifier>()
         var before: [MoveSnapshot] = []
         for task in tasks {
@@ -481,7 +484,8 @@ final class AppModel {
 
     /// The open task planned for today that ranks first (a top-level line when there is one).
     private func topTaskPlannedToday() -> TaskItem? {
-        let planned = store.liveTasks().filter { !$0.isDone && $0.isPlanned(for: dayStart) }
+        // Today leaves out switched-off groups, so the pick does too.
+        let planned = store.liveTasks().activeOnly(store.liveGroups()).filter { !$0.isDone && $0.isPlanned(for: dayStart) }
         let roots = planned.filter { $0.indent == 0 }
         let candidates = roots.isEmpty ? planned : roots
         return candidates.min { a, b in

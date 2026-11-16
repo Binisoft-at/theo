@@ -65,7 +65,9 @@ struct TaskListView<Header: View>: View {
                     #if os(macOS)
                     // Near a divider it lights up with a + tab; a click on the tab adds a task (or
                     // subtask) right there. A click anywhere else on the row still selects it.
-                    .modifier(HoverInsertZone(leading: Self.lineLeading(row), offersTop: rows.first?.id == row.id) { edge in
+                    // Only a task as the first row offers its top edge: above a heading there's
+                    // no section for a new line to join.
+                    .modifier(HoverInsertZone(leading: Self.lineLeading(row), offersTop: row.task != nil && rows.first?.id == row.id) { edge in
                         if edge == .top {
                             insertTask(between: (above: rowBefore(row), below: row), entry: nil)
                         } else {
@@ -1000,6 +1002,9 @@ struct TaskListView<Header: View>: View {
             new = app.store.insertSibling(after: aboveTask, title: title)
             if Self.depth(of: point.above) != Self.depth(of: point.below) { neighbours.below = nil }
         } else if case .header(let info)? = point.above, info.kind.acceptsTasks {
+            // A blank line has to show to be typed into (and to be dropped again when left
+            // empty): a folded section opens first.
+            if entry == nil && info.isCollapsed { toggleCollapse(info) }
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: info.kind.groupID, placement: .top)
         } else if let belowTask {
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: belowTask.groupID, placement: .top)

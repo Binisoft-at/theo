@@ -54,6 +54,8 @@ struct RootView: View {
             Tab("Overview", systemImage: "chart.pie", value: PhoneTab.overview) {
                 NavigationStack {
                     OverviewView()
+                        // Back from a page pushed here: the Overview is in front again.
+                        .onAppear { if app.phoneTab == .overview { app.selection = .overview } }
                         .navigationDestination(for: SidebarItem.self) { item in
                             DetailRouter(selection: item, dayStart: app.dayStart)
                                 .onAppear { app.selection = item }
@@ -166,6 +168,9 @@ struct RootView: View {
         .onAppear {
             // Shake to undo / ⌘Z for every change, not just text.
             app.container.mainContext.undoManager = undoManager
+            // A Find… from while no window was open would otherwise stay set, and the next ⌘F
+            // would change nothing.
+            app.wantsSearchFocus = false
         }
         .onChange(of: undoManager) { _, manager in
             app.container.mainContext.undoManager = manager

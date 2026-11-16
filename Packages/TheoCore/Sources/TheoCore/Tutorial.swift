@@ -36,7 +36,7 @@ public struct TutorialSnapshot: Equatable, Sendable {
     public var deletedCount = 0
     public var groupCount = 0
     public var collapsedCount = 0
-    /// Open task IDs in page order.
+    /// Open task IDs in the order the page ranks them.
     public var order: [String] = []
     public var detailsOpen = false
     public var estimateSum = 0.0
