@@ -36,6 +36,8 @@ packages:
     path: Packages/TheoCore
 
 # One source tree (App/Sources + Shared) for iPhone/iPad and Mac; the watch app shares Shared/.
+# The widgets' views (Widgets/Sources/Views) are also built into both apps, for the widget
+# gallery (-TheoWidgetGallery) that screenshots them without a device.
 targets:
   Theo:
     type: application
@@ -44,9 +46,11 @@ targets:
       - path: App/Sources
       - path: App/Resources
       - path: Shared
+      - path: Widgets/Sources/Views
     dependencies:
       - package: TheoCore
       - target: TheoWatch
+      - target: TheoWidgets
     settings:
       base:
         PRODUCT_NAME: Theo
@@ -67,8 +71,10 @@ targets:
       - path: App/Sources
       - path: App/Resources
       - path: Shared
+      - path: Widgets/Sources/Views
     dependencies:
       - package: TheoCore
+      - target: TheoMacWidgets
     settings:
       base:
         PRODUCT_NAME: Theo
@@ -92,6 +98,7 @@ targets:
       - path: Shared
     dependencies:
       - package: TheoCore
+      - target: TheoWatchWidgets
     settings:
       base:
         PRODUCT_NAME: TheoWatch
@@ -102,3 +109,62 @@ targets:
         SKIP_INSTALL: YES
     scheme:
       testTargets: []
+
+  # Widgets read a small snapshot (Shared/Logic/WidgetSnapshot.swift) that the apps write into
+  # the shared App Group; the task store itself stays in Theo's own container. Each extension is
+  # embedded in its app ("Embed Foundation Extensions"), so the existing schemes build and
+  # archive it. No TheoCore: the snapshot carries everything they show.
+
+  # Home Screen, Lock Screen and the Control Center button (iPhone, iPad).
+  TheoWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Widgets/Sources/Views
+      - path: Widgets/Sources/Extension
+      - path: Shared/Logic/WidgetSnapshot.swift
+    settings:
+      base:
+        PRODUCT_NAME: TheoWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(WIDGETS_BUNDLE_ID)
+        INFOPLIST_FILE: Config/iOS/TheoWidgets-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/iOS/TheoWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+
+  # Mac desktop and Notification Center widgets.
+  TheoMacWidgets:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Widgets/Sources/Views
+      - path: Widgets/Sources/Extension
+      - path: Shared/Logic/WidgetSnapshot.swift
+    settings:
+      base:
+        PRODUCT_NAME: TheoWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(WIDGETS_BUNDLE_ID)
+        INFOPLIST_FILE: Config/macOS/TheoWidgets-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/macOS/TheoWidgets.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        SKIP_INSTALL: YES
+
+  # Watch complications, embedded in the watch app.
+  TheoWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: WatchWidgets/Sources
+      - path: Widgets/Sources/Views
+      - path: Shared/Logic/WidgetSnapshot.swift
+    settings:
+      base:
+        PRODUCT_NAME: TheoWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(WATCH_WIDGETS_BUNDLE_ID)
+        INFOPLIST_FILE: Config/watchOS/TheoWatchWidgets-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/watchOS/TheoWatchWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES

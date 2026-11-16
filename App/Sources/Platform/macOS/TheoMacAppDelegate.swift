@@ -98,9 +98,11 @@ final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    /// The Dock is already about Theo, so this opens its window with the cursor in the bar at
+    /// the bottom, whatever the Quick Add shortcut opens.
     @objc private func dockNewTask() {
         MainActor.assumeIsolated {
-            GlobalHotKey.fire()
+            GlobalHotKey.focusComposer()
         }
     }
 

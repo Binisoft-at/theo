@@ -2,9 +2,10 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// The key combination that brings Theo forward with the cursor in the bar at the bottom, from
-/// any app (Settings → Quick Add from any app). Stored per Mac. Never ⌃⌥Space: that's the
-/// system's "next input source" shortcut, used by anyone typing in two languages.
+/// The key combination for Quick Add from any app (Settings → Quick Add from any app): the
+/// floating panel, or Theo forward with the cursor in the bar at the bottom (`HotKeyTarget`).
+/// Stored per Mac. Never ⌃⌥Space: that's the system's "next input source" shortcut, used by
+/// anyone typing in two languages.
 enum HotKeyChoice: String, CaseIterable, Identifiable {
     case ctrlOptCmdN, ctrlOptCmdT, optShiftSpace, off
 
@@ -48,9 +49,37 @@ enum HotKeyChoice: String, CaseIterable, Identifiable {
     }
 }
 
+/// What the Quick Add shortcut opens (Settings → Quick Add → Opens). Stored per Mac.
+enum HotKeyTarget: String, CaseIterable, Identifiable {
+    /// A small panel in front of the app you're in (`QuickAddPanel`); Theo stays behind.
+    case panel
+    /// Theo to the front with the cursor in the bar at the bottom (before v8).
+    case window
+
+    /// UserDefaults key (this Mac only).
+    static let preferenceKey = "hotkey.target"
+    static let standard: HotKeyTarget = .panel
+
+    /// The stored choice, or the standard one.
+    static var stored: HotKeyTarget {
+        UserDefaults.standard.string(forKey: preferenceKey).flatMap(HotKeyTarget.init(rawValue:)) ?? standard
+    }
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .panel: "Floating panel"
+        case .window: "Theo's window"
+        }
+    }
+}
+
 /// A system-wide shortcut through Carbon's `RegisterEventHotKey`: it works inside the sandbox
-/// and needs no Accessibility permission. Pressing it activates Theo, opens the main window if
-/// it's closed, and puts the cursor in the composer (the same as ⌘N inside Theo).
+/// and needs no Accessibility permission. Pressing it opens the floating Quick Add panel (again,
+/// it closes it), or with Settings → Quick Add → Opens on "Theo's window", activates Theo, opens
+/// the main window if it's closed, and puts the cursor in the composer (the same as ⌘N inside
+/// Theo).
 @MainActor
 final class GlobalHotKey {
     static let shared = GlobalHotKey()
@@ -104,8 +133,19 @@ final class GlobalHotKey {
         }
     }
 
-    /// Theo to the front with the cursor in the composer. Also the Dock menu's "New Task".
+    /// The shortcut was pressed: the floating panel (pressed again, it closes), or Theo's
+    /// window, as Settings → Quick Add → Opens says.
     static func fire() {
+        switch HotKeyTarget.stored {
+        case .panel:
+            QuickAddPanel.shared.toggle()
+        case .window:
+            focusComposer()
+        }
+    }
+
+    /// Theo to the front with the cursor in the composer. Also the Dock menu's "New Task".
+    static func focusComposer() {
         let wasVisible = MainWindow.isVisible
         // Activates Theo, and opens the main window when none is showing.
         MainWindow.reopen()

@@ -45,7 +45,7 @@ struct AddTaskIntent: AppIntent {
         guard let first = lines.first else { throw TheoIntentError.nothingToAdd }
         let store = app.store
         let groups = store.liveGroups()
-        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
+        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName, parentID: $0.parentUUID) }
         var entry = QuickParser.parse(first, groups: refs, now: today)
         guard !entry.title.isEmpty else { throw TheoIntentError.nothingToAdd }
         let more = lines.dropFirst().joined(separator: "\n")

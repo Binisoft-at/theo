@@ -6,6 +6,9 @@ import TheoCore
 ///
 /// - Typed shortcuts: `!!`, `#tag`, `@group` and natural dates ("morgen 9 Uhr", "bis Freitag"),
 ///   previewed as chips. A chip shows which words it took; × or "No Deadline" puts them back.
+/// - While an `@group` or `#tag` is typed, matching groups (with their path) or tags take the
+///   chips' place; a tap puts the full word in ("@Work/Admin "). On the Mac ↓ ↑ pick one, Tab or
+///   Return take it, Esc hides them.
 /// - Buttons above the field set priority, deadline and group without typing.
 /// - A leading "- " files the line as a subtask of the task added just before.
 /// - Pasting several lines adds several tasks and keeps their indentation as subtasks.
@@ -42,6 +45,10 @@ struct QuickEntryBar: View {
     @State private var lastParent: TaskItem?
     @State private var confirmation: Confirmation?
     @State private var addedCount = 0
+    /// The `@group` / `#tag` pick Tab or Return takes on the Mac (a position in the strip).
+    @State private var highlight = 0
+    /// Esc hid the picks for exactly this text; typing on brings them back.
+    @State private var suggestionsHiddenFor: String?
     @FocusState private var focused: Bool
 
     enum DueChoice: Equatable {
@@ -78,8 +85,12 @@ struct QuickEntryBar: View {
 
     private var options: QuickParser.Options { QuickParser.Options.all.subtracting(disabled) }
 
+    /// In page order (each subgroup after its parent) and with parents, so "@Work/Admin" finds
+    /// the subgroup. The picks above the field come from the same list, so a pick files where it says.
     private var groupRefs: [QuickParser.GroupRef] {
-        groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
+        GroupTree.ordered(groups).map { item in
+            QuickParser.GroupRef(id: item.group.uuid, name: item.group.displayName, parentID: item.group.parentUUID)
+        }
     }
 
     /// The same test `add()` uses to tell a pasted list from one line.
@@ -192,7 +203,7 @@ struct QuickEntryBar: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if focused {
-                controls
+                aboveField
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             field
@@ -234,6 +245,9 @@ struct QuickEntryBar: View {
                 disabled = []
                 subtaskOff = false
             }
+            // Each letter typed ranks the picks anew: the best one is highlighted again.
+            highlight = 0
+            if suggestionsHiddenFor != newValue { suggestionsHiddenFor = nil }
             // Return in the multi-line field arrives as a trailing line break.
             if newValue.hasSuffix("\n") {
                 text = String(newValue.dropLast())
@@ -253,6 +267,13 @@ struct QuickEntryBar: View {
                 .onSubmit(add)
                 #if os(iOS)
                 .submitLabel(.done)
+                #elseif os(macOS)
+                // While the @group / #tag picks show: ↓ ↑ move, Tab or Return take one, Esc hides them.
+                .onKeyPress(.downArrow) { moveHighlight(by: 1) }
+                .onKeyPress(.upArrow) { moveHighlight(by: -1) }
+                .onKeyPress(.tab, phases: .down) { press in acceptHighlighted(press, isReturn: false) }
+                .onKeyPress(.return, phases: .down) { press in acceptHighlighted(press, isReturn: true) }
+                .onKeyPress(.escape) { hideSuggestions() }
                 #endif
             matrixHandle
             if !text.isEmpty {
@@ -275,6 +296,123 @@ struct QuickEntryBar: View {
         .padding(.vertical, 11)
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
     }
+
+    /// While an `@group` or `#tag` is typed, the picks for it take the chips' place.
+    @ViewBuilder
+    private var aboveField: some View {
+        let items = suggestions
+        if items.isEmpty {
+            controls
+        } else {
+            ComposerSuggestionStrip(items: items, highlightedID: highlightedID(in: items)) { item in
+                accept(item)
+            }
+        }
+    }
+
+    // MARK: - @group and #tag picks
+
+    /// What the strip above the field offers for the `@group` or `#tag` being typed (up to 6).
+    private var suggestions: [ComposerSuggestion] {
+        guard focused, suggestionsHiddenFor != text, let token = TokenCompletion.activeToken(in: text) else { return [] }
+        switch token.kind {
+        case .group:
+            // A "- " subtask goes under its parent, whatever group is typed.
+            return subtaskParent == nil ? groupSuggestions(token.prefix) : []
+        case .tag:
+            return tagSuggestions(token.prefix)
+        }
+    }
+
+    /// Groups with their colour and path ("Work › Admin"); switched-off ones dimmed.
+    private func groupSuggestions(_ query: String) -> [ComposerSuggestion] {
+        let off = GroupTree.inactiveIDs(groups)
+        let matches = TokenCompletion.groups(matching: query, in: groupRefs)
+        return matches.compactMap { match -> ComposerSuggestion? in
+            guard let group = groups.first(where: { $0.uuid == match.id }) else { return nil }
+            return ComposerSuggestion(
+                id: "g-" + group.uuid.uuidString,
+                title: match.path.joined(separator: " › "),
+                insertion: match.insertion,
+                color: group.color.color,
+                isGroup: true,
+                count: nil,
+                dimmed: off.contains(group.uuid)
+            )
+        }
+    }
+
+    /// Tags of the open tasks, with how many have each.
+    private func tagSuggestions(_ query: String) -> [ComposerSuggestion] {
+        let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false })
+        let openTasks = (try? app.store.context.fetch(descriptor)) ?? []
+        let counts = TokenCompletion.tagCounts(openTasks.map { $0.tags })
+        return TokenCompletion.tags(matching: query, counts: counts).map { found in
+            ComposerSuggestion(
+                id: "t-" + found.tag,
+                title: "#" + found.tag,
+                insertion: found.insertion,
+                color: TheoColor.forTag(found.tag).color,
+                isGroup: false,
+                count: found.count,
+                dimmed: false
+            )
+        }
+    }
+
+    /// The pick Tab or Return takes; only the Mac has one.
+    private func highlightedID(in items: [ComposerSuggestion]) -> String? {
+        #if os(macOS)
+        guard !items.isEmpty else { return nil }
+        return items[min(max(highlight, 0), items.count - 1)].id
+        #else
+        return nil
+        #endif
+    }
+
+    /// Puts the pick in place of the word being typed ("@wo" → "@Work/Admin ") and keeps typing.
+    private func accept(_ item: ComposerSuggestion) {
+        text = TokenCompletion.complete(text, with: item.insertion)
+        if item.isGroup {
+            // A group picked here wins over one chosen on the group chip.
+            disabled.remove(.group)
+            groupChoice = .fromText
+        } else {
+            disabled.remove(.tags)
+        }
+        highlight = 0
+        focused = true
+    }
+
+    #if os(macOS)
+    /// ↓ / ↑ move the highlight through the picks (and round again).
+    private func moveHighlight(by step: Int) -> KeyPress.Result {
+        let count = suggestions.count
+        guard count > 0 else { return .ignored }
+        let current = min(max(highlight, 0), count - 1)
+        highlight = (current + step + count) % count
+        return .handled
+    }
+
+    /// Tab or Return take the highlighted pick while the strip shows. Return adds the task as
+    /// always when there's no strip, when the word is typed in full already ("@home" for Home),
+    /// or with ⇧, ⌥, ⌘ or ⌃ held.
+    private func acceptHighlighted(_ press: KeyPress, isReturn: Bool) -> KeyPress.Result {
+        guard press.modifiers.isDisjoint(with: [.shift, .option, .command, .control]) else { return .ignored }
+        let items = suggestions
+        guard let id = highlightedID(in: items), let item = items.first(where: { $0.id == id }) else { return .ignored }
+        if isReturn && TokenCompletion.isTyped(item.insertion, in: text) { return .ignored }
+        accept(item)
+        return .handled
+    }
+
+    /// Esc hides the picks until the text changes.
+    private func hideSuggestions() -> KeyPress.Result {
+        guard !suggestions.isEmpty else { return .ignored }
+        suggestionsHiddenFor = text
+        return .handled
+    }
+    #endif
 
     /// One-tap priority, deadline, group and subtask, plus what was understood from the text.
     private var controls: some View {
@@ -886,5 +1024,94 @@ struct QuickEntryBar: View {
         withAnimation(.snappy) { app.store.purge(confirmation.tasks) }
         if let lastParent, confirmation.tasks.contains(where: { $0 === lastParent }) { self.lastParent = nil }
         self.confirmation = nil
+    }
+}
+
+/// One pick above the composer: a group (its colour and path) or a tag (how many open tasks
+/// have it).
+private struct ComposerSuggestion: Identifiable {
+    let id: String
+    /// "Work › Admin" or "#invoices".
+    let title: String
+    /// What replaces the word being typed: "@Work/Admin", "#invoices".
+    let insertion: String
+    let color: Color
+    let isGroup: Bool
+    /// Open tasks with the tag.
+    let count: Int?
+    /// A switched-off group.
+    let dimmed: Bool
+
+    var accessibilityText: String {
+        if isGroup { return dimmed ? title + ", switched off" : title }
+        let tasks = count == 1 ? "1 open task" : "\(count ?? 0) open tasks"
+        return title + ", " + tasks
+    }
+}
+
+/// The `@group` / `#tag` picks while one is typed: a tap puts it in the text. Scrolls sideways
+/// when there's no room; on the Mac the highlighted one is what Tab or Return takes.
+private struct ComposerSuggestionStrip: View {
+    let items: [ComposerSuggestion]
+    let highlightedID: String?
+    let onPick: (ComposerSuggestion) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(items) { item in
+                    pickButton(item)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+        }
+        .scrollClipDisabled()
+    }
+
+    private func pickButton(_ item: ComposerSuggestion) -> some View {
+        Button {
+            onPick(item)
+        } label: {
+            ComposerSuggestionLabel(item: item, highlighted: item.id == highlightedID)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.accessibilityText)
+        .accessibilityHint(item.isGroup ? "Files the task in this group" : "Adds this tag")
+    }
+}
+
+/// A capsule like the chips: colour dot and path for a group, the tag and its count for a tag.
+private struct ComposerSuggestionLabel: View {
+    let item: ComposerSuggestion
+    let highlighted: Bool
+
+    var body: some View {
+        let glass: Glass = highlighted ? Glass.regular.tint(Color.accentColor.opacity(0.25)).interactive() : Glass.regular.interactive()
+        let ring: Color = highlighted ? Color.accentColor.opacity(0.7) : Color.clear
+        return HStack(spacing: 5) {
+            if item.isGroup {
+                Circle()
+                    .fill(item.color)
+                    .frame(width: 8, height: 8)
+            }
+            Text(item.title)
+                .lineLimit(1)
+                .foregroundStyle(item.isGroup ? Color.primary : item.color)
+            if let count = item.count {
+                Text("\(count)")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption.weight(.semibold))
+        .opacity(item.dimmed ? 0.5 : 1)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .glassEffect(glass, in: .capsule)
+        .overlay {
+            Capsule()
+                .strokeBorder(ring, lineWidth: 1.5)
+        }
+        .contentShape(Capsule())
     }
 }

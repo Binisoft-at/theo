@@ -29,6 +29,7 @@ struct SettingsView: View {
     @AppStorage("badge.mode") private var badgeMode = "off"
     #if os(macOS)
     @AppStorage(HotKeyChoice.preferenceKey) private var hotKeyRaw = HotKeyChoice.standard.rawValue
+    @AppStorage(HotKeyTarget.preferenceKey) private var hotKeyTargetRaw = HotKeyTarget.standard.rawValue
     #endif
     @State private var restoreCandidate: URL?
     @State private var pickBackupFile = false
@@ -126,10 +127,16 @@ struct SettingsView: View {
                         Text(choice.title).tag(choice.rawValue)
                     }
                 }
+                Picker("Opens", selection: $hotKeyTargetRaw) {
+                    ForEach(HotKeyTarget.allCases) { target in
+                        Text(target.title).tag(target.rawValue)
+                    }
+                }
+                .disabled(hotKeyRaw == HotKeyChoice.off.rawValue)
             } header: {
                 Text("Quick Add")
             } footer: {
-                Text("Press it in any app: Theo comes to the front with the cursor in the bar at the bottom, ready for a new task. The menu bar icon works too.")
+                Text(quickAddFooter)
             }
             #endif
 
@@ -365,6 +372,16 @@ struct SettingsView: View {
         .frame(minHeight: 560)
         #endif
     }
+
+    #if os(macOS)
+    /// What the Quick Add shortcut does, for the setting picked.
+    private var quickAddFooter: String {
+        if HotKeyTarget(rawValue: hotKeyTargetRaw) == .window {
+            return "Press it in any app: Theo comes to the front with the cursor in the bar at the bottom, ready for a new task. The menu bar icon works too."
+        }
+        return "Press it in any app: a small panel opens in front of it, and Theo stays in the background. Return adds the task, ⇧Return adds it and keeps the panel open for the next one, Esc closes it. Pasted lines become one task each. The menu bar icon works too."
+    }
+    #endif
 
     /// What Settings says instead of the sync status while tasks aren't stored the normal way.
     private var storageStatus: String? {

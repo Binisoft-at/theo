@@ -46,6 +46,7 @@ struct SidebarView: View {
                         NavigationLink(value: SidebarItem.group(group.uuid)) {
                             SidebarRow(title: group.displayName, symbol: group.symbol, color: group.color.color,
                                        count: allOpen.filter { $0.groupID == group.uuid }.count)
+                                .modifier(taskDrop(on: .group(group.uuid)))
                         }
                         .contextMenu {
                             Button {
@@ -67,9 +68,11 @@ struct SidebarView: View {
                 if showsDayPages {
                     NavigationLink(value: SidebarItem.today) {
                         SidebarRow(title: "Today", symbol: "sun.max.fill", color: .orange, count: todayCount, shortcut: "⌘1")
+                            .modifier(taskDrop(on: .today))
                     }
                     NavigationLink(value: SidebarItem.plan) {
                         SidebarRow(title: "Plan", symbol: "calendar.badge.plus", color: .indigo, count: tomorrowCount, shortcut: "⌘2")
+                            .modifier(taskDrop(on: .plan))
                     }
                     // The number is what's planned for tomorrow.
                     .help("Planned for tomorrow")
@@ -90,6 +93,7 @@ struct SidebarView: View {
                 }
                 NavigationLink(value: SidebarItem.quickEntry) {
                     SidebarRow(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, count: quickCount, shortcut: "⌘5")
+                        .modifier(taskDrop(on: .quickEntry))
                 }
                 NavigationLink(value: SidebarItem.priority) {
                     SidebarRow(title: "Priority", symbol: "exclamationmark.3", color: .pink, count: priorityCount, shortcut: "⌘8")
@@ -118,6 +122,7 @@ struct SidebarView: View {
                                     .accessibilityLabel("Off")
                             }
                         }
+                        .modifier(taskDrop(on: .group(group.uuid)))
                     }
                     #if os(iOS)
                     .swipeActions(edge: .leading) {
@@ -318,6 +323,55 @@ extension SidebarView {
             List(selection: selection, content: content)
         } else {
             List(content: content)
+        }
+    }
+
+    /// A row that takes tasks dragged from the list beside it (Mac and iPad; see `TaskDrag`).
+    /// The iPhone's Lists page has no list beside it, so its rows take none.
+    func taskDrop(on item: SidebarItem) -> TaskDropTarget {
+        let model = app
+        return TaskDropTarget(isEnabled: usesSelection, onDrop: { texts in
+            TaskDrag.drop(texts, on: item, app: model)
+        })
+    }
+}
+
+/// While tasks are dragged over a sidebar row, it lights up in the accent colour; dropped there,
+/// `onDrop` gets the dragged texts and says whether it took them.
+struct TaskDropTarget: ViewModifier {
+    let isEnabled: Bool
+    let onDrop: ([String]) -> Bool
+
+    @State private var isTargeted = false
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content
+                .contentShape(Rectangle())
+                .background { highlight }
+                .dropDestination(for: String.self, action: { texts, _ in
+                    onDrop(texts)
+                }, isTargeted: { targeted in
+                    withAnimation(.easeOut(duration: 0.12)) { isTargeted = targeted }
+                })
+        } else {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var highlight: some View {
+        if isTargeted {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color.accentColor.opacity(0.18))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Color.accentColor, lineWidth: 1.5)
+                }
+                .padding(.horizontal, -6)
+                .padding(.vertical, -3)
+                .transition(.opacity)
         }
     }
 }
