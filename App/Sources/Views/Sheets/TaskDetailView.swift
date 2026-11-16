@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import TheoCore
+#if os(iOS)
+import UIKit
+#endif
 
 /// Full editor for one task.
 struct TaskDetailView: View {
@@ -59,9 +62,24 @@ struct TaskDetailView: View {
             #else
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .overlay(alignment: .bottom) { phoneToast }
             #endif
         }
     }
+
+    #if os(iOS)
+    /// On iPhone the sheet covers the page's toast, so the Undo of a change made here
+    /// (plan chips, check-offs) shows inside the sheet too.
+    @ViewBuilder private var phoneToast: some View {
+        if UIDevice.current.userInterfaceIdiom == .phone, let toast = app.toast {
+            ToastView(toast: toast) {
+                withAnimation(.snappy) { app.toast = nil }
+            }
+            .padding(.bottom, 16)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+    #endif
 
     /// Every field of the task, editable in place.
     private var form: some View {
@@ -239,6 +257,9 @@ struct TaskDetailView: View {
     /// orange Today, indigo for later days, grey Off Plan. Every change has Undo.
     private var planSection: some View {
         let choice = planChoice
+        // On a Sunday next Monday is tomorrow: both chips are on then.
+        let nextWeekOn = choice == .nextWeek
+            || (choice == .tomorrow && Calendar.current.isDate(nextWeekKey, inSameDayAs: tomorrowKey))
         return Section {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -252,8 +273,8 @@ struct TaskDetailView: View {
                         picksDay = false
                         withAnimation(.snappy) { app.deferToTomorrow([task]) }
                     }
-                    ChipButton(title: QuickDate.nextWeek.title, symbol: QuickDate.nextWeek.symbol, color: .indigo, isOn: choice == .nextWeek) {
-                        guard choice != .nextWeek else { return }
+                    ChipButton(title: QuickDate.nextWeek.title, symbol: QuickDate.nextWeek.symbol, color: .indigo, isOn: nextWeekOn) {
+                        guard !nextWeekOn else { return }
                         picksDay = false
                         withAnimation(.snappy) { app.plan([task], for: nextWeekKey) }
                     }

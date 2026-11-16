@@ -44,8 +44,9 @@ struct MenuBarView: View {
     private static let shownBlocks = 10
 
     var body: some View {
-        let today = openTasks.activeOnly(groups).filter { PageBuilder.isOnToday($0, dayStart: app.dayStart) }
-        let tickedHere = ticked.filter { $0.deletedAt == nil && $0.isDone }
+        // `!isDone` too: the query can lag a moment behind a tick, and a line must not show twice.
+        let today = openTasks.activeOnly(groups).filter { !$0.isDone && PageBuilder.isOnToday($0, dayStart: app.dayStart) }
+        let tickedHere = ticked.filter { $0.modelContext != nil && !$0.isDeleted && $0.deletedAt == nil && $0.isDone }
         let all = blocks(today + tickedHere)
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
@@ -299,6 +300,8 @@ struct MenuBarView: View {
 
     /// A click on a title: Theo comes forward with the task selected and its details open.
     private func show(_ task: TaskItem) {
+        // Theo may have slept overnight: reveal picks Today or the group page by the current day.
+        app.refreshDay()
         let wasVisible = MainWindow.isVisible
         MainWindow.reopen()
         if wasVisible {
@@ -306,8 +309,13 @@ struct MenuBarView: View {
         } else {
             let model = app
             Task { @MainActor in
-                // A window that had to open needs a moment before its page can take the selection.
-                try? await Task.sleep(for: .milliseconds(500))
+                // A reopened window builds its pages first; the page change must reach them.
+                var waited = 0
+                while !MainWindow.isVisible && waited < 30 {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    waited += 1
+                }
+                try? await Task.sleep(for: .milliseconds(150))
                 model.reveal(task)
             }
         }
@@ -321,23 +329,33 @@ struct MenuBarView: View {
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom
         let task = withAnimation(.snappy) { app.store.addTask(entry, defaultGroupID: nil, placement: placement) }
-        // A global capture field: on today's plan unless the typed deadline is on a later day.
-        let planned = entry.due.map { DateText.dayDelta($0, today: app.dayStart) <= 0 } ?? true
+        // A global capture field: on today's plan unless the deadline is on a later day (read
+        // from the task, so a repeat's first date counts).
+        let planned = task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) <= 0 } ?? true
         if planned { app.store.plan([task], for: app.dayStart) }
         text = ""
         confirm(task, planned: planned)
     }
 
-    /// "Added to Work · due Friday" or "Added to Quick Entry · on today", for three seconds.
+    /// "Added to Work · due Friday · !!" (what was understood, read back from the task, as the
+    /// composer says it) plus "· on today" when it went on today's plan, for three seconds.
     private func confirm(_ task: TaskItem, planned: Bool) {
-        var parts = ["Added to " + (task.group.flatMap { $0.deletedAt == nil ? $0.displayName : nil } ?? "Quick Entry")]
-        if let due = task.dueDate {
-            parts.append("due " + DateText.due(due, hasTime: task.dueHasTime, today: app.dayStart))
-        }
-        if planned { parts.append("on today") }
+        let group = task.group.flatMap { $0.deletedAt == nil ? $0 : nil }
+        let understood = CaptureSummary.describe(
+            groupName: group?.displayName ?? "Quick Entry",
+            due: task.dueDate,
+            dueHasTime: task.dueHasTime,
+            today: app.dayStart,
+            priority: task.priority,
+            estimate: task.estimate,
+            defaultEstimate: app.store.traits(of: group).estimate ?? PowerHours.defaultForNewTasks,
+            recurrence: task.recurrence,
+            ongoing: task.isOngoing
+        )
+        let message = "Added to " + understood + (planned ? " · on today" : "")
         let id = UUID()
         confirmationID = id
-        withAnimation(.snappy) { confirmation = parts.joined(separator: " · ") }
+        withAnimation(.snappy) { confirmation = message }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(3))
             guard confirmationID == id else { return }

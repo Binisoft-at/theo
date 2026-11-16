@@ -452,11 +452,12 @@ struct MatrixPageView: View {
     }
 
     /// A dot was tapped (not dragged). Mac: picks it and shows it in the details column, with
-    /// its row selected in the list below; clicking it again lets go. iPhone and iPad: the
-    /// first tap picks it (bigger, titled), a second tap opens its details.
+    /// its row selected in the list below; clicking it again lets go. (A dot picked by a drag
+    /// or in the strip isn't shown yet, so a click shows it.) iPhone and iPad: the first tap
+    /// picks it (bigger, titled), a second tap opens its details.
     private func tapDot(_ task: TaskItem, listed: Set<String>) {
         #if os(macOS)
-        if selectedID == task.uuid {
+        if selectedID == task.uuid && app.selectedRowIDs.contains(task.rowID) {
             selectedID = nil
             if app.selectedRowIDs == [task.rowID] { app.selectedRowIDs = [] }
         } else {
