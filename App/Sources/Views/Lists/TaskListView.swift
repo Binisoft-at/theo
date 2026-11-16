@@ -48,33 +48,7 @@ struct TaskListView<Header: View>: View {
                 .listRowSeparator(.hidden)
                 .selectionDisabled()
             ForEach(rows) { row in
-                rowView(row)
-                    .onGeometryChange(for: CGRect.self) { proxy in
-                        proxy.frame(in: .global)
-                    } action: { frame in
-                        frames.byID[row.id] = frame
-                    }
-                    // A row scrolled out of view keeps no stale position for drops.
-                    .onDisappear { frames.byID[row.id] = nil }
-                    .overlay(alignment: .bottom) {
-                        if insertAfterID == row.id { InsertionLine(leading: Self.lineLeading(row), edge: .bottom) }
-                    }
-                    .overlay(alignment: .top) {
-                        if insertBeforeFirst && rows.first?.id == row.id { InsertionLine(leading: Self.lineLeading(row), edge: .top) }
-                    }
-                    #if os(macOS)
-                    // Near a divider it lights up with a + tab; a click on the tab adds a task (or
-                    // subtask) right there. A click anywhere else on the row still selects it.
-                    // Only a task as the first row offers its top edge: above a heading there's
-                    // no section for a new line to join.
-                    .modifier(HoverInsertZone(leading: Self.lineLeading(row), offersTop: row.task != nil && rows.first?.id == row.id) { edge in
-                        if edge == .top {
-                            insertTask(between: (above: rowBefore(row), below: row), entry: nil)
-                        } else {
-                            insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
-                        }
-                    })
-                    #endif
+                decoratedRow(row)
             }
             .onMove(perform: allowsReorder ? move : nil)
         }
@@ -231,6 +205,46 @@ struct TaskListView<Header: View>: View {
     // MARK: - Rows
 
     @ViewBuilder
+    /// One row with its frame tracking, drop lines and (on the Mac) the hover insert zone.
+    /// A function of its own, with small typed steps, so the type checker stays fast.
+    private func decoratedRow(_ row: ListRow) -> some View {
+        let leading: CGFloat = Self.lineLeading(row)
+        let isFirst: Bool = rows.first?.id == row.id
+        let linesBelow: Bool = insertAfterID == row.id
+        let linesAbove: Bool = insertBeforeFirst && isFirst
+        let tracked = rowView(row)
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .global)
+            } action: { frame in
+                frames.byID[row.id] = frame
+            }
+            // A row scrolled out of view keeps no stale position for drops.
+            .onDisappear { frames.byID[row.id] = nil }
+        let lined = tracked
+            .overlay(alignment: .bottom) {
+                if linesBelow { InsertionLine(leading: leading, edge: .bottom) }
+            }
+            .overlay(alignment: .top) {
+                if linesAbove { InsertionLine(leading: leading, edge: .top) }
+            }
+        #if os(macOS)
+        // Near a divider it lights up with a + tab; a click on the tab adds a task (or
+        // subtask) right there. A click anywhere else on the row still selects it.
+        // Only a task as the first row offers its top edge: above a heading there's
+        // no section for a new line to join.
+        let offersTop: Bool = row.task != nil && isFirst
+        return lined.modifier(HoverInsertZone(leading: leading, offersTop: offersTop) { edge in
+            if edge == .top {
+                insertTask(between: (above: rowBefore(row), below: row), entry: nil)
+            } else {
+                insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
+            }
+        })
+        #else
+        return lined
+        #endif
+    }
+
     private func rowView(_ row: ListRow) -> some View {
         switch row {
         case .header(let info):
