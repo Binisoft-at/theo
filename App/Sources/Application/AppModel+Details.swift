@@ -6,6 +6,11 @@ extension AppModel {
     /// iPhone and iPad. For anything already on the current page (lists, panels, menus).
     func showDetails(_ task: TaskItem) {
         #if os(macOS)
+        // The tour's practice page has no inspector column: it shows the sheet.
+        if isSandbox {
+            detailTask = task
+            return
+        }
         selectedRowIDs = [task.rowID]
         showInspector = true
         #else
@@ -19,6 +24,10 @@ extension AppModel {
     /// the list and the inspector open. iPhone and iPad: the details sheet.
     func reveal(_ task: TaskItem) {
         #if os(macOS)
+        if isSandbox {
+            detailTask = task
+            return
+        }
         showInspector = true
         let page: SidebarItem
         if task.isPlanned(for: dayStart) {

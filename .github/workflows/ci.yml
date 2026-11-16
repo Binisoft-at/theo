@@ -117,6 +117,7 @@ jobs:
           shoot overview-light -TheoScreen overview
           shoot alltasks-light -TheoScreen alltasks
           shoot work-light -TheoScreen work
+          shoot details-light -TheoScreen today -TheoDetailFirst
           shoot radial-light -TheoScreen today -TheoRadialDemo
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask

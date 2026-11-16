@@ -660,6 +660,9 @@ struct TaskStore {
         for task in tasks {
             for item in layout(for: task.groupID).block(of: task) where !seen.contains(ObjectIdentifier(item)) {
                 seen.insert(ObjectIdentifier(item))
+                // Old ongoing logs can still sit inside a parent's block: they keep the day they
+                // were logged on, so History and the Day Review don't move.
+                guard item === task || item.loggedFor == nil else { continue }
                 guard item.plannedDay != key else { continue }
                 // Moving it to another day (carrying it over, Tomorrow) keeps the day its run of
                 // plans began; a fresh plan starts one.
