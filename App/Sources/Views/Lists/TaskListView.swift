@@ -204,13 +204,15 @@ struct TaskListView<Header: View>: View {
 
     // MARK: - Rows
 
-    /// One row with its frame tracking, drop lines and (on the Mac) the hover insert zone.
+    /// One row with its frame tracking, drop lines, what it carries when dragged out of the list
+    /// and (on the Mac) the hover insert zone.
     /// A function of its own, with small typed steps, so the type checker stays fast.
     private func decoratedRow(_ row: ListRow) -> some View {
         let leading: CGFloat = Self.lineLeading(row)
         let isFirst: Bool = rows.first?.id == row.id
         let linesBelow: Bool = insertAfterID == row.id
         let linesAbove: Bool = insertBeforeFirst && isFirst
+        let provider: (() -> NSItemProvider?)? = dragProvider(for: row)
         let tracked = rowView(row)
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .global)
@@ -232,16 +234,39 @@ struct TaskListView<Header: View>: View {
         // Only a task as the first row offers its top edge: above a heading there's
         // no section for a new line to join.
         let offersTop: Bool = row.task != nil && isFirst
-        return lined.modifier(HoverInsertZone(leading: leading, offersTop: offersTop) { edge in
+        let zoned = lined.modifier(HoverInsertZone(leading: leading, offersTop: offersTop) { edge in
             if edge == .top {
                 insertTask(between: (above: rowBefore(row), below: row), entry: nil)
             } else {
                 insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
             }
         })
+        return zoned.itemProvider(provider)
         #else
-        return lined
+        return lined.itemProvider(provider)
         #endif
+    }
+
+    /// A task line dragged onto the sidebar (Mac and iPad) carries its task, or every selected
+    /// line on this list when it's one of them (see `TaskDrag`). Within the list a drag still
+    /// reorders (`move`). Headings and placeholders carry nothing, and neither does a line being
+    /// edited, so dragging across its text still selects text.
+    private func dragProvider(for row: ListRow) -> (() -> NSItemProvider?)? {
+        guard TaskDrag.isAvailable, let task = row.task, !isEditing(task) else { return nil }
+        return {
+            TaskDrag.itemProvider(for: draggedIDs(task))
+        }
+    }
+
+    /// The tasks a drag of `task` takes, read when the drag starts: the selected lines on this
+    /// list in their order when it's one of several selected, else just this one.
+    private func draggedIDs(_ task: TaskItem) -> [UUID] {
+        let selected = app.selectedRowIDs
+        guard selected.count > 1, selected.contains(task.rowID) else { return [task.uuid] }
+        return rows.compactMap { row -> UUID? in
+            guard let listed = row.task, selected.contains(listed.rowID) else { return nil }
+            return listed.uuid
+        }
     }
 
     @ViewBuilder

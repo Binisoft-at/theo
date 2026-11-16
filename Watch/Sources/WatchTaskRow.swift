@@ -184,7 +184,7 @@ struct WatchAddTaskRow: View {
     }
 
     private func add(_ text: String) {
-        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
+        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName, parentID: $0.parentUUID) }
         let entry = QuickParser.parse(text, groups: refs, now: DayBoundary.current.start(of: Date()))
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom

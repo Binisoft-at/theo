@@ -326,7 +326,7 @@ struct MenuBarView: View {
     private func add() {
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
-        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
+        let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName, parentID: $0.parentUUID) }
         let entry = QuickParser.parse(raw, groups: refs, now: app.dayStart)
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom

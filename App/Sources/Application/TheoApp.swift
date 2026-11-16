@@ -22,13 +22,23 @@ struct TheoApp: App {
         if !Persistence.isDemo {
             TaskStore(context: container.mainContext).purgeExpired()
         }
+        // Home Screen, Lock Screen, Mac desktop widgets and the Control Center button (the
+        // demo data never reaches the widgets).
+        WidgetBridge.start(app: model)
     }
 
     var body: some Scene {
         WindowGroup(id: "main") {
-            RootView()
-                .environment(app)
-                .modelContainer(app.container)
+            Group {
+                // `-TheoWidgetGallery`: every widget size drawn from the tasks (screenshots).
+                if WidgetGallery.isRequested {
+                    WidgetGallery()
+                } else {
+                    RootView()
+                }
+            }
+            .environment(app)
+            .modelContainer(app.container)
         }
         .defaultSize(width: 1100, height: 760)
         #if os(macOS)

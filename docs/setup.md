@@ -7,12 +7,14 @@
 | GitHub repo | `Binisoft-at/theo` (private) |
 | Bundle ID (iOS + macOS) / SKU | `at.binisoft.theo` |
 | Watch app bundle ID | `at.binisoft.theo.watchkitapp` (ships inside the iOS app, no extra App Store record) |
+| Widgets bundle ID (iOS + macOS) | `at.binisoft.theo.widgets` (Home Screen, Lock Screen, Control Center, Mac desktop) |
+| Watch complications bundle ID | `at.binisoft.theo.watchkitapp.widgets` (ships inside the watch app) |
 | Own iCloud container | `iCloud.at.binisoft.theo` |
 | Shared iCloud container | `iCloud.at.binisoft.shared` (already exists, just tick it) |
 | Shared App Group | `group.at.binisoft.shared` (already exists, just tick it) |
 | Shared keychain group | `$(AppIdentifierPrefix)at.binisoft.shared` (no portal step) |
 
-Future extensions follow `at.binisoft.theo.<extension>`, each with App Groups ticked. All
+Extensions follow `at.binisoft.theo.<extension>`, each with App Groups ticked. All
 identifiers are defined in [`Config/Base.xcconfig`](../Config/Base.xcconfig).
 
 ## 1. Apple Developer portal
@@ -31,6 +33,30 @@ identifiers are defined in [`Config/Base.xcconfig`](../Config/Base.xcconfig).
    **App Groups**, **iCloud** (with CloudKit) and **Push Notifications** → **Continue** → **Register**.
    Then click **Theo Watch** in the list and configure it exactly like step 3 (same App Group,
    same two containers) → **Save** → **Confirm**.
+
+### Widgets: only if a TestFlight upload stops at signing
+
+The widgets (`at.binisoft.theo.widgets`) and the watch complications
+(`at.binisoft.theo.watchkitapp.widgets`) are registered by the TestFlight run itself (automatic
+signing with the API key). Only if a run fails at signing with a message about these IDs or
+their App Group ("No profile for…", "doesn't include the App Groups capability"), register them
+by hand once, then run TestFlight again:
+
+1. https://developer.apple.com/account/resources/identifiers/list → blue **+** → **App IDs** →
+   **Continue** → **App** → **Continue** → Description `Theo Widgets`, Bundle ID **Explicit**
+   `at.binisoft.theo.widgets` → tick **App Groups** → **Continue** → **Register**.
+2. Click **Theo Widgets** in the list → **App Groups** → **Configure** → tick
+   `group.at.binisoft.shared` → **Continue** → **Save** (top right) → **Confirm**.
+3. Back to the list → **+** → **App IDs** → **Continue** → **App** → **Continue** → Description
+   `Theo Watch Widgets`, Bundle ID **Explicit** `at.binisoft.theo.watchkitapp.widgets` → tick
+   **App Groups** → **Continue** → **Register**.
+4. Click **Theo Watch Widgets** in the list → **App Groups** → **Configure** → tick
+   `group.at.binisoft.shared` → **Continue** → **Save** → **Confirm**.
+5. https://github.com/Binisoft-at/theo/actions/workflows/testflight.yml → **Run workflow** →
+   **Run workflow**.
+
+The widgets need no iCloud and no push: Theo writes a small summary of today's page into the
+App Group (`Theo/widget-snapshot.json`), and the widgets read only that.
 
 ## 2. App Store Connect
 
@@ -98,5 +124,8 @@ installing a build that uses them. Otherwise the new fields can't sync in Produc
 - Theo's data lives only in `iCloud.at.binisoft.theo` (SwiftData `.private(...)`,
   `groupContainer: .none`), on every device including the watch, which syncs on its own. The shared container is for small cross-app events and summaries,
   never Theo's schema.
+- The widgets' summary of today's page (open count, Power Hours, the next tasks' titles) sits in
+  the shared App Group under `Theo/widget-snapshot.json`, on each device; each app writes its
+  own (the watch too). The task store itself never moves there.
 - Data in the old `iCloud.com.erblinkastrati.theo` container doesn't move. To carry open tasks
   over: old app → Today → ⋯ → Share as Text, then new app → Today → ⋯ → Import from Notes.

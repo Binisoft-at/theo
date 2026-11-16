@@ -226,6 +226,12 @@ struct RootView: View {
             #endif
             searchFocused = true
         }
+        // Links from the widgets and Control Center (theo://today, theo://task/<id>,
+        // theo://quick-entry). This window takes them instead of opening another one.
+        .onOpenURL { url in
+            app.openLink(url)
+        }
+        .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
     }
 }
 

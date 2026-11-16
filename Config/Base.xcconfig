@@ -5,6 +5,10 @@ BUNDLE_ID_PREFIX = at.binisoft
 DEVELOPMENT_TEAM =
 APP_BUNDLE_ID = $(BUNDLE_ID_PREFIX).theo
 WATCH_BUNDLE_ID = $(APP_BUNDLE_ID).watchkitapp
+// Widgets: Home Screen, Lock Screen and Control Center (iOS) and the Mac desktop share one ID;
+// the watch's complications sit inside the watch app.
+WIDGETS_BUNDLE_ID = $(APP_BUNDLE_ID).widgets
+WATCH_WIDGETS_BUNDLE_ID = $(WATCH_BUNDLE_ID).widgets
 APP_CLOUDKIT_CONTAINER = iCloud.$(APP_BUNDLE_ID)
 SHARED_APP_GROUP = group.$(BUNDLE_ID_PREFIX).shared
 SHARED_CLOUDKIT_CONTAINER = iCloud.$(BUNDLE_ID_PREFIX).shared

@@ -123,8 +123,10 @@ jobs:
           shoot radial-light -TheoScreen today -TheoRadialDemo
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask
+          shoot widgets-light -TheoWidgetGallery
           xcrun simctl ui "$UDID" appearance dark
           shoot today-dark -TheoScreen today
+          shoot widgets-dark -TheoWidgetGallery
           shoot priority-dark -TheoScreen priority
           shoot tour-priority-dark -TheoTour -TheoTourStep priority
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Theo"' --style compact > shots/ios-log.txt 2>&1 || true
@@ -185,6 +187,16 @@ jobs:
           sleep 12
           screencapture -x shots/mac-plan.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
+          pkill -x Theo || true
+          sleep 2
+          open "$APP" --args -TheoDemo -TheoWidgetGallery
+          sleep 12
+          screencapture -x shots/mac-widgets.png || true
+          pkill -x Theo || true
+          sleep 2
+          open "$APP" --args -TheoDemo -TheoScreen today -TheoQuickAddPanel
+          sleep 14
+          screencapture -x shots/mac-quickadd.png || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
       # A self-hosted Mac keeps running after the job: don't leave simulators or the app open.

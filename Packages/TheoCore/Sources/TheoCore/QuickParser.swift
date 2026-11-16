@@ -56,7 +56,8 @@ public struct ParsedEntry: Equatable, Sendable {
 ///
 /// - `!`, `!!`, `!!!` or `p3`/`p2`/`p1` set the priority
 /// - `#tag` adds a tag
-/// - `@group` files the task into a group (prefix match, spaces ignored)
+/// - `@group` files the task into a group (prefix match, spaces ignored), `@Work/Admin` into the
+///   subgroup Admin inside Work
 /// - dates and times ("tomorrow 5pm", "morgen 9 Uhr", "bis Freitag", "am 15.12.", "oct 30")
 ///   become the deadline (see `RelativeDate`; Apple's date detector catches the rest)
 /// - `📅 2026-11-04` or `due:2026-11-04` set an exact deadline (also understood by Import)
@@ -69,10 +70,36 @@ public enum QuickParser {
     public struct GroupRef: Sendable {
         public let id: UUID
         public let name: String
+        /// The group it sits in (it's a subgroup); nil = top level. Lets "@Work/Admin" find the
+        /// subgroup Admin inside Work.
+        public let parentID: UUID?
 
-        public init(id: UUID, name: String) {
+        public init(id: UUID, name: String, parentID: UUID? = nil) {
             self.id = id
             self.name = name
+            self.parentID = parentID
+        }
+
+        /// Each group's names from the outermost group in, its own name last (["Work", "Admin"]).
+        /// A parent that isn't in the list, or a loop, ends the path.
+        public static func paths(_ groups: [GroupRef]) -> [UUID: [String]] {
+            var byID: [UUID: GroupRef] = [:]
+            for group in groups where byID[group.id] == nil {
+                byID[group.id] = group
+            }
+            var result: [UUID: [String]] = [:]
+            for group in groups {
+                var names = [group.name]
+                var seen: Set<UUID> = [group.id]
+                var current = group
+                while let parentID = current.parentID, !seen.contains(parentID), let parent = byID[parentID] {
+                    names.insert(parent.name, at: 0)
+                    seen.insert(parentID)
+                    current = parent
+                }
+                result[group.id] = names
+            }
+            return result
         }
     }
 
@@ -260,16 +287,68 @@ public enum QuickParser {
         }
     }
 
+    /// `query` is what follows the `@`: a name ("admin", exact first, then the start of a name,
+    /// then a part of one) or a path to a subgroup ("work/admin"). Case, accents and spaces
+    /// don't matter. Two groups of the same name: the one less deep wins, so "@Work" is the
+    /// top-level Work.
     public static func matchGroup(_ query: String, in groups: [GroupRef]) -> GroupRef? {
+        let parts = query.split(separator: "/").map { squash(String($0)) }.filter { !$0.isEmpty }
+        if parts.count > 1, let match = matchPath(parts, in: groups) { return match }
+        // A name read whole, also a slash in a name ("Q3/Q4") and "work/" (Work itself).
         let q = squash(query)
         guard !q.isEmpty else { return nil }
-        if let exact = groups.first(where: { squash($0.name) == q }) { return exact }
+        let exact = groups.filter { squash($0.name) == q }
+        if exact.count > 1 {
+            let paths = GroupRef.paths(groups)
+            var best = exact[0]
+            var bestDepth = paths[best.id]?.count ?? 1
+            for group in exact.dropFirst() {
+                let depth = paths[group.id]?.count ?? 1
+                if depth < bestDepth {
+                    best = group
+                    bestDepth = depth
+                }
+            }
+            return best
+        }
+        if let only = exact.first { return only }
         if let prefix = groups.first(where: { squash($0.name).hasPrefix(q) }) { return prefix }
         return groups.first(where: { squash($0.name).contains(q) })
     }
 
+    /// "work/admin": the group whose path ends in those names (Admin inside Work). Every name
+    /// equal first, then each the start of its name ("wo/adm"), then the last one only a part
+    /// of its name; less deep first, then in list order.
+    private static func matchPath(_ parts: [String], in groups: [GroupRef]) -> GroupRef? {
+        let paths = GroupRef.paths(groups)
+        var best: (group: GroupRef, rank: Int, depth: Int)?
+        for group in groups {
+            let names = (paths[group.id] ?? [group.name]).map { squash($0) }
+            guard names.count >= parts.count else { continue }
+            let tail = Array(names.suffix(parts.count))
+            let pairs = Array(zip(tail, parts))
+            let rank: Int
+            if tail == parts {
+                rank = 0
+            } else if pairs.allSatisfy({ pair in pair.0.hasPrefix(pair.1) }) {
+                rank = 1
+            } else if pairs.dropLast().allSatisfy({ pair in pair.0.hasPrefix(pair.1) }),
+                      let last = pairs.last, last.0.contains(last.1) {
+                rank = 2
+            } else {
+                continue
+            }
+            if let current = best, (current.rank, current.depth) <= (rank, names.count) { continue }
+            best = (group, rank, names.count)
+        }
+        return best?.group
+    }
+
+    /// Lower case, no accents, letters and digits only: "Büro 2" → "buro2".
     private static func squash(_ s: String) -> String {
-        s.lowercased().filter { $0.isLetter || $0.isNumber }
+        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
     }
 
     /// Whether what the detector matched names a time: a colon time ("14:30"), am/pm, "Uhr" or a

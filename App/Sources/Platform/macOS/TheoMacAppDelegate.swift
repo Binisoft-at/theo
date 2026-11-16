@@ -64,6 +64,14 @@ final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
             print("Theo: opening main window via reopen event")
             MainWindow.reopen()
         }
+        // Screenshots: the Quick Add panel over the window, with a sample task typed in.
+        if ProcessInfo.processInfo.arguments.contains("-TheoQuickAddPanel") {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(6))
+                QuickAddPanel.shared.state.text = "Report bis Freitag !! #work"
+                QuickAddPanel.shared.show()
+            }
+        }
     }
 
     /// Switching back to Theo: a new day, the daily backup and the reminders are checked here,
@@ -98,9 +106,11 @@ final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    /// The Dock is already about Theo, so this opens its window with the cursor in the bar at
+    /// the bottom, whatever the Quick Add shortcut opens.
     @objc private func dockNewTask() {
         MainActor.assumeIsolated {
-            GlobalHotKey.fire()
+            GlobalHotKey.focusComposer()
         }
     }
 
