@@ -187,6 +187,13 @@ struct DayReviewView: View {
     private func comparisonChart(today: DayReview.Day, history: [DayReview.Day]) -> some View {
         let days = (history.reversed() + [today])
         let average = DayReview.average(history)
+        // A week gets short weekday names (Tue and Thu look different, unlike "T" and "T");
+        // 14 or 30 days get a date on every 7th day.
+        let isWeek = days.count <= 8
+        let labelEvery = isWeek ? 1 : 7
+        let labelFormat = isWeek
+            ? Date.FormatStyle().weekday(.abbreviated)
+            : Date.FormatStyle().day().month(.defaultDigits)
         return Chart {
             ForEach(days, id: \.start) { item in
                 BarMark(
@@ -208,8 +215,8 @@ struct DayReviewView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: max(1, days.count / 7))) { _ in
-                AxisValueLabel(format: .dateTime.weekday(.narrow))
+            AxisMarks(values: .stride(by: .day, count: labelEvery)) { _ in
+                AxisValueLabel(format: labelFormat)
             }
         }
         .chartYAxisLabel(showPowerHours ? "PH" : "tasks")

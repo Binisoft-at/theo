@@ -6,15 +6,19 @@ public enum Composer {
     public struct Line: Equatable, Sendable {
         public var title: String
         public var level: Int
+        /// Ticked off in the pasted list ("- [x] ", "☑ ", "✅ "): the composer skips it.
+        public var done: Bool
 
-        public init(title: String, level: Int) {
+        public init(title: String, level: Int, done: Bool = false) {
             self.title = title
             self.level = level
+            self.done = done
         }
     }
 
     private static let subtaskMarkers = ["- ", "– ", "— ", "> ", "↳ ", "↳"]
-    private static let listMarkers = ["- [ ] ", "* [ ] ", "- [x] ", "- [X] ", "[ ] ", "[x] ", "☐ ", "• ", "◦ ", "- ", "* ", "– "]
+    private static let doneMarkers = ["- [x] ", "- [X] ", "* [x] ", "* [X] ", "[x] ", "[X] ", "☑ ", "☒ ", "✅ "]
+    private static let listMarkers = ["- [ ] ", "* [ ] ", "[ ] ", "☐ ", "• ", "◦ ", "- ", "* ", "– "]
 
     /// The text after a leading subtask marker ("- book flights" → "book flights"), or nil when
     /// the line doesn't start with one. The result can be empty while the user is still typing.
@@ -27,7 +31,8 @@ public enum Composer {
     }
 
     /// Pasted text as task lines. Leading tabs or pairs of spaces nest a line under the one
-    /// above (at most one level deeper); list markers ("- ", "• ", "[ ] " ...) are dropped.
+    /// above (at most one level deeper); list markers ("- ", "• ", "[ ] " ...) are dropped, and
+    /// ticked ones ("- [x] ", "☑ ") mark the line as done.
     public static func lines(_ text: String) -> [Line] {
         var result: [Line] = []
         for raw in text.components(separatedBy: .newlines) {
@@ -48,13 +53,17 @@ public enum Composer {
                 body = body.dropFirst()
             }
             var title = String(body)
-            if let marker = listMarkers.first(where: { title.hasPrefix($0) }) {
+            var done = false
+            if let marker = doneMarkers.first(where: { title.hasPrefix($0) }) {
+                title = String(title.dropFirst(marker.count))
+                done = true
+            } else if let marker = listMarkers.first(where: { title.hasPrefix($0) }) {
                 title = String(title.dropFirst(marker.count))
             }
             title = title.trimmingCharacters(in: .whitespaces)
             guard !title.isEmpty else { continue }
             let deepest = (result.last?.level ?? -1) + 1
-            result.append(Line(title: title, level: min(level, deepest)))
+            result.append(Line(title: title, level: min(level, deepest), done: done))
         }
         return result
     }

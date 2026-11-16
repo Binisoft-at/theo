@@ -4,13 +4,14 @@ import TheoCore
 
 /// Floating Liquid Glass composer at the bottom of a page. Type, hit Return, keep typing.
 ///
-/// - Typed shortcuts: `!!`, `#tag`, `@group` and natural dates, previewed as chips.
+/// - Typed shortcuts: `!!`, `#tag`, `@group` and natural dates ("morgen 9 Uhr", "bis Freitag"),
+///   previewed as chips. A chip shows which words it took; × or "No Deadline" puts them back.
 /// - Buttons above the field set priority, deadline and group without typing.
 /// - A leading "- " files the line as a subtask of the task added just before.
 /// - Pasting several lines adds several tasks and keeps their indentation as subtasks.
 /// - The ⊞ handle drags the task onto the Eisenhower matrix (urgency × importance); let go
 ///   to add it right there.
-/// - Every add can be undone from the confirmation line.
+/// - Every add can be undone from the confirmation line, which also says what was understood.
 struct QuickEntryBar: View {
     /// Where new tasks go when no `@group` is typed (nil = Quick Entry).
     var defaultGroupID: UUID?
@@ -65,6 +66,12 @@ struct QuickEntryBar: View {
         let id = UUID()
         let message: String
         let tasks: [TaskItem]
+        /// One task was added: "Show" goes to it.
+        var showsReveal = false
+        /// Planned for today although it's due later: "Off Plan" takes it off today's plan.
+        var offersOffPlan = false
+
+        var hasExtraButtons: Bool { showsReveal || offersOffPlan }
     }
 
     // MARK: - What the entry will create
@@ -75,7 +82,8 @@ struct QuickEntryBar: View {
         groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
     }
 
-    private var isMultiline: Bool { text.trimmingCharacters(in: .newlines).contains(where: \.isNewline) }
+    /// The same test `add()` uses to tell a pasted list from one line.
+    private var isMultiline: Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).contains(where: \.isNewline) }
 
     private var liveParent: TaskItem? {
         guard let lastParent, lastParent.modelContext != nil, !lastParent.isDeleted, lastParent.deletedAt == nil else { return nil }
@@ -88,23 +96,57 @@ struct QuickEntryBar: View {
         return liveParent
     }
 
+    /// The text read on the logical day, so "morgen" typed at 01:30 is the day after today's page.
     private var parsed: ParsedEntry {
         let source = subtaskParent != nil ? (Composer.subtaskBody(text) ?? text) : text
-        return QuickParser.parse(source, groups: groupRefs, options: options, now: Date())
+        return QuickParser.parse(source, groups: groupRefs, options: options, now: app.dayStart)
     }
 
-    private var effectivePriority: Priority { priorityChoice ?? parsed.priority }
+    /// What the chips show. A pasted list is read line by line when it's added, so its chips
+    /// show only what's picked for every line.
+    private var chipEntry: ParsedEntry { isMultiline ? ParsedEntry(title: "") : parsed }
+
+    /// The pasted lines that become tasks: ticked-off lines ("- [x] ") are left out together
+    /// with the lines under them.
+    static func openLines(_ lines: [Composer.Line]) -> [Composer.Line] {
+        var result: [Composer.Line] = []
+        var skipBelow: Int?
+        for line in lines {
+            if let level = skipBelow {
+                if line.level > level { continue }
+                skipBelow = nil
+            }
+            if line.done {
+                skipBelow = line.level
+                continue
+            }
+            result.append(line)
+        }
+        return result
+    }
+
+    private var effectivePriority: Priority { priorityChoice ?? chipEntry.priority }
 
     private var effectiveDue: (date: Date, hasTime: Bool)? {
         switch dueChoice {
-        case .fromText: parsed.due.map { (date: $0, hasTime: parsed.dueHasTime) }
-        case .cleared: nil
-        case .date(let date): (date: date, hasTime: false)
+        case .fromText:
+            let entry = chipEntry
+            return entry.due.map { (date: $0, hasTime: entry.dueHasTime) }
+        case .cleared:
+            return nil
+        case .date(let date):
+            return (date: date, hasTime: false)
         }
     }
 
+    /// The deadline came from words in the text (not from a pick or an "every Monday").
+    private var dueFromText: Bool { dueChoice == .fromText && chipEntry.dueText != nil }
+
+    /// The repeat came from words in the text.
+    private var repeatFromText: Bool { recurrenceChoice == .fromText && chipEntry.recurrence != nil }
+
     /// Power Hours picked or typed (0 = explicitly none); nil leaves it to the default.
-    private var chosenEstimate: Double? { estimateChoice ?? parsed.estimate }
+    private var chosenEstimate: Double? { estimateChoice ?? chipEntry.estimate }
     /// What the task will get: picked or typed, else its group's trait, else the default.
     private var effectiveEstimate: Double {
         chosenEstimate ?? targetTraits.estimate ?? PowerHours.defaultForNewTasks
@@ -117,7 +159,7 @@ struct QuickEntryBar: View {
 
     private var effectiveRecurrence: Recurrence? {
         switch recurrenceChoice {
-        case .fromText: parsed.recurrence
+        case .fromText: chipEntry.recurrence
         case .never: nil
         case .set(let recurrence): recurrence
         }
@@ -133,7 +175,7 @@ struct QuickEntryBar: View {
     }
 
     private var targetGroupID: UUID? {
-        if case .fromText = groupChoice, let typed = parsed.groupID { return typed }
+        if case .fromText = groupChoice, let typed = chipEntry.groupID { return typed }
         return baseGroupID
     }
 
@@ -216,7 +258,7 @@ struct QuickEntryBar: View {
             if !text.isEmpty {
                 // Tap adds; hold and point at a value on the arc picks the Power Hours, letting go
                 // adds with them.
-                HoldSlidePicker(options: Self.estimateOptions, title: "Power Hours", onTap: add) { index in
+                HoldSlidePicker(options: Self.estimateOptions, title: "PH", onTap: add) { index in
                     pickEstimate(index)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
@@ -224,15 +266,9 @@ struct QuickEntryBar: View {
                         .foregroundStyle(.tint)
                 }
                 .transition(.scale.combined(with: .opacity))
-                .accessibilityLabel(isMultiline ? "Add \(Composer.lines(text).count) Tasks" : "Add Task")
+                .accessibilityLabel(isMultiline ? "Add \(Self.openLines(Composer.lines(text)).count) Tasks" : "Add Task")
                 .accessibilityHint("Touch and hold, then slide toward a value to set the Power Hours")
                 .accessibilityAddTraits(.isButton)
-                .background {
-                    Button("Add", action: add)
-                        .keyboardShortcut(.return, modifiers: .command)
-                        .opacity(0)
-                        .accessibilityHidden(true)
-                }
             }
         }
         .padding(.horizontal, 14)
@@ -242,16 +278,34 @@ struct QuickEntryBar: View {
 
     /// One-tap priority, deadline, group and subtask, plus what was understood from the text.
     private var controls: some View {
-        let entry = parsed
+        let entry = chipEntry
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 if isMultiline {
-                    chipLabel("\(Composer.lines(text).count) tasks", symbol: "list.bullet.indent", color: .accentColor, active: true)
+                    chipLabel("\(Self.openLines(Composer.lines(text)).count) tasks", symbol: "list.bullet.indent", color: .accentColor, active: true)
                 } else {
                     subtaskChip
                 }
                 priorityChip
-                dueChip
+                HStack(spacing: 2) {
+                    dueChip
+                    if dueFromText {
+                        // The chip is a menu, so the × that gives the words back sits next to it.
+                        Button {
+                            disabled.formUnion([.dates, .exactDates])
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .imageScale(.medium)
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 24, minHeight: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Not a date")
+                        .accessibilityHint("Keeps “\(entry.dueText ?? "")” in the title")
+                        .transition(.opacity)
+                    }
+                }
                 estimateChip
                 if effectiveDue != nil || effectiveRecurrence != nil {
                     repeatChip
@@ -371,7 +425,7 @@ struct QuickEntryBar: View {
                     .onChanged { drag in
                         if app.insertDragLocation == nil {
                             let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                            app.insertDragTitle = isMultiline ? "" : (typed.isEmpty ? "" : parsed.title)
+                            app.insertDragTitle = isMultiline ? "" : (typed.isEmpty ? "" : dragEntry.title)
                         }
                         app.insertDragLocation = drag.location
                     }
@@ -385,18 +439,46 @@ struct QuickEntryBar: View {
             .accessibilityHint("Drag up between two tasks to add one there")
     }
 
+    /// What the dragged + carries: the text read without "@group" (where it's dropped decides
+    /// the group, so a typed "@home" stays in the title) plus the picks from the chips. A held
+    /// importance travels as its priority band, a matrix cell as its band and deadline.
+    private var dragEntry: ParsedEntry {
+        let source = Composer.subtaskBody(text) ?? text
+        var entry = QuickParser.parse(source, groups: groupRefs, options: options.subtracting(.group), now: app.dayStart)
+        entry.groupID = nil
+        entry.groupName = nil
+        if let priorityChoice { entry.priority = priorityChoice }
+        switch dueChoice {
+        case .fromText:
+            break
+        case .cleared:
+            entry.due = nil
+            entry.dueHasTime = false
+        case .date(let date):
+            entry.due = date
+            entry.dueHasTime = false
+        }
+        if let estimateChoice { entry.estimate = estimateChoice }
+        switch recurrenceChoice {
+        case .fromText: break
+        case .never: entry.recurrence = nil
+        case .set(let recurrence): entry.recurrence = recurrence
+        }
+        if let matrixChoice {
+            entry.priority = Matrix.priority(forImportance: Matrix.importance(forLevel: matrixChoice.level))
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: app.dayStart)
+            entry.due = matrixChoice.days.map { calendar.date(byAdding: .day, value: $0, to: today) ?? today }
+            entry.dueHasTime = false
+        } else if let importanceChoice {
+            entry.priority = Matrix.priority(forImportance: Matrix.importance(forLevel: importanceChoice))
+        }
+        return entry
+    }
+
     private func dropBetween(at location: CGPoint) {
         let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        var entry: ParsedEntry?
-        if !typed.isEmpty, !isMultiline {
-            var value = parsed
-            value.priority = effectivePriority
-            value.due = effectiveDue?.date
-            value.dueHasTime = effectiveDue?.hasTime ?? false
-            value.estimate = chosenEstimate
-            value.recurrence = effectiveRecurrence
-            entry = value
-        }
+        let entry: ParsedEntry? = !typed.isEmpty && !isMultiline ? dragEntry : nil
         guard app.insertHandler?(location, entry) == true else { return }
         if entry != nil {
             text = ""
@@ -417,23 +499,36 @@ struct QuickEntryBar: View {
             if due != nil {
                 Divider()
                 Button(role: .destructive) {
-                    dueChoice = .cleared
+                    // A date read from the text gives its words back to the title.
+                    if dueFromText {
+                        disabled.formUnion([.dates, .exactDates])
+                    } else {
+                        dueChoice = .cleared
+                    }
                 } label: {
                     Label("No Deadline", systemImage: "calendar.badge.minus")
                 }
             }
         } label: {
-            chipLabel(
-                due.map { DateText.due($0.date, hasTime: $0.hasTime, today: app.dayStart) } ?? "Date",
-                symbol: "calendar",
-                color: .orange,
-                active: due != nil
-            )
+            chipLabel(dueTitle, symbol: "calendar", color: .orange, active: due != nil)
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
         .buttonStyle(.plain)
         .accessibilityLabel("Deadline")
+    }
+
+    /// "Date", "Tomorrow", or for a date read from the text the words it took and the day they
+    /// mean: "bis Freitag → Fri 13 Nov".
+    private var dueTitle: String {
+        guard let due = effectiveDue else { return "Date" }
+        guard dueFromText, let words = chipEntry.dueText else {
+            return DateText.due(due.date, hasTime: due.hasTime, today: app.dayStart)
+        }
+        let shown = words.count > 14 ? String(words.prefix(13)) + "…" : words
+        var day = DateText.shortDay(due.date)
+        if due.hasTime { day += " " + due.date.formatted(date: .omitted, time: .shortened) }
+        return "\(shown) → \(day)"
     }
 
     private var groupChip: some View {
@@ -514,13 +609,18 @@ struct QuickEntryBar: View {
             if recurrence != nil {
                 Divider()
                 Button(role: .destructive) {
-                    recurrenceChoice = .never
+                    // A repeat read from the text gives its words back to the title.
+                    if repeatFromText {
+                        disabled.insert(.recurrence)
+                    } else {
+                        recurrenceChoice = .never
+                    }
                 } label: {
                     Label("Don't Repeat", systemImage: "xmark.circle")
                 }
             }
         } label: {
-            chipLabel(recurrence?.title ?? "Repeat", symbol: "repeat", color: .indigo, active: recurrence != nil)
+            chipLabel(recurrence.map { $0.title(firstDue: effectiveDue?.date) } ?? "Repeat", symbol: "repeat", color: .indigo, active: recurrence != nil)
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
@@ -589,17 +689,33 @@ struct QuickEntryBar: View {
                 .foregroundStyle(.tint)
             Text(confirmation.message)
                 .font(.footnote.weight(.medium))
-                .lineLimit(1)
+                .lineLimit(2)
             Spacer(minLength: 4)
-            Button("Undo") {
-                undo(confirmation)
+            HStack(spacing: 12) {
+                if confirmation.offersOffPlan, let task = confirmation.tasks.first {
+                    Button("Off Plan") {
+                        app.plan([task], for: nil)
+                        self.confirmation = nil
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityHint("Takes it off today's plan; it stays due on its day")
+                }
+                if confirmation.showsReveal, let task = confirmation.tasks.first {
+                    Button("Show") {
+                        app.reveal(task)
+                    }
+                }
+                Button("Undo") {
+                    undo(confirmation)
+                }
             }
             .font(.footnote.weight(.semibold))
             .buttonStyle(.borderless)
+            .fixedSize()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .glassEffect(.regular, in: .capsule)
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
     }
 
     // MARK: - Actions
@@ -619,10 +735,9 @@ struct QuickEntryBar: View {
             return
         }
         let created: [TaskItem]
-        let message: String
+        var parent: TaskItem?
         if raw.contains(where: \.isNewline) {
-            created = addLines(Composer.lines(raw))
-            message = created.count == 1 ? "Added 1 task" : "Added \(created.count) tasks"
+            created = addLines(Self.openLines(Composer.lines(raw)))
         } else {
             var entry = parsed
             guard !entry.title.isEmpty else { return }
@@ -635,11 +750,11 @@ struct QuickEntryBar: View {
             if entry.recurrence != nil && entry.due == nil {
                 entry.due = Calendar.current.startOfDay(for: app.dayStart)
             }
-            if let parent = subtaskParent {
-                let task = withAnimation(.snappy) { app.store.addSubtask(entry, to: parent) }
-                if app.collapsedTaskIDs.contains(parent.uuid) { app.toggleSubtasks(parent) }
+            if let subtaskParent {
+                let task = withAnimation(.snappy) { app.store.addSubtask(entry, to: subtaskParent) }
+                if app.collapsedTaskIDs.contains(subtaskParent.uuid) { app.toggleSubtasks(subtaskParent) }
                 created = [task]
-                message = "Added under “\(parent.trimmedTitle)”"
+                parent = subtaskParent
             } else {
                 let groupID = targetGroupID
                 entry.groupID = groupID
@@ -647,7 +762,6 @@ struct QuickEntryBar: View {
                 let task = withAnimation(.snappy) { app.store.addTask(entry, defaultGroupID: groupID, placement: placement) }
                 lastParent = task
                 created = [task]
-                message = "Added to \(groupName(groupID))"
             }
         }
         guard !created.isEmpty else { return }
@@ -660,12 +774,43 @@ struct QuickEntryBar: View {
             }
             if let plansFor { app.store.plan([task], for: plansFor) }
         }
-        show(Confirmation(message: message, tasks: created))
+        show(makeConfirmation(for: created, under: parent))
         addedCount += 1
         text = ""
         resetChoices()
         // The group stays picked while adding several tasks; keep the keyboard up for rapid entry.
         focused = true
+    }
+
+    /// "Added to Work · due Friday · !!" for one task (what was understood, read back from the
+    /// task itself), with Show; "Added 3 tasks" for a list. A task planned for today that's due
+    /// on a later day says "on today" and offers to take it off the plan.
+    private func makeConfirmation(for created: [TaskItem], under parent: TaskItem?) -> Confirmation {
+        guard created.count == 1, let task = created.first else {
+            return Confirmation(message: "Added \(created.count) tasks", tasks: created)
+        }
+        let summary = CaptureSummary.describe(
+            groupName: parent == nil ? groupName(task.groupID) : nil,
+            due: task.dueDate,
+            dueHasTime: task.dueHasTime,
+            today: app.dayStart,
+            priority: task.priority,
+            estimate: task.estimate,
+            defaultEstimate: app.store.traits(of: task.group).estimate ?? PowerHours.defaultForNewTasks,
+            recurrence: task.recurrence,
+            ongoing: task.isOngoing
+        )
+        var message: String
+        if let parent {
+            message = "Added under “\(parent.trimmedTitle)”" + (summary.isEmpty ? "" : " · " + summary)
+        } else {
+            message = "Added to " + summary
+        }
+        let plansToday = plansFor.map { DateText.dayDelta($0, today: app.dayStart) == 0 } ?? false
+        let dueLater = task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) > 0 } ?? false
+        let offersOffPlan = plansToday && dueLater
+        if offersOffPlan { message += " · on today" }
+        return Confirmation(message: message, tasks: created, showsReveal: true, offersOffPlan: offersOffPlan)
     }
 
     private func resetChoices() {
@@ -680,18 +825,35 @@ struct QuickEntryBar: View {
     }
 
     /// A pasted list: each line is a task, indented lines become subtasks of the line above.
+    /// What's picked on the chips applies to every line; otherwise each line keeps what it says.
     private func addLines(_ lines: [Composer.Line]) -> [TaskItem] {
         var created: [TaskItem] = []
         var parents: [TaskItem] = []
         withAnimation(.snappy) {
             for line in lines {
-                var entry = QuickParser.parse(line.title, groups: groupRefs, options: options)
+                var entry = QuickParser.parse(line.title, groups: groupRefs, options: options, now: app.dayStart)
                 guard !entry.title.isEmpty else { continue }
                 if let priorityChoice { entry.priority = priorityChoice }
-                if let estimateChoice { entry.estimate = estimateChoice > 0 ? estimateChoice : nil }
-                if case .date(let date) = dueChoice {
+                // 0 stays "no estimate" instead of falling back to the default.
+                if let estimateChoice { entry.estimate = estimateChoice }
+                switch dueChoice {
+                case .fromText:
+                    break
+                case .cleared:
+                    entry.due = nil
+                    entry.dueHasTime = false
+                case .date(let date):
                     entry.due = date
                     entry.dueHasTime = false
+                }
+                switch recurrenceChoice {
+                case .fromText: break
+                case .never: entry.recurrence = nil
+                case .set(let recurrence): entry.recurrence = recurrence
+                }
+                // Something that repeats needs a first date: today.
+                if entry.recurrence != nil && entry.due == nil {
+                    entry.due = Calendar.current.startOfDay(for: app.dayStart)
                 }
                 let task: TaskItem
                 if line.level > 0, line.level <= parents.count {
@@ -705,15 +867,17 @@ struct QuickEntryBar: View {
                 created.append(task)
             }
         }
-        if let first = created.first(where: { $0.indent == 0 }) { lastParent = first }
+        // "- " lines typed next go under the last top-level task of the list.
+        if let last = created.last(where: { $0.indent == 0 }) { lastParent = last }
         return created
     }
 
     private func show(_ confirmation: Confirmation) {
         self.confirmation = confirmation
         let id = confirmation.id
+        let seconds = confirmation.hasExtraButtons ? 5.0 : 4.0
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(seconds))
             if self.confirmation?.id == id { self.confirmation = nil }
         }
     }

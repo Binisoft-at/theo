@@ -34,7 +34,7 @@ enum WatchPage {
         page.filter(\.isDone).sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
     }
 
-    /// All rows of one group page: open tasks (also ones hidden with "Not Today"), then the ones
+    /// All rows of one group page: open tasks (also ones planned for a later day), then the ones
     /// finished today.
     static func groupRows(_ tasks: [TaskItem], groupID: UUID?, dayStart: Date) -> [WatchRow] {
         let items = tasks.filter { $0.groupID == groupID && (!$0.isDone || $0.isOnPage(of: dayStart)) }

@@ -113,10 +113,14 @@ struct FocusView: View {
                     Button("Skip Break") { app.skipBreak() }
                         .buttonStyle(.glass)
                 }
-                if let task, !task.isDone {
+                if let task, !task.isDone, task.deletedAt == nil {
                     Button {
-                        withAnimation(.snappy) { app.store.setDone([task], true) }
+                        // Stop first: the running stretch is booked before an ongoing task logs
+                        // its finished copy, so the time lands on today's copy.
                         app.stopFocus()
+                        if !task.isDone {
+                            withAnimation(.snappy) { app.toggle(task) }
+                        }
                     } label: {
                         Label("Task Done", systemImage: "checkmark.circle.fill")
                     }
@@ -207,6 +211,13 @@ struct FocusPill: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(session.phase == .rest ? "Break running" : "Focus running")
+            // With the sheet closed the pill is the only timer on screen: it ends a phase that ran
+            // out, so it never sits at 0:00 and the break starts on time.
+            .onChange(of: context.date) { _, date in
+                if !session.isPaused, session.remaining(at: date) <= 0 {
+                    app.tickFocus()
+                }
+            }
         }
     }
 }

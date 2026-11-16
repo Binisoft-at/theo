@@ -15,7 +15,7 @@ struct WatchListsView: View {
             Section {
                 link(.upcoming, title: "Upcoming", symbol: "calendar", color: .red, count: upcomingCount)
                 link(.priority, title: "Priority", symbol: "exclamationmark.3", color: .orange,
-                     count: openTasks.filter { $0.priority != .normal }.count)
+                     count: openTasks.activeOnly(groups).filter { $0.priority != .normal }.count)
             }
             Section("Groups") {
                 link(.group(nil), title: String(localized: "Quick Entry"), symbol: "tray.and.arrow.down.fill", color: .secondary,
@@ -29,8 +29,9 @@ struct WatchListsView: View {
         .navigationTitle("Lists")
     }
 
+    /// The same tasks as the Upcoming page: switched-off groups don't count.
     private var upcomingCount: Int {
-        openTasks.filter { $0.dueDate != nil || ($0.plannedDay ?? .distantPast) > model.dayStart }.count
+        openTasks.activeOnly(groups).filter { $0.dueDate != nil || ($0.plannedDay ?? .distantPast) > model.dayStart }.count
     }
 
     private func link(_ route: WatchRoute, title: String, symbol: String, color: Color, count: Int) -> some View {
@@ -47,7 +48,7 @@ struct WatchListsView: View {
     }
 }
 
-/// The next seven days, by deadline or "Not Today" date.
+/// The next seven days, by deadline or planned day.
 struct WatchUpcomingView: View {
     @Environment(WatchModel.self) private var model
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && !$0.isDone }, sort: \TaskItem.sortOrder)

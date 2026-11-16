@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UserNotifications
 import TheoCore
 
 struct SettingsView: View {
@@ -23,8 +24,16 @@ struct SettingsView: View {
     @AppStorage(Prefs.reviewShare) private var reviewShare = true
     @AppStorage(Prefs.reviewTasks) private var reviewTasks = true
     @AppStorage(Prefs.reviewCompareDays) private var reviewCompareDays = 7
+    /// "off" or "today": today's open count on the app icon (iPhone) or the Dock icon (Mac).
+    /// The reminder scheduler reads the same key and does the counting.
+    @AppStorage("badge.mode") private var badgeMode = "off"
+    #if os(macOS)
+    @AppStorage(HotKeyChoice.preferenceKey) private var hotKeyRaw = HotKeyChoice.standard.rawValue
+    #endif
     @State private var restoreCandidate: URL?
     @State private var pickBackupFile = false
+    /// The badge is on but notifications (and so badges) are off for Theo in the system settings.
+    @State private var badgeBlocked = false
 
     var body: some View {
         Form {
@@ -82,7 +91,7 @@ struct SettingsView: View {
             } header: {
                 Text("Daily Page")
             } footer: {
-                Text("At the start of each day, unfinished tasks roll over to the new page and completed ones move to History — your Notes routine, automated.")
+                Text("A new day starts at this hour. Today shows what you plan for it; anything left open waits at the top of Today and in Plan.")
             }
 
             Section {
@@ -103,29 +112,64 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Show days carried over", isOn: $showAge)
-                Toggle("Show notes preview", isOn: $showNotesPreview)
+                Toggle("Show description under the title", isOn: $showNotesPreview)
             } header: {
                 Text("Tasks")
             } footer: {
                 Text("Every new task gets this estimate unless you type or pick another one, or its group sets one. Remove it from a task any time.")
             }
 
+            #if os(macOS)
             Section {
-                Toggle("Power Hours worked", isOn: $reviewPowerHours)
-                Toggle("What it went into", isOn: $reviewBreakdown)
-                Toggle("Comparison with other days", isOn: $reviewComparison)
-                Picker("Compare with", selection: $reviewCompareDays) {
-                    ForEach([7, 14, 30], id: \.self) { days in
-                        Text("\(days) days before").tag(days)
+                Picker("Quick Add from any app", selection: $hotKeyRaw) {
+                    ForEach(HotKeyChoice.allCases) { choice in
+                        Text(choice.title).tag(choice.rawValue)
                     }
                 }
-                .disabled(!reviewComparison)
-                Toggle("Share of the page done", isOn: $reviewShare)
-                Toggle("Finished tasks", isOn: $reviewTasks)
+            } header: {
+                Text("Quick Add")
+            } footer: {
+                Text("Press it in any app: Theo comes to the front with the cursor in the bar at the bottom, ready for a new task. The menu bar icon works too.")
+            }
+            #endif
+
+            Section {
+                Picker("App icon badge", selection: $badgeMode) {
+                    Text("Off").tag("off")
+                    Text("Open today").tag("today")
+                }
+                if badgeBlocked {
+                    Text("Notifications are off for Theo, so the badge can't show. Turn them on in the Settings app → Notifications → Theo.")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+            } footer: {
+                #if os(iOS)
+                Text("Shows on Theo's icon how many tasks on Today are still open. It uses notification permission; Theo asks when you turn it on.")
+                #else
+                Text("Shows on Theo's Dock icon how many tasks on Today are still open.")
+                #endif
+            }
+
+            Section {
+                // The same switches as the review's own Show menu, folded away.
+                DisclosureGroup("What it shows") {
+                    Toggle("Power Hours worked", isOn: $reviewPowerHours)
+                    Toggle("What it went into", isOn: $reviewBreakdown)
+                    Toggle("Comparison with other days", isOn: $reviewComparison)
+                    Picker("Compare with", selection: $reviewCompareDays) {
+                        ForEach([7, 14, 30], id: \.self) { days in
+                            Text("\(days) days before").tag(days)
+                        }
+                    }
+                    .disabled(!reviewComparison)
+                    Toggle("Share of the page done", isOn: $reviewShare)
+                    Toggle("Finished tasks", isOn: $reviewTasks)
+                }
             } header: {
                 Text("Day Review")
             } footer: {
-                Text("Tap the ring on Today (or press ⌘9 on the Mac) to see what got done, during the day and after. The finished tasks export as CSV from there.")
+                Text("Tap the ring on Today (or press ⌘9 on the Mac) to see what got done, during the day and after. Its Show menu has the same switches, and the finished tasks export as CSV from there.")
             }
 
             Section {
@@ -148,10 +192,15 @@ struct SettingsView: View {
             Section {
                 LabeledContent("Status") {
                     HStack(spacing: 6) {
-                        if app.sync.activeEvents > 0 {
-                            ProgressView().controlSize(.small)
+                        if let storageStatus {
+                            Text(storageStatus)
+                                .foregroundStyle(Persistence.storeKind == .memory ? Color.red : Color.orange)
+                        } else {
+                            if app.sync.activeEvents > 0 {
+                                ProgressView().controlSize(.small)
+                            }
+                            Text(app.sync.statusText)
                         }
-                        Text(app.sync.statusText)
                     }
                 }
                 if let error = app.sync.lastError {
@@ -182,15 +231,26 @@ struct SettingsView: View {
                 } label: {
                     Label("Take the Tour", systemImage: "graduationcap")
                 }
+                Button {
+                    showWhatsNew()
+                } label: {
+                    Label("What's New", systemImage: "sparkles")
+                }
             } header: {
                 Text("Help")
             } footer: {
-                Text("A hands-on tour of adding, subtasks, priorities, gestures and undo, on a practice page.")
+                #if os(macOS)
+                Text("A hands-on tour of adding, subtasks, priorities, gestures and undo, on a practice page. What's New shows only the latest additions. Keyboard shortcuts are listed at the bottom of the sidebar.")
+                #else
+                Text("A hands-on tour of adding, subtasks, priorities, gestures and undo, on a practice page. What's New shows only the latest additions.")
+                #endif
             }
 
             Section {
                 LabeledContent("Last backup") {
+                    // Orange once it's more than two days old, so a stalled backup gets noticed.
                     Text(app.backups.lastBackup.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Not yet")
+                        .foregroundStyle(backupIsStale ? Color.orange : Color.secondary)
                 }
                 Button {
                     do {
@@ -281,6 +341,19 @@ struct SettingsView: View {
         .onChange(of: dayStartHour) { _, _ in
             app.refreshDay()
         }
+        .onChange(of: badgeMode) { _, mode in
+            badgeModeChanged(mode)
+        }
+        #if os(macOS)
+        .onChange(of: hotKeyRaw) { _, raw in
+            GlobalHotKey.shared.apply(HotKeyChoice(rawValue: raw) ?? .standard)
+        }
+        #else
+        .task {
+            // Notifications may have been switched off in the Settings app since.
+            if badgeMode == "today" { badgeBlocked = await Self.badgesBlocked() }
+        }
+        #endif
         #if os(iOS)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -292,6 +365,70 @@ struct SettingsView: View {
         .frame(minHeight: 560)
         #endif
     }
+
+    /// What Settings says instead of the sync status while tasks aren't stored the normal way.
+    private var storageStatus: String? {
+        guard !Persistence.isDemo else { return nil }
+        switch Persistence.storeKind {
+        case .cloud: return nil
+        case .local: return AppIdentifiers.appCloudKitContainer != nil ? "Not syncing: this device only" : nil
+        case .memory: return "Not saved: tasks couldn't be opened"
+        }
+    }
+
+    private var backupIsStale: Bool {
+        guard let last = app.backups.lastBackup else { return false }
+        return Date().timeIntervalSince(last) > 2 * 86_400
+    }
+
+    /// Replays only the steps added in this version.
+    private func showWhatsNew() {
+        let steps = TutorialCatalog.steps(newerThan: TutorialCatalog.version - 1)
+        guard !steps.isEmpty else {
+            app.show("Nothing new to show in this version", symbol: "sparkles")
+            return
+        }
+        #if os(iOS)
+        app.showSettings = false
+        let model = app
+        Task { @MainActor in
+            // Let the settings sheet finish closing before the tour covers the screen.
+            try? await Task.sleep(for: .milliseconds(450))
+            model.tour = TourRequest(steps: steps)
+        }
+        #else
+        app.tour = TourRequest(steps: steps)
+        #endif
+    }
+
+    /// The badge itself is set by the reminder scheduler on its next run. On iPhone, turning it
+    /// on asks for notification permission first (the same request reminders make).
+    private func badgeModeChanged(_ mode: String) {
+        #if os(iOS)
+        guard mode == "today" else {
+            badgeBlocked = false
+            app.reminders?.scheduleSoon()
+            return
+        }
+        let model = app
+        Task { @MainActor in
+            let center = UNUserNotificationCenter.current()
+            if await center.notificationSettings().authorizationStatus == .notDetermined {
+                _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+            }
+            badgeBlocked = await Self.badgesBlocked()
+            model.reminders?.scheduleSoon()
+        }
+        #else
+        app.reminders?.scheduleSoon()
+        #endif
+    }
+
+    #if os(iOS)
+    private static func badgesBlocked() async -> Bool {
+        await UNUserNotificationCenter.current().notificationSettings().badgeSetting != .enabled
+    }
+    #endif
 
     private func restore(_ url: URL) {
         do {

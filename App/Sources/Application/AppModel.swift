@@ -263,8 +263,9 @@ final class AppModel {
         }
     }
 
+    /// The row checkbox (see `check(_:)`).
     func toggle(_ task: TaskItem) {
-        store.toggle(task)
+        check(task)
     }
 
     /// Files tasks under another group, with Undo.

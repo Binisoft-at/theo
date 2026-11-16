@@ -3,7 +3,7 @@ import SwiftData
 import TheoCore
 
 /// One task. Tap checks it off (it sinks away after a short beat, like Notes); swipe right for
-/// Done / Not Today, swipe left for Details / Delete.
+/// Done / Today or Tomorrow, swipe left for Details / Delete.
 struct WatchTaskRow: View {
     let task: TaskItem
     var depth: Int = 0
@@ -11,7 +11,10 @@ struct WatchTaskRow: View {
 
     @Environment(WatchModel.self) private var model
     @Environment(\.modelContext) private var context
+    /// Ticked while a tap's short beat runs, before the task is really done.
     @State private var checkedPreview = false
+    /// Bumped by every check-off (tap or swipe) for the haptic.
+    @State private var checkCount = 0
 
     private var store: TaskStore { TaskStore(context: context) }
     private var displayDone: Bool { task.isDone || checkedPreview }
@@ -42,18 +45,29 @@ struct WatchTaskRow: View {
                 .tint(.gray)
             } else {
                 Button {
-                    checkedPreview = true
+                    // No preview tick here: the row may stay (an ongoing task, a group page),
+                    // and a stuck tick would hide that the task is open.
+                    checkCount += 1
                     withAnimation { store.setDone([task], true) }
                 } label: {
                     Label("Done", systemImage: "checkmark")
                 }
                 .tint(.green)
-                Button {
-                    withAnimation { store.plan([task], for: DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart)) }
-                } label: {
-                    Label("Not Today", systemImage: "moon.zzz")
+                if task.isPlanned(for: model.dayStart) {
+                    Button {
+                        withAnimation { store.plan([task], for: DayBoundary.current.dayStart(byAdding: 1, to: model.dayStart)) }
+                    } label: {
+                        Label("Tomorrow", systemImage: "moon.zzz.fill")
+                    }
+                    .tint(.indigo)
+                } else {
+                    Button {
+                        withAnimation { store.plan([task], for: model.dayStart) }
+                    } label: {
+                        Label("Today", systemImage: "sun.max.fill")
+                    }
+                    .tint(.orange)
                 }
-                .tint(.indigo)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -69,7 +83,10 @@ struct WatchTaskRow: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .sensoryFeedback(.success, trigger: checkedPreview) { _, new in new }
+        .sensoryFeedback(.success, trigger: checkCount)
+        .onChange(of: task.isDone) {
+            checkedPreview = false
+        }
         .accessibilityValue(task.isDone ? Text("Done") : Text("Open"))
         .accessibilityHint(task.isDone ? Text("Double-tap to mark as not done") : Text("Double-tap to mark as done"))
     }
@@ -94,6 +111,7 @@ struct WatchTaskRow: View {
         }
         guard !checkedPreview else { return }
         checkedPreview = true
+        checkCount += 1
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(650))
             withAnimation { store.setDone([task], true) }
@@ -102,7 +120,7 @@ struct WatchTaskRow: View {
     }
 }
 
-/// Deadline, "Not Today", group and tags in one small line.
+/// Deadline, a later plan day, "logged today" for an ongoing task, group and tags in one small line.
 struct WatchTaskMeta: View {
     let task: TaskItem
     let today: Date
@@ -127,6 +145,10 @@ struct WatchTaskMeta: View {
         if !task.isDone, let planned = task.plannedDay, planned > today {
             parts.append(Text("\(Image(systemName: "calendar.badge.plus")) \(DateText.shortDay(planned))").foregroundStyle(Color.indigo))
         }
+        // An ongoing task stays open when it's checked off; this confirms it was logged.
+        if task.isOngoing, let logged = task.lastDoneAt, logged >= today, logged < DayBoundary.current.end(ofDayStarting: today) {
+            parts.append(Text("✓ logged today").foregroundStyle(Color.green))
+        }
         if showGroup, let group = task.group, group.deletedAt == nil {
             parts.append(Text(group.displayName).foregroundStyle(group.color.color))
         }
@@ -142,7 +164,7 @@ struct WatchTaskMeta: View {
 }
 
 /// "Add Task": dictate, scribble or type. Understands the same shortcuts as the iPhone entry bar
-/// ("tomorrow 5pm", "!!", "#tag", "@group").
+/// ("tomorrow 5pm", "morgen 9 Uhr", "!!", "#tag", "@group"), read on the logical day.
 struct WatchAddTaskRow: View {
     let groupID: UUID?
     /// On Today, new tasks are planned for today.
@@ -163,7 +185,7 @@ struct WatchAddTaskRow: View {
 
     private func add(_ text: String) {
         let refs = groups.map { QuickParser.GroupRef(id: $0.uuid, name: $0.displayName) }
-        let entry = QuickParser.parse(text, groups: refs)
+        let entry = QuickParser.parse(text, groups: refs, now: DayBoundary.current.start(of: Date()))
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom
         withAnimation {

@@ -1,26 +1,31 @@
 import SwiftUI
 import TheoCore
 
-/// Details-sheet sections for planning a task: estimate and focus, repeat and reminders,
-/// and its place on the Eisenhower matrix.
+/// Details-sheet sections for planning a task: repeat and reminders, estimate and focus, and
+/// (folded away) its importance level and place on the Eisenhower matrix.
 struct TaskPlanningSections: View {
     @Bindable var task: TaskItem
+    /// Inside the Mac inspector rather than a sheet: there's nothing to dismiss before the
+    /// focus timer opens.
+    var embedded = false
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var customEstimate = ""
     @State private var customMinutes = 45
+    /// Ranking is set less often than the rest, so it starts folded.
+    @State private var showsRanking = false
 
     private static let nudgeOptions: [(title: String, count: Int, every: Int)] = [
         ("Off", 0, 0), ("3× every 5 min", 3, 5), ("3× every 10 min", 3, 10), ("5× every 15 min", 5, 15), ("4× every 30 min", 4, 30),
     ]
 
     var body: some View {
-        estimateSection
         if task.dueDate != nil {
             repeatSection
         }
-        matrixSection
+        estimateSection
+        rankingSection
     }
 
     // MARK: - Estimate & focus
@@ -57,12 +62,17 @@ struct TaskPlanningSections: View {
             }
             if !task.isDone {
                 Button {
-                    let target = task
-                    let model = app
-                    dismiss()
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(450))
-                        model.startFocus(on: target)
+                    if embedded {
+                        app.startFocus(on: task)
+                    } else {
+                        // The timer opens once the sheet is gone.
+                        let target = task
+                        let model = app
+                        dismiss()
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(450))
+                            model.startFocus(on: target)
+                        }
                     }
                 } label: {
                     Label("Start Focus", systemImage: "timer")
@@ -128,7 +138,9 @@ struct TaskPlanningSections: View {
             Text("Repeat & Reminders")
         } footer: {
             if task.recurrence != nil {
-                Text("Checking it off schedules the next one.")
+                Text(task.isOngoing
+                    ? "Checking it off logs it and moves the deadline to the next time."
+                    : "Checking it off schedules the next one.")
             }
         }
     }
@@ -174,28 +186,44 @@ struct TaskPlanningSections: View {
         return "\(offsets.count) set"
     }
 
-    // MARK: - Matrix
+    // MARK: - Ranking
 
-    private var matrixSection: some View {
+    /// The importance level and the matrix, folded behind one row that says where the task
+    /// ranks. The priority marks above already set a matching importance.
+    private var rankingSection: some View {
         let cell = MatrixGeometry.cell(of: task, today: app.dayStart)
         return Section {
-            MatrixBoard(compact: true) { size in
-                MatrixDot(point: MatrixGeometry.center(of: cell, in: size), color: Color.accentColor, isSelected: true)
-                    .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture { location in
-                        let target = MatrixGeometry.cell(at: location, in: size)
-                        withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
-                    }
+            DisclosureGroup(isExpanded: $showsRanking) {
+                Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
+                    LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
+                }
+                MatrixBoard(compact: true) { size in
+                    MatrixDot(point: MatrixGeometry.center(of: cell, in: size), color: Color.accentColor, isSelected: true)
+                        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            let target = MatrixGeometry.cell(at: location, in: size)
+                            withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+                        }
+                }
+                .frame(height: 170)
+                .sensoryFeedback(.selection, trigger: cell.key)
+            } label: {
+                LabeledContent {
+                    Text(MatrixGeometry.describe(cell))
+                } label: {
+                    Label("Ranking", systemImage: "square.grid.3x3")
+                }
             }
-            .frame(height: 170)
-            .sensoryFeedback(.selection, trigger: cell.key)
-            LabeledContent("Ranked", value: MatrixGeometry.describe(cell))
-        } header: {
-            Text("Urgency × Importance")
         } footer: {
-            Text("Tap a cell: left is due today, right is two weeks out or no date, up is more important. Lists are ranked by it.")
+            if showsRanking {
+                Text("Urgency × importance. Tap a cell: left is due today, right is two weeks out or no date, up is more important. Lists are ranked by it.")
+            }
         }
+    }
+
+    private var importanceLevelBinding: Binding<Int> {
+        Binding(get: { task.importanceLevel }, set: { app.store.setImportance([task], Matrix.importance(forLevel: $0)) })
     }
 }

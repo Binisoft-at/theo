@@ -18,15 +18,20 @@ struct TaskDetailView: View {
     @State private var newTag = ""
     @State private var newSubtask = ""
     @FocusState private var subtaskFieldFocused: Bool
+    /// "Pick…" shows the day picker (it stays open while the task is planned for such a day).
+    @State private var picksDay = false
 
-    /// Subtasks in page order, with their depth below this task.
+    /// Subtasks in page order, with their depth below this task. An ongoing subtask's logs
+    /// (older ones still sit in the block) aren't steps of their own.
     private var subtasks: [(task: TaskItem, depth: Int)] {
         let groupID = task.groupID
         let layout = SectionLayout(liveTasks.filter { $0.groupID == groupID })
         guard let index = layout.index(of: task) else { return [] }
         let end = layout.blockEnd(after: index)
         let base = layout.depths[index]
-        return (index + 1..<end).map { (task: layout.items[$0], depth: layout.depths[$0] - base - 1) }
+        return (index + 1..<end)
+            .filter { layout.items[$0].loggedFor == nil }
+            .map { (task: layout.items[$0], depth: layout.depths[$0] - base - 1) }
     }
 
     var body: some View {
@@ -64,15 +69,17 @@ struct TaskDetailView: View {
             Section {
                 HStack(alignment: .top, spacing: 10) {
                     CheckCircle(done: task.isDone, priority: task.priority) {
-                        withAnimation(.snappy) { app.store.toggle(task) }
+                        withAnimation(.snappy) { app.check(task) }
                     }
                     TextField("Title", text: $task.title, axis: .vertical)
                         .font(.title3.weight(.semibold))
                         .textFieldStyle(.plain)
                 }
-                TextField("Notes", text: $task.notes, axis: .vertical)
+                TextField("Description", text: $task.notes, axis: .vertical)
                     .lineLimit(3...12)
             }
+
+            planSection
 
             if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
                 Section {
@@ -97,7 +104,7 @@ struct TaskDetailView: View {
 
             subtaskSection
 
-            Section {
+            Section("Priority") {
                 Picker("Priority", selection: priorityBinding) {
                     ForEach(Priority.allCases) { priority in
                         Text(priority == .normal ? "None" : priority.marks).tag(priority)
@@ -105,11 +112,6 @@ struct TaskDetailView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
-                    LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
-                }
-            } header: {
-                Text("Importance")
             }
 
             Section("Deadline") {
@@ -117,7 +119,7 @@ struct TaskDetailView: View {
                     HStack(spacing: 8) {
                         ForEach(QuickDate.allCases) { quick in
                             let date = quick.date(from: app.dayStart)
-                            ChipButton(title: quick.title, symbol: quick.symbol, color: .orange, isOn: isDue(on: date)) {
+                            ChipButton(title: quick.title, symbol: quick.symbol, color: .blue, isOn: isDue(on: date)) {
                                 app.store.setDue([task], isDue(on: date) ? nil : date)
                             }
                         }
@@ -134,26 +136,14 @@ struct TaskDetailView: View {
                         selection: dueBinding,
                         displayedComponents: task.dueHasTime ? [.date, .hourAndMinute] : [.date]
                     )
-                    Toggle(isOn: $task.dueHasTime) {
+                    Toggle(isOn: hasTimeBinding) {
                         Label("Time", systemImage: "clock")
                     }
                 }
-                Toggle(isOn: plannedBinding) {
-                    Label("Planned", systemImage: "calendar.badge.plus")
-                }
-                if let planned = task.plannedDay {
-                    DatePicker(
-                        "For",
-                        selection: Binding(
-                            get: { planned },
-                            set: { app.store.plan([task], for: $0) }
-                        ),
-                        displayedComponents: [.date]
-                    )
-                }
             }
 
-            TaskPlanningSections(task: task)
+            // Repeat & reminders, estimate and focus, and the folded ranking.
+            TaskPlanningSections(task: task, embedded: embedded)
 
             Section {
                 Toggle(isOn: Binding(
@@ -166,7 +156,7 @@ struct TaskDetailView: View {
                     LabeledContent("Last done", value: last.formatted(date: .abbreviated, time: .shortened))
                 }
             } footer: {
-                Text("For work that never ends, like checking the account or answering mail: checking it off logs it for the day (with its Power Hours) and the task stays.")
+                Text("For work that never ends, like checking the account or answering mail: checking it off logs it for the day (with its Power Hours) and the task stays. Give it a deadline and a repeat to have it come back on its own.")
             }
 
             Section("Organize") {
@@ -196,31 +186,122 @@ struct TaskDetailView: View {
                 }
             }
 
-            Section {
-                LabeledContent("Created", value: task.createdAt.formatted(date: .abbreviated, time: .shortened))
-                if let completed = task.completedAt {
-                    LabeledContent("Completed", value: completed.formatted(date: .abbreviated, time: .shortened))
-                } else {
-                    let days = DayBoundary.current.days(from: task.createdAt, to: app.dayStart)
-                    if days > 0 {
-                        LabeledContent("Carried over", value: days == 1 ? "1 day" : "\(days) days")
-                    }
-                }
-            }
-            .foregroundStyle(.secondary)
-
-            Section {
-                Button(role: .destructive) {
-                    let target = task
-                    if !embedded { dismiss() }
-                    app.delete([target])
-                } label: {
-                    Label("Delete Task", systemImage: "trash")
-                }
-            }
+            recordSections
         }
         .formStyle(.grouped)
     }
+
+    /// When it was created, finished or first planned, and Delete.
+    @ViewBuilder private var recordSections: some View {
+        Section {
+            LabeledContent("Created", value: task.createdAt.formatted(date: .abbreviated, time: .shortened))
+            if let completed = task.completedAt {
+                LabeledContent("Completed", value: completed.formatted(date: .abbreviated, time: .shortened))
+            } else if task.plannedDay != nil, let since = task.plannedSince {
+                // When its current run of plans began (carrying it over keeps the day).
+                LabeledContent("Planned since", value: since.formatted(date: .abbreviated, time: .omitted))
+            }
+        }
+        .foregroundStyle(.secondary)
+
+        Section {
+            Button(role: .destructive) {
+                let target = task
+                if !embedded { dismiss() }
+                app.delete([target])
+            } label: {
+                Label("Delete Task", systemImage: "trash")
+            }
+        }
+    }
+
+    // MARK: - Plan
+
+    /// Which plan chip is on.
+    private enum PlanChoice {
+        case off, today, tomorrow, nextWeek, other
+    }
+
+    private var todayKey: Date { Calendar.current.startOfDay(for: app.dayStart) }
+    private var tomorrowKey: Date { DayBoundary.current.dayStart(byAdding: 1, to: app.dayStart) }
+    private var nextWeekKey: Date { QuickDate.nextWeek.date(from: app.dayStart) }
+
+    private var planChoice: PlanChoice {
+        guard let planned = task.plannedDay else { return .off }
+        let calendar = Calendar.current
+        if calendar.isDate(planned, inSameDayAs: todayKey) { return .today }
+        if calendar.isDate(planned, inSameDayAs: tomorrowKey) { return .tomorrow }
+        if calendar.isDate(planned, inSameDayAs: nextWeekKey) { return .nextWeek }
+        return .other
+    }
+
+    /// The day it's on the plan for, one tap each, with the same colours as everywhere:
+    /// orange Today, indigo for later days, grey Off Plan. Every change has Undo.
+    private var planSection: some View {
+        let choice = planChoice
+        return Section {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ChipButton(title: "Today", symbol: "sun.max.fill", color: .orange, isOn: choice == .today) {
+                        guard choice != .today else { return }
+                        picksDay = false
+                        withAnimation(.snappy) { app.plan([task], for: app.dayStart) }
+                    }
+                    ChipButton(title: "Tomorrow", symbol: "moon.zzz.fill", color: .indigo, isOn: choice == .tomorrow) {
+                        guard choice != .tomorrow else { return }
+                        picksDay = false
+                        withAnimation(.snappy) { app.deferToTomorrow([task]) }
+                    }
+                    ChipButton(title: QuickDate.nextWeek.title, symbol: QuickDate.nextWeek.symbol, color: .indigo, isOn: choice == .nextWeek) {
+                        guard choice != .nextWeek else { return }
+                        picksDay = false
+                        withAnimation(.snappy) { app.plan([task], for: nextWeekKey) }
+                    }
+                    ChipButton(title: "Pick…", symbol: "calendar", color: .indigo, isOn: choice == .other) {
+                        guard choice != .other else { return }
+                        withAnimation(.snappy) { picksDay.toggle() }
+                    }
+                    ChipButton(title: "Off Plan", symbol: "calendar.badge.minus", color: .gray, isOn: choice == .off) {
+                        guard choice != .off else { return }
+                        picksDay = false
+                        withAnimation(.snappy) { app.plan([task], for: nil) }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .scrollClipDisabled()
+            if picksDay || choice == .other {
+                DatePicker("Plan for", selection: pickedDayBinding, in: min(task.plannedDay ?? todayKey, todayKey)..., displayedComponents: [.date])
+            }
+        } header: {
+            Text("Plan")
+        } footer: {
+            if let age = planAge {
+                Text(age)
+            }
+        }
+    }
+
+    /// The day in the picker: the planned one, or today until a day is picked. Picking a day
+    /// plans the task for it.
+    private var pickedDayBinding: Binding<Date> {
+        Binding(
+            get: { task.plannedDay ?? todayKey },
+            set: { day in
+                let key = Calendar.current.startOfDay(for: day)
+                guard key != task.plannedDay else { return }
+                withAnimation(.snappy) { app.plan([task], for: key) }
+            }
+        )
+    }
+
+    /// "Planned since Mon (3 days)" once it's been on the plan for a day without being done.
+    private var planAge: String? {
+        guard task.plannedDay != nil, !task.isDone, let since = task.plannedSince else { return nil }
+        return PlanAge.describe(since: since, today: app.dayStart)
+    }
+
+    // MARK: - Subtasks
 
     private var subtaskSection: some View {
         Section {
@@ -250,7 +331,13 @@ struct TaskDetailView: View {
             subtaskFieldFocused = false
             return
         }
-        let entry = QuickParser.parse(title, groups: [], options: [.priority, .tags, .dates])
+        // Like the composer, minus the group: a subtask stays in its parent's group.
+        let entry = QuickParser.parse(
+            title,
+            groups: [],
+            options: [.priority, .tags, .dates, .estimate, .ongoing, .recurrence],
+            now: app.dayStart
+        )
         withAnimation(.snappy) { _ = app.store.addSubtask(entry, to: task) }
         newSubtask = ""
         subtaskFieldFocused = true
@@ -273,10 +360,6 @@ struct TaskDetailView: View {
         Binding(get: { task.priority }, set: { app.store.setPriority([task], $0) })
     }
 
-    private var importanceLevelBinding: Binding<Int> {
-        Binding(get: { task.importanceLevel }, set: { app.store.setImportance([task], Matrix.importance(forLevel: $0)) })
-    }
-
     private var hasDueBinding: Binding<Bool> {
         Binding(
             get: { task.dueDate != nil },
@@ -292,8 +375,23 @@ struct TaskDetailView: View {
         Binding(get: { task.dueDate ?? Date() }, set: { task.dueDate = $0; task.touch() })
     }
 
-    private var plannedBinding: Binding<Bool> {
-        Binding(get: { task.plannedDay != nil }, set: { app.store.plan([task], for: $0 ? app.dayStart : nil) })
+    /// Switching the time on while the deadline still sits at midnight (already past today)
+    /// picks one that can remind: the next full hour today, 9:00 on other days. Switching it
+    /// off keeps the day. Saved at once, so the reminders follow.
+    private var hasTimeBinding: Binding<Bool> {
+        Binding(
+            get: { task.dueHasTime },
+            set: { on in
+                guard on != task.dueHasTime else { return }
+                if on, let due = task.dueDate {
+                    let suggested = DeadlineTime.suggested(for: due, today: app.dayStart, now: Date())
+                    if suggested != due { task.dueDate = suggested }
+                }
+                task.dueHasTime = on
+                task.touch()
+                app.store.save()
+            }
+        )
     }
 
     private var groupBinding: Binding<UUID?> {
@@ -317,7 +415,7 @@ struct SubtaskLine: View {
     var body: some View {
         HStack(spacing: 10) {
             CheckCircle(done: task.isDone, priority: task.priority, size: 20) {
-                withAnimation(.snappy) { app.store.toggle(task) }
+                withAnimation(.snappy) { app.check(task) }
             }
             TextField("Subtask", text: $task.title, axis: .vertical)
                 .textFieldStyle(.plain)
