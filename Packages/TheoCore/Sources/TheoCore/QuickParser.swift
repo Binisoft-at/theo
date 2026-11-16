@@ -171,7 +171,7 @@ public enum QuickParser {
                 // Our own reading wins; the detector would read "15.12" as a time.
                 var remaining = title
                 remaining.removeSubrange(match.range)
-                remaining = cleanupAfterDateRemoval(remaining)
+                remaining = cleanupAfterDateRemoval(remaining, leading: false)
                 if !remaining.isEmpty {
                     var due = match.date
                     // "Standup jeden Montag 9 Uhr": the time belongs to the first Monday.
@@ -194,9 +194,12 @@ public enum QuickParser {
                     remaining.removeSubrange(swiftRange)
                     remaining = cleanupAfterDateRemoval(remaining)
                     // Bare numbers ("09.09", "2026") are references more often than deadlines, and
-                    // day words our own reading turned down ("am Morgen", "ab Montag") stay text.
+                    // day words our own reading turned down ("am Morgen", "ab Montag") stay text,
+                    // like a part of the day alone ("Joggen morgens" is a habit, not a deadline).
                     let onlyDigits = matched.allSatisfy { $0.isNumber || $0 == "." || $0 == " " }
-                    let declined = RelativeDate.tokenize(matched).contains { RelativeDate.knownWords.contains($0.word) }
+                    let words = RelativeDate.tokenize(matched)
+                    let declined = words.contains { RelativeDate.knownWords.contains($0.word) }
+                        || words.allSatisfy { RelativeDate.dayParts.contains($0.word) }
                     let blocked = title[..<swiftRange.lowerBound].split(separator: " ").last
                         .map { RelativeDate.blockers.contains($0.lowercased()) } ?? false
                     if !remaining.isEmpty, !onlyDigits, !declined, !blocked {
@@ -282,7 +285,10 @@ public enum QuickParser {
         return false
     }
 
-    private static func cleanupAfterDateRemoval(_ s: String) -> String {
+    /// - Parameter leading: also drop a connector left at the start ("by oct 30 send it"). Off
+    ///   for our own reading, whose match already took its connectors, so "Zum Arzt gehen morgen"
+    ///   keeps "Zum".
+    private static func cleanupAfterDateRemoval(_ s: String, leading: Bool = true) -> String {
         var result = collapseSpaces(s)
         // "ab" stays: "ab Montag" (starting Monday) is never taken as a deadline.
         let danglers = [" at", " on", " by", " due", " until", " before", " for", " in", " from",
@@ -295,9 +301,10 @@ public enum QuickParser {
                 changed = true
             }
         }
-        let leading = ["on ", "by ", "at ", "due ", "bis ", "am ", "um ", "zum "]
-        for d in leading where result.lowercased().hasPrefix(d) {
-            result = String(result.dropFirst(d.count))
+        if leading {
+            for d in ["on ", "by ", "at ", "due ", "bis ", "am ", "um ", "zum "] where result.lowercased().hasPrefix(d) {
+                result = String(result.dropFirst(d.count))
+            }
         }
         return result.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",-–")))
     }

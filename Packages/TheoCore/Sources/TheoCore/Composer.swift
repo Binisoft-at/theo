@@ -17,7 +17,8 @@ public enum Composer {
     }
 
     private static let subtaskMarkers = ["- ", "– ", "— ", "> ", "↳ ", "↳"]
-    private static let doneMarkers = ["- [x] ", "- [X] ", "* [x] ", "* [X] ", "[x] ", "[X] ", "☑ ", "☒ ", "✅ "]
+    /// As in Import from Notes, plus the emoji forms the iOS keyboard types ("☑️", "✔️").
+    private static let doneMarkers = ["- [x] ", "- [X] ", "* [x] ", "* [X] ", "[x] ", "[X] ", "☑ ", "☑️ ", "☒ ", "✓ ", "✔ ", "✔️ ", "✅ "]
     private static let listMarkers = ["- [ ] ", "* [ ] ", "[ ] ", "☐ ", "• ", "◦ ", "- ", "* ", "– "]
 
     /// The text after a leading subtask marker ("- book flights" → "book flights"), or nil when

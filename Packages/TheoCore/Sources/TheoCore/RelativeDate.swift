@@ -6,8 +6,10 @@ import Foundation
 ///
 /// Whole words only: "Morgenroutine" or "Montagsmeeting" never match, and short weekdays
 /// ("fr", "do", "mon") count only right after a connector ("bis Fr") or capitalised right
-/// before a time ("Mi 15 Uhr"), so "Mail an Fr. Müller" or "do the laundry" stay text. "Morgen" as a noun ("am Morgen", "guten Morgen") isn't a
-/// date, and "ab Montag" (starting Monday) isn't a deadline.
+/// before a time ("Mi 15 Uhr"), so "Mail an Fr. Müller" or "do the laundry" stay text.
+/// "Morgen" as a noun ("am Morgen", "guten Morgen") isn't a date, and "ab Montag" (starting
+/// Monday) isn't a deadline. A part of the day goes with its day or time ("heute Abend",
+/// "morgen früh", "um 8 abends" = 20:00).
 public enum RelativeDate {
     public struct Match: Equatable, Sendable {
         /// Start of the day, or that day at the time when `hasTime`.
@@ -41,19 +43,30 @@ public enum RelativeDate {
             guard let day = reader.day(at: index) else { continue }
             var start = index
             var end = day.end
+            // "heute Abend", "morgen früh", "Freitag Nachmittag": the part of the day goes too.
+            var later = false
+            if let isLater = reader.dayPart(at: end, after: tokens[end - 1].word) {
+                later = isLater
+                end += 1
+            }
             var time: (hour: Int, minute: Int)?
             if let after = reader.time(at: end) {
-                time = (after.hour, after.minute)
+                time = (hour: after.hour, minute: after.minute)
                 end = after.end
+                if let isLater = reader.dayPart(at: end) {
+                    later = later || isLater
+                    end += 1
+                }
             } else if let before = reader.time(endingAt: index) {
-                time = (before.hour, before.minute)
+                time = (hour: before.hour, minute: before.minute)
                 start = before.start
             }
             if start > 0, blockers.contains(tokens[start - 1].word) { continue }
             start = reader.connectorStart(before: start)
             let date: Date
             if let time {
-                guard let timed = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: day.date) else { continue }
+                let hour = later && (1...11).contains(time.hour) ? time.hour + 12 : time.hour
+                guard let timed = calendar.date(bySettingHour: hour, minute: time.minute, second: 0, of: day.date) else { continue }
                 date = timed
             } else {
                 date = day.date
@@ -64,12 +77,19 @@ public enum RelativeDate {
         for index in tokens.indices {
             guard let time = reader.time(at: index) else { continue }
             if index > 0, blockers.contains(tokens[index - 1].word) { continue }
-            guard var date = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: base) else { continue }
+            var end = time.end
+            var hour = time.hour
+            // "um 8 abends" is 20:00, "um 7 morgens" 07:00.
+            if let isLater = reader.dayPart(at: end) {
+                if isLater, (1...11).contains(hour) { hour += 12 }
+                end += 1
+            }
+            guard var date = calendar.date(bySettingHour: hour, minute: time.minute, second: 0, of: base) else { continue }
             if let now, date <= now {
                 date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
             }
             let start = reader.connectorStart(before: index)
-            return Match(date: date, hasTime: true, hasDay: false, range: tokens[start].range.lowerBound ..< tokens[time.end - 1].range.upperBound)
+            return Match(date: date, hasTime: true, hasDay: false, range: tokens[start].range.lowerBound ..< tokens[end - 1].range.upperBound)
         }
         return nil
     }
@@ -87,6 +107,16 @@ public enum RelativeDate {
         "sun": 1, "mon": 2, "tue": 3, "tues": 3, "wed": 4, "thu": 5, "thur": 5, "thurs": 5, "fri": 6, "sat": 7,
         "so": 1, "mo": 2, "di": 3, "mi": 4, "do": 5, "fr": 6, "sa": 7,
     ]
+
+    /// Parts of the day that go with a day or a time ("heute Abend", "morgen früh", "um 8 abends").
+    /// They set no time of their own.
+    static let dayParts: Set<String> = [
+        "früh", "morgens", "vormittag", "vormittags", "mittag", "mittags", "nachmittag", "nachmittags",
+        "abend", "abends", "nacht", "nachts", "morning", "afternoon", "evening", "night",
+    ]
+
+    /// After these an hour from 1 to 11 is in the afternoon or evening: "heute Abend um 8" is 20:00.
+    static let laterDayParts: Set<String> = ["nachmittag", "nachmittags", "abend", "abends", "afternoon", "evening"]
 
     /// Day words this reader knows. When it turned them down ("am Morgen", "Mail an Fr. Müller",
     /// "ab Montag"), the system's date detector mustn't take them either.
@@ -111,8 +141,11 @@ public enum RelativeDate {
         "am", "bis", "zum", "vor", "für", "spätestens", "on", "by", "due", "until", "before", "for",
     ]
 
-    /// After one of these a short weekday ("bis Fr", "by fri") is a date.
+    /// After one of these a short weekday ("bis Fr", "by fri") is a date, German names after
+    /// German words and English after English, so "work on so many things" stays text.
     static let shortDayConnectors: Set<String> = ["am", "bis", "zum", "vor", "spätestens", "on", "by", "due", "until", "before"]
+    static let englishDayConnectors: Set<String> = ["on", "by", "due", "until", "before"]
+    static let englishShortWeekdays: Set<String> = ["sun", "mon", "tue", "tues", "wed", "thu", "thur", "thurs", "fri", "sat"]
 
     /// A date right after these isn't a deadline: "ab Montag" means starting then, and
     /// "every Monday" / "jeden Montag" is a repeat.
@@ -200,6 +233,16 @@ public enum RelativeDate {
             calendar.date(byAdding: .day, value: value, to: base) ?? base
         }
 
+        /// A part of the day at `index` ("Abend", "früh", "evening"); after "heute" also "Morgen"
+        /// (this morning). nil when there's none; true when it moves an hour from 1 to 11 past
+        /// noon ("Abend", "nachmittags").
+        func dayPart(at index: Int, after previous: String? = nil) -> Bool? {
+            guard let w = word(index) else { return nil }
+            if w == "morgen", previous == "heute" || previous == "today" { return false }
+            guard RelativeDate.dayParts.contains(w) else { return nil }
+            return RelativeDate.laterDayParts.contains(w)
+        }
+
         /// Steps back over up to two connectors right before `index`.
         func connectorStart(before index: Int) -> Int {
             var start = index
@@ -272,9 +315,15 @@ public enum RelativeDate {
                 return (RelativeDate.nextWeekday(weekday, from: base, calendar: calendar), index + 1)
             }
             if let weekday = RelativeDate.shortWeekdays[w] {
-                // "bis Fr", or written like a calendar entry: "Mi 15 Uhr Zahnarzt".
-                let afterConnector = previous.map { RelativeDate.shortDayConnectors.contains($0) } ?? false
-                let beforeTime = tokens[index].raw.first?.isUppercase == true && time(at: index + 1) != nil
+                // "bis Fr", or written like a calendar entry: "Mi 15 Uhr Zahnarzt". Never an
+                // acronym ("on SAT prep").
+                let raw = tokens[index].raw
+                guard raw.count < 3 || raw != raw.uppercased() else { return nil }
+                let isEnglish = RelativeDate.englishShortWeekdays.contains(w)
+                let afterConnector = previous.map {
+                    RelativeDate.shortDayConnectors.contains($0) && RelativeDate.englishDayConnectors.contains($0) == isEnglish
+                } ?? false
+                let beforeTime = raw.first?.isUppercase == true && time(at: index + 1) != nil
                 guard afterConnector || beforeTime else { return nil }
                 return (RelativeDate.nextWeekday(weekday, from: base, calendar: calendar), index + 1)
             }
@@ -448,8 +497,8 @@ public enum RelativeDate {
 
         private func twelveHour(_ hour: Int, _ minute: Int, isPM: Bool) -> (hour: Int, minute: Int)? {
             guard (1...12).contains(hour) else { return nil }
-            if isPM { return (hour == 12 ? 12 : hour + 12, minute) }
-            return (hour == 12 ? 0 : hour, minute)
+            if isPM { return (hour: hour == 12 ? 12 : hour + 12, minute: minute) }
+            return (hour: hour == 12 ? 0 : hour, minute: minute)
         }
     }
 }

@@ -79,6 +79,8 @@ enum CaptureFixture {
         CaptureDateCase(text: "Anfrage 09.09 keine Antwort", title: "Anfrage 09.09 keine Antwort", due: nil),
         CaptureDateCase(text: "Milch 1.5 Liter", title: "Milch 1.5 Liter", due: nil),
         CaptureDateCase(text: "Version 2.11 testen", title: "Version 2.11 testen", due: nil),
+        CaptureDateCase(text: "Zum Arzt gehen morgen", title: "Zum Arzt gehen", due: "2026-11-12"),
+        CaptureDateCase(text: "Am Wochenende Rasen mähen", title: "Rasen mähen", due: "2026-11-14"),
         CaptureDateCase(text: "Fenster putzen übermorgen", title: "Fenster putzen", due: "2026-11-13"),
         CaptureDateCase(text: "Pakete holen in 3 Tagen", title: "Pakete holen", due: "2026-11-14"),
         CaptureDateCase(text: "Kündigen in zwei Wochen", title: "Kündigen", due: "2026-11-25"),
@@ -89,12 +91,21 @@ enum CaptureFixture {
         CaptureDateCase(text: "Call Anna tomorrow 5pm", title: "Call Anna", due: "2026-11-12 17:00"),
         CaptureDateCase(text: "Call at 14:30", title: "Call", due: "2026-11-11 14:30"),
         CaptureDateCase(text: "Anruf um 9", title: "Anruf", due: "2026-11-11 09:00"),
+        CaptureDateCase(text: "Mama anrufen heute Abend", title: "Mama anrufen", due: "2026-11-11"),
+        CaptureDateCase(text: "Bäcker morgen früh", title: "Bäcker", due: "2026-11-12"),
+        CaptureDateCase(text: "Call Sam tomorrow morning", title: "Call Sam", due: "2026-11-12"),
+        CaptureDateCase(text: "Kino heute Abend um 8", title: "Kino", due: "2026-11-11 20:00"),
+        CaptureDateCase(text: "Essen um 7 abends", title: "Essen", due: "2026-11-11 19:00"),
+        CaptureDateCase(text: "Joggen um 7 morgens", title: "Joggen", due: "2026-11-12 07:00"),
+        CaptureDateCase(text: "Joggen morgens", title: "Joggen morgens", due: nil),
         CaptureDateCase(text: "Morgenroutine planen", title: "Morgenroutine planen", due: nil),
         CaptureDateCase(text: "Spaziergang am Morgen", title: "Spaziergang am Morgen", due: nil),
         CaptureDateCase(text: "guten Morgen sagen", title: "guten Morgen sagen", due: nil),
         CaptureDateCase(text: "Rechnung zahlen Morgen", title: "Rechnung zahlen Morgen", due: nil),
         CaptureDateCase(text: "Mail an Fr. Müller", title: "Mail an Fr. Müller", due: nil),
         CaptureDateCase(text: "do the laundry", title: "do the laundry", due: nil),
+        CaptureDateCase(text: "Work on so many things", title: "Work on so many things", due: nil),
+        CaptureDateCase(text: "Work on SAT prep", title: "Work on SAT prep", due: nil),
         CaptureDateCase(text: "Diät ab Montag", title: "Diät ab Montag", due: nil),
         CaptureDateCase(text: "Montagsmeeting vorbereiten", title: "Montagsmeeting vorbereiten", due: nil),
     ]
@@ -237,6 +248,12 @@ struct CaptureParsingTests {
         #expect(lines.map(\.title) == ["Paid the rent", "Pay the phone bill", "Booked flights", "Packed the bags", "Sent the invitations", "Buy milk"])
         #expect(lines.map(\.done) == [true, false, true, true, true, false])
         #expect(lines.map(\.level) == [0, 0, 0, 1, 0, 0])
+    }
+
+    @Test func tickedLinesInEmojiFormAreDoneToo() {
+        let lines = Composer.lines("☑️ Paid the rent\n✔ Sent the forms\nBuy milk")
+        #expect(lines.map(\.title) == ["Paid the rent", "Sent the forms", "Buy milk"])
+        #expect(lines.map(\.done) == [true, true, false])
     }
 
     // MARK: Confirmation

@@ -525,7 +525,7 @@ struct QuickEntryBar: View {
         guard dueFromText, let words = chipEntry.dueText else {
             return DateText.due(due.date, hasTime: due.hasTime, today: app.dayStart)
         }
-        let shown = words.count > 14 ? String(words.prefix(13)) + "…" : words
+        let shown = words.count > 28 ? String(words.prefix(27)) + "…" : words
         var day = DateText.shortDay(due.date)
         if due.hasTime { day += " " + due.date.formatted(date: .omitted, time: .shortened) }
         return "\(shown) → \(day)"
