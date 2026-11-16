@@ -58,7 +58,9 @@ struct TodayCornerView: View {
             AccessoryWidgetBackground()
             Text(count)
                 .font(.title3.weight(.bold))
+                .fontDesign(.rounded)
                 .monospacedDigit()
+                .contentTransition(.numericText())
                 .minimumScaleFactor(0.6)
                 .widgetAccentable()
         }

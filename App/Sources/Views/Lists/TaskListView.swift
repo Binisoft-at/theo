@@ -710,12 +710,14 @@ struct TaskListView<Header: View>: View {
         focusedID == task.rowID || focusedID == TaskRowView.notesFocusID(task) || pendingEditID == task.rowID
     }
 
-    private func beginEdit(_ task: TaskItem) {
+    /// Starts editing a line. The line takes its editing shape at once; the cursor (and on
+    /// iPhone the keyboard) follows after `delay`.
+    private func beginEdit(_ task: TaskItem, after delay: Duration = .milliseconds(30)) {
         guard !app.isSelecting, !task.isDone else { return }
         let id = task.rowID
         pendingEditID = id
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(30))
+            try? await Task.sleep(for: delay)
             focusedID = id
             try? await Task.sleep(for: .milliseconds(250))
             if pendingEditID == id { focusedID = id }
@@ -761,7 +763,7 @@ struct TaskListView<Header: View>: View {
             }
             let task = app.store.newBlankTask(in: groupID ?? defaultGroupID, placement: placement)
             if let plansFor { app.store.plan([task], for: plansFor) }
-            beginEdit(task)
+            beginEdit(task, after: Self.focusAfterInsert)
         }
     }
 
@@ -1074,8 +1076,19 @@ struct TaskListView<Header: View>: View {
     private func insertTask(between point: (above: ListRow?, below: ListRow?), entry: ParsedEntry?) {
         Motion.animate(Motion.list) {
             let new = makeTask(between: point, entry: entry)
-            if entry == nil { beginEdit(new) }
+            if entry == nil { beginEdit(new, after: Self.focusAfterInsert) }
         }
+    }
+
+    /// How long a new line waits for the cursor. On iPhone and iPad the keyboard comes up once
+    /// the line has made room, so the two movements follow each other instead of tangling; the
+    /// Mac has no keyboard to bring up.
+    private static var focusAfterInsert: Duration {
+        #if os(iOS)
+        .milliseconds(340)
+        #else
+        .milliseconds(30)
+        #endif
     }
 
     /// The task `insertTask(between:entry:)` adds: filed, nested and ranked between its neighbours.

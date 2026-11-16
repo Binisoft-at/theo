@@ -15,6 +15,8 @@ struct TodayCircularView: View {
                 Image(systemName: "sun.max.fill")
             } currentValueLabel: {
                 Text("\(page.open)")
+                    .fontDesign(.rounded)
+                    .contentTransition(.numericText(value: Double(page.open)))
             }
             .gaugeStyle(.accessoryCircularCapacity)
             .widgetAccentable()

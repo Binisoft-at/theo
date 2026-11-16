@@ -26,6 +26,7 @@ struct QuickEntryBar: View {
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @AppStorage(Prefs.newTaskPlacement) private var placementRaw = NewTaskPlacement.bottom.rawValue
+    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
 
     @State private var text = ""
     @State private var disabled: QuickParser.Options = []
@@ -45,6 +46,8 @@ struct QuickEntryBar: View {
     @State private var lastParent: TaskItem?
     @State private var confirmation: Confirmation?
     @State private var addedCount = 0
+    /// Drops of the + between two tasks that added one: the + bounces back and taps lightly.
+    @State private var insertDrops = 0
     /// The `@group` / `#tag` pick Tab or Return takes on the Mac (a position in the strip).
     @State private var highlight = 0
     /// Esc hid the picks for exactly this text; typing on brings them back.
@@ -194,6 +197,49 @@ struct QuickEntryBar: View {
         groups.first(where: { $0.uuid == id })?.displayName ?? "Quick Entry"
     }
 
+    // MARK: - Look and motion
+
+    /// The accent as it's chosen in Settings, for the chips and picks that wear it.
+    private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
+
+    /// Everything the chips show. When it changes (a word typed, a pick made) they glide to
+    /// their new state instead of jumping.
+    private struct ChipsState: Equatable {
+        var text: String
+        var priority: Priority?
+        var importance: Int?
+        var due: DueChoice
+        var estimate: Double?
+        var recurrence: RecurrenceChoice
+        var group: GroupChoice
+        var matrix: MatrixGeometry.Cell?
+        var disabled: QuickParser.Options
+        var subtaskOff: Bool
+    }
+
+    private var chipsState: ChipsState {
+        ChipsState(text: text, priority: priorityChoice, importance: importanceChoice, due: dueChoice,
+                   estimate: estimateChoice, recurrence: recurrenceChoice, group: groupChoice,
+                   matrix: matrixChoice, disabled: disabled, subtaskOff: subtaskOff)
+    }
+
+    /// A chip that comes or goes grows in or shrinks away while the others make room.
+    fileprivate static var chipTransition: AnyTransition { AnyTransition.scale(scale: 0.9).combined(with: .opacity) }
+
+    // The bar's round controls (+, grid, send): full 44-point touch targets on iPhone and iPad,
+    // with the bar as tall as before and the text keeping its margins; compact on the Mac.
+    #if os(iOS)
+    private static let handleSide: CGFloat = 44
+    private static let barSpacing: CGFloat = 4
+    private static let barPadding = EdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
+    private static let fieldInset: CGFloat = 8
+    #else
+    private static let handleSide: CGFloat = 28
+    private static let barSpacing: CGFloat = 12
+    private static let barPadding = EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+    private static let fieldInset: CGFloat = 0
+    #endif
+
     // MARK: - Views
 
     var body: some View {
@@ -215,9 +261,11 @@ struct QuickEntryBar: View {
         .frame(maxWidth: 920)
         .frame(maxWidth: .infinity)
         #endif
-        .animation(.snappy(duration: 0.25), value: text.isEmpty)
-        .animation(.snappy(duration: 0.25), value: focused)
-        .animation(.snappy(duration: 0.25), value: confirmation?.id)
+        // The send button pops in with the first letter; the chips rise with the keyboard; the
+        // confirmation slides up from behind them.
+        .animation(Motion.resolved(Motion.tap), value: text.isEmpty)
+        .animation(Motion.resolved(Motion.layout), value: focused)
+        .animation(Motion.resolved(Motion.layout), value: confirmation?.id)
         .onChange(of: app.wantsQuickEntryFocus) { _, wants in
             if wants { focusNow() }
         }
@@ -257,12 +305,13 @@ struct QuickEntryBar: View {
     }
 
     private var field: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Self.barSpacing) {
             insertHandle
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .theoFont(.body)
                 .lineLimit(1...5)
+                .padding(.vertical, Self.fieldInset)
                 .focused($focused)
                 .onSubmit(add)
                 #if os(iOS)
@@ -277,37 +326,50 @@ struct QuickEntryBar: View {
                 #endif
             matrixHandle
             if !text.isEmpty {
-                // Tap adds; hold and point at a value on the arc picks the Power Hours, letting go
-                // adds with them.
-                HoldSlidePicker(options: Self.estimateOptions, title: "PH", onTap: add) { index in
-                    pickEstimate(index)
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .theoFont(.title2)
-                        .foregroundStyle(.tint)
-                }
-                .transition(.scale.combined(with: .opacity))
-                .accessibilityLabel(isMultiline ? "Add \(Self.openLines(Composer.lines(text)).count) Tasks" : "Add Task")
-                .accessibilityHint("Touch and hold, then slide toward a value to set the Power Hours")
-                .accessibilityAddTraits(.isButton)
+                sendButton
+                    .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
+        .padding(Self.barPadding)
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
     }
 
-    /// While an `@group` or `#tag` is typed, the picks for it take the chips' place.
-    @ViewBuilder
+    /// Tap adds; hold and point at a value on the arc picks the Power Hours, letting go adds
+    /// with them.
+    private var sendButton: some View {
+        HoldSlidePicker(options: Self.estimateOptions, title: "Power Hours", onTap: add) { index in
+            pickEstimate(index)
+        } label: {
+            Image(systemName: "arrow.up.circle.fill")
+                .theoFont(.title2)
+                .foregroundStyle(.tint)
+                .frame(minWidth: Self.handleSide, minHeight: Self.handleSide)
+                .modifier(HoverFill(shape: Circle()))
+        }
+        .accessibilityLabel(isMultiline ? "Add \(Self.openLines(Composer.lines(text)).count) Tasks" : "Add Task")
+        .accessibilityHint("Touch and hold, then slide toward a value to set the Power Hours")
+        .accessibilityAddTraits(.isButton)
+        .help("Add · hold and slide to set the Power Hours")
+    }
+
+    /// While an `@group` or `#tag` is typed, the picks for it take the chips' place: they rise
+    /// out of the field as the word starts and sink back into it once it's picked or finished,
+    /// while the chips fade out and back in.
     private var aboveField: some View {
         let items = suggestions
-        if items.isEmpty {
-            controls
-        } else {
-            ComposerSuggestionStrip(items: items, highlightedID: highlightedID(in: items)) { item in
-                accept(item)
+        let picking = !items.isEmpty
+        return ZStack(alignment: .leading) {
+            if picking {
+                ComposerSuggestionStrip(items: items, highlightedID: highlightedID(in: items), accent: accent) { item in
+                    accept(item)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                controls
+                    .transition(.opacity)
             }
         }
+        .animation(Motion.resolved(Motion.tap), value: picking)
     }
 
     // MARK: - @group and #tag picks
@@ -324,7 +386,8 @@ struct QuickEntryBar: View {
         }
     }
 
-    /// Groups with their colour and path ("Work › Admin"); switched-off ones dimmed.
+    /// Groups with their icon in their colour and their path ("Work › Admin"); switched-off
+    /// ones dimmed.
     private func groupSuggestions(_ query: String) -> [ComposerSuggestion] {
         let off = GroupTree.inactiveIDs(groups)
         let matches = TokenCompletion.groups(matching: query, in: groupRefs)
@@ -335,6 +398,7 @@ struct QuickEntryBar: View {
                 title: match.path.joined(separator: " › "),
                 insertion: match.insertion,
                 color: group.color.color,
+                symbol: group.symbol,
                 isGroup: true,
                 count: nil,
                 dimmed: off.contains(group.uuid)
@@ -353,6 +417,7 @@ struct QuickEntryBar: View {
                 title: "#" + found.tag,
                 insertion: found.insertion,
                 color: TheoColor.forTag(found.tag).color,
+                symbol: nil,
                 isGroup: false,
                 count: found.count,
                 dimmed: false
@@ -415,78 +480,105 @@ struct QuickEntryBar: View {
     #endif
 
     /// One-tap priority, deadline, group and subtask, plus what was understood from the text.
+    /// As words are typed or picks made, the chips glide to their new state: new ones grow in,
+    /// the others make room.
     private var controls: some View {
-        let entry = chipEntry
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                if isMultiline {
-                    chipLabel("\(Self.openLines(Composer.lines(text)).count) tasks", symbol: "list.bullet.indent", color: .accentColor, active: true)
-                } else {
-                    subtaskChip
-                }
-                priorityChip
-                HStack(spacing: 2) {
-                    dueChip
-                    if dueFromText {
-                        // The chip is a menu, so the × that gives the words back sits next to it.
-                        Button {
-                            disabled.formUnion([.dates, .exactDates])
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .imageScale(.medium)
-                                .foregroundStyle(.secondary)
-                                .frame(minWidth: 24, minHeight: 28)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Not a date")
-                        .accessibilityHint("Keeps “\(entry.dueText ?? "")” in the title")
-                        .transition(.opacity)
-                    }
-                }
-                estimateChip
-                if effectiveDue != nil || effectiveRecurrence != nil {
-                    repeatChip
-                }
-                if let matrixChoice {
-                    removableChip(MatrixGeometry.describe(matrixChoice), color: .accentColor) {
-                        self.matrixChoice = nil
-                    }
-                }
-                if subtaskParent == nil {
-                    groupChip
-                }
-                if entry.ongoing {
-                    removableChip("∞ Ongoing", color: .teal) { disabled.insert(.ongoing) }
-                }
-                if !isMultiline {
-                    // A description in one tap: everything after " // " goes there.
-                    Button {
-                        if !text.contains(" // ") {
-                            text = text.trimmingCharacters(in: .whitespaces) + " // "
-                        }
-                        focused = true
-                    } label: {
-                        chipLabel(entry.notes.isEmpty ? "Description" : "Description ✓", symbol: "text.alignleft",
-                                  color: .indigo, active: !entry.notes.isEmpty)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Adds “ // ” to the text; what you type after it becomes the description")
-                }
-                ForEach(entry.tags, id: \.self) { tag in
-                    removableChip("#" + tag, color: TheoColor.forTag(tag).color) { disabled.insert(.tags) }
-                }
-                if text.isEmpty {
-                    Text(liveParent == nil ? "Try “tomorrow 9am !! #home”" : "Start with “- ” for a subtask")
-                        .theoFont(.caption)
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 6)
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
+        ScrollView(.horizontal, showsIndicators: false) {
+            chipRow
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .animation(Motion.resolved(Motion.tap), value: chipsState)
         }
         .scrollClipDisabled()
+    }
+
+    private var chipRow: some View {
+        let entry = chipEntry
+        let lineCount: Int = isMultiline ? Self.openLines(Composer.lines(text)).count : 0
+        return HStack(spacing: 8) {
+            if isMultiline {
+                chipLabel("\(lineCount) tasks", symbol: "list.bullet.indent", color: accent, active: true, number: Double(lineCount))
+                    .transition(Self.chipTransition)
+            } else {
+                subtaskChip
+            }
+            priorityChip
+            HStack(spacing: 2) {
+                dueChip
+                if dueFromText {
+                    notADateButton(entry.dueText ?? "")
+                        .transition(Self.chipTransition)
+                }
+            }
+            estimateChip
+            if effectiveDue != nil || effectiveRecurrence != nil {
+                repeatChip
+                    .transition(Self.chipTransition)
+            }
+            if let matrixChoice {
+                removableChip(MatrixGeometry.describe(matrixChoice), symbol: "square.grid.3x3.fill", color: accent) {
+                    self.matrixChoice = nil
+                }
+                .transition(Self.chipTransition)
+            }
+            if subtaskParent == nil {
+                groupChip
+                    .transition(Self.chipTransition)
+            }
+            if entry.ongoing {
+                removableChip("Ongoing", symbol: "infinity", color: Tint.ongoing) { disabled.insert(.ongoing) }
+                    .transition(Self.chipTransition)
+            }
+            if !isMultiline {
+                descriptionChip(hasNotes: !entry.notes.isEmpty)
+                    .transition(Self.chipTransition)
+            }
+            ForEach(entry.tags, id: \.self) { tag in
+                removableChip("#" + tag, color: TheoColor.forTag(tag).color) { disabled.insert(.tags) }
+                    .transition(Self.chipTransition)
+            }
+            if text.isEmpty {
+                Text(liveParent == nil ? "Try “tomorrow 9am !! #home”" : "Start with “- ” for a subtask")
+                    .theoFont(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 6)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// The deadline chip is a menu, so the × that gives the date's words back to the title sits
+    /// next to it.
+    private func notADateButton(_ words: String) -> some View {
+        Button {
+            disabled.formUnion([.dates, .exactDates])
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .imageScale(.medium)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 24, minHeight: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Not a date")
+        .accessibilityHint("Keeps “\(words)” in the title")
+        .help("Not a date: keeps the words in the title")
+    }
+
+    /// A description in one tap: everything after " // " goes there. Lit once there is one.
+    private func descriptionChip(hasNotes: Bool) -> some View {
+        Button {
+            if !text.contains(" // ") {
+                text = text.trimmingCharacters(in: .whitespaces) + " // "
+            }
+            focused = true
+        } label: {
+            chipLabel("Description", symbol: "text.alignleft", color: accent, active: hasNotes)
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(hasNotes ? "Added" : "")
+        .accessibilityHint("Adds “ // ” to the text; what you type after it becomes the description")
     }
 
     @ViewBuilder
@@ -495,19 +587,21 @@ struct QuickEntryBar: View {
             Button {
                 subtaskOff = true
             } label: {
-                chipLabel("Under “\(parent.trimmedTitle)”", symbol: "arrow.turn.down.right", color: .accentColor, active: true, removable: true)
+                chipLabel("Under “\(parent.trimmedTitle)”", symbol: "arrow.turn.down.right", color: accent, active: true, removable: true)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Adds it as a normal task instead")
+            .transition(Self.chipTransition)
         } else if let parent = liveParent, Composer.subtaskBody(text) == nil {
             Button {
                 subtaskOff = false
                 text = "- " + text
             } label: {
-                chipLabel("Subtask", symbol: "arrow.turn.down.right", color: .accentColor, active: false)
+                chipLabel("Subtask", symbol: "arrow.turn.down.right", color: accent, active: false)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Adds it under “\(parent.trimmedTitle)”")
+            .transition(Self.chipTransition)
         }
     }
 
@@ -547,34 +641,47 @@ struct QuickEntryBar: View {
     }
 
     /// Drag the + up between two tasks to add one right there (what's typed, or an empty line to
-    /// type into). It moves at once, no hold needed; a ghost follows the finger. A tap just
-    /// starts typing.
+    /// type into). It moves at once, no hold needed; a ghost follows the finger while a faint +
+    /// waits in the bar, and the + bounces back once the line is in. A tap just starts typing.
     private var insertHandle: some View {
-        Image(systemName: subtaskParent != nil ? "arrow.turn.down.right" : "plus.circle.fill")
+        let carrying = app.insertDragLocation != nil
+        let isSubtask = subtaskParent != nil
+        return Image(systemName: isSubtask ? "arrow.turn.down.right" : "plus.circle.fill")
             .theoFont(.title2)
             .foregroundStyle(.tint)
             .contentTransition(.symbolEffect(.replace))
-            .symbolEffect(.bounce, value: addedCount)
-            .frame(minWidth: 30, minHeight: 30)
+            .symbolEffect(.bounce, value: addedCount + insertDrops)
+            .opacity(carrying ? 0.3 : 1)
+            .scaleEffect(carrying ? 0.8 : 1)
+            .animation(Motion.resolved(Motion.tap), value: carrying)
+            .animation(Motion.resolved(Motion.tap), value: isSubtask)
+            .frame(minWidth: Self.handleSide, minHeight: Self.handleSide)
+            .modifier(HoverFill(shape: Circle()))
             .contentShape(Rectangle())
             .onTapGesture { focused = true }
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 6, coordinateSpace: .global)
-                    .onChanged { drag in
-                        if app.insertDragLocation == nil {
-                            let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                            app.insertDragTitle = isMultiline ? "" : (typed.isEmpty ? "" : dragEntry.title)
-                        }
-                        app.insertDragLocation = drag.location
-                    }
-                    .onEnded { drag in
-                        app.insertDragLocation = nil
-                        dropBetween(at: drag.location)
-                    }
-            )
-            .sensoryFeedback(.impact(weight: .light), trigger: app.insertDragLocation != nil) { _, new in new }
+            .highPriorityGesture(insertDrag)
+            // A light tap as the + is picked up, and another as it lands between two tasks.
+            .sensoryFeedback(.impact(weight: .light), trigger: carrying) { _, new in new }
+            .sensoryFeedback(.impact(weight: .light), trigger: insertDrops)
             .accessibilityLabel("New task")
             .accessibilityHint("Drag up between two tasks to add one there")
+            .help("Drag between two tasks to add one there")
+    }
+
+    /// The + travelling with the finger over a list (see `insertHandle`).
+    private var insertDrag: some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .global)
+            .onChanged { drag in
+                if app.insertDragLocation == nil {
+                    let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    app.insertDragTitle = isMultiline ? "" : (typed.isEmpty ? "" : dragEntry.title)
+                }
+                app.insertDragLocation = drag.location
+            }
+            .onEnded { drag in
+                app.insertDragLocation = nil
+                dropBetween(at: drag.location)
+            }
     }
 
     /// What the dragged + carries: the text read without "@group" (where it's dropped decides
@@ -618,6 +725,7 @@ struct QuickEntryBar: View {
         let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let entry: ParsedEntry? = !typed.isEmpty && !isMultiline ? dragEntry : nil
         guard app.insertHandler?(location, entry) == true else { return }
+        insertDrops += 1
         if entry != nil {
             text = ""
             resetChoices()
@@ -648,7 +756,7 @@ struct QuickEntryBar: View {
                 }
             }
         } label: {
-            chipLabel(dueTitle, symbol: "calendar", color: .orange, active: due != nil)
+            chipLabel(dueTitle, symbol: "calendar", color: Tint.deadline, active: due != nil)
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
@@ -688,11 +796,13 @@ struct QuickEntryBar: View {
                 }
             }
         } label: {
+            // The group's colour on its icon; its name stays in the chip's text colour.
             chipLabel(
                 groupName(id),
                 symbol: group?.symbol ?? "tray.and.arrow.down",
                 color: group?.color.color ?? .secondary,
-                active: id != defaultGroupID
+                active: id != defaultGroupID,
+                colorsTitle: false
             )
         }
         .menuStyle(.button)
@@ -725,8 +835,9 @@ struct QuickEntryBar: View {
                 }
             }
         } label: {
-            // The default shows dimmed; a picked or typed estimate in colour.
-            chipLabel(value > 0 ? PowerHours.format(value) : "No PH", symbol: "timer", color: .teal, active: chosenEstimate != nil && value > 0)
+            // The default shows dimmed; a picked or typed estimate in colour. The number rolls.
+            chipLabel(value > 0 ? PowerHours.format(value) : "No PH", symbol: "timer", color: Tint.powerHours,
+                      active: chosenEstimate != nil && value > 0, number: value)
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
@@ -767,27 +878,39 @@ struct QuickEntryBar: View {
     }
 
     /// Drag it onto the full-screen grid; tapping only explains it, so it never gets in the way.
+    /// Once a cell is picked it fills in the accent.
     private var matrixHandle: some View {
-        Image(systemName: "square.grid.3x3")
+        let placed = matrixChoice != nil
+        let style: AnyShapeStyle = placed ? AnyShapeStyle(TintShapeStyle.tint) : AnyShapeStyle(HierarchicalShapeStyle.secondary)
+        return Image(systemName: placed ? "square.grid.3x3.fill" : "square.grid.3x3")
             .theoFont(.body, weight: .medium)
-            .foregroundStyle(matrixChoice == nil ? Color.secondary.opacity(0.7) : Color.accentColor)
-            .frame(width: 30, height: 30)
+            .foregroundStyle(style)
+            .contentTransition(.symbolEffect(.replace))
+            .animation(Motion.resolved(Motion.tap), value: placed)
+            .frame(width: Self.handleSide, height: Self.handleSide)
+            .modifier(HoverFill(shape: Circle()))
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 4, coordinateSpace: .global)
-                    .onChanged { value in
-                        let title = parsed.title.trimmingCharacters(in: .whitespaces)
-                        app.matrixDrag = MatrixDrag(title: title, location: value.location)
-                    }
-                    .onEnded { value in
-                        dropOnMatrix(at: value.location)
-                    }
-            )
+            .gesture(matrixHandleDrag)
             .onTapGesture {
                 app.show("Drag the grid handle to set when it's due and how important it is", symbol: "square.grid.3x3")
             }
+            // A light tap as the task is picked up onto the grid, like the +.
+            .sensoryFeedback(.impact(weight: .light), trigger: app.matrixDrag != nil) { _, new in new }
             .accessibilityLabel("Urgency and importance")
             .accessibilityHint("Drag onto the grid to set the deadline and importance")
+            .help("Drag onto the grid to set when it's due and how important it is")
+    }
+
+    /// The task travelling with the finger onto the grid (see `matrixHandle`).
+    private var matrixHandleDrag: some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .global)
+            .onChanged { value in
+                let title = parsed.title.trimmingCharacters(in: .whitespaces)
+                app.matrixDrag = MatrixDrag(title: title, location: value.location)
+            }
+            .onEnded { value in
+                dropOnMatrix(at: value.location)
+            }
     }
 
     private func dropOnMatrix(at location: CGPoint) {

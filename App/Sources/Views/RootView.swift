@@ -123,7 +123,8 @@ struct RootView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        app.showInspector.toggle()
+                        // The column slides in and out instead of appearing at once.
+                        Motion.animate(Motion.layout) { app.showInspector.toggle() }
                     } label: {
                         Label(app.showInspector ? "Hide Details" : "Show Details", systemImage: "sidebar.trailing")
                     }
@@ -245,14 +246,7 @@ struct AppChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .bottom) {
-                if let toast = app.toast {
-                    ToastView(toast: toast) {
-                        withAnimation(.snappy) { app.toast = nil }
-                    }
-                    .tint(toast.isWarning ? Color.red : accent)
-                    .padding(.bottom, 84)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+                toastLayer
             }
             .sheet(item: $app.detailTask) { task in
                 TaskDetailView(task: task)
@@ -309,10 +303,7 @@ struct AppChrome: ViewModifier {
                 }
             }
             .overlay {
-                if let location = app.insertDragLocation {
-                    InsertGhost(title: app.insertDragTitle, location: location)
-                        .tint(accent)
-                }
+                insertGhostLayer
             }
             .overlay {
                 if let pick = app.radialPick {
@@ -327,30 +318,99 @@ struct AppChrome: ViewModifier {
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { app.visibleFrame = $0 }
                     .allowsHitTesting(false)
             }
-            .animation(.snappy(duration: 0.16), value: app.radialPick?.id)
-            .animation(.snappy(duration: 0.2), value: app.matrixDrag == nil)
-            .animation(.snappy(duration: 0.2), value: app.matrixTask == nil)
+            // The arc and the canvas follow a finger: quick. A task placed on the grid from a
+            // menu opens and closes like any panel.
+            .animation(Motion.resolved(Motion.tap), value: app.radialPick?.id)
+            .animation(Motion.resolved(Motion.tap), value: app.matrixDrag == nil)
+            .animation(Motion.resolved(Motion.layout), value: app.matrixTask == nil)
+    }
+
+    /// The toast rises from just below the bottom bar with a little spring and settles there;
+    /// a newer one takes its place the same way while the old one sinks and fades under it.
+    /// Leaving, it sinks back the way it came, a little quicker.
+    private var toastLayer: some View {
+        ZStack {
+            if let toast = app.toast {
+                LandingToast(toast: toast) {
+                    Motion.animate(Motion.tap) { app.toast = nil }
+                }
+                .tint(toast.isWarning ? Color.red : accent)
+                .id(toast.id)
+                .transition(Self.toastTransition)
+            }
+        }
+        .padding(.bottom, 84)
+        .animation(Motion.resolved(app.toast == nil ? Motion.tap : Motion.celebrate), value: app.toast?.id)
+    }
+
+    /// In: up from a little below, growing from its bottom edge, fading in. Out: a shorter way
+    /// down, fading.
+    private static var toastTransition: AnyTransition {
+        .asymmetric(
+            insertion: .offset(y: 32).combined(with: .scale(scale: 0.9, anchor: .bottom)).combined(with: .opacity),
+            removal: .offset(y: 16).combined(with: .scale(scale: 0.96, anchor: .bottom)).combined(with: .opacity)
+        )
+    }
+
+    /// The composer's + while it's dragged over a list: it fades in under the finger and out
+    /// where it's let go. Only its coming and going animate; it follows the finger as is.
+    private var insertGhostLayer: some View {
+        ZStack {
+            if let location = app.insertDragLocation {
+                InsertGhost(title: app.insertDragTitle, location: location, accent: accent)
+                    .tint(accent)
+            }
+        }
+        .animation(Motion.resolved(Motion.tap), value: app.insertDragLocation == nil)
     }
 }
 
-/// The task the composer's + carries while it's dragged over a list, just above the finger.
+/// A toast that, once it has risen into place, gives its symbol one small bounce: the
+/// confirmation lands with it.
+private struct LandingToast: View {
+    let toast: Toast
+    let dismiss: () -> Void
+
+    @State private var landed = false
+
+    var body: some View {
+        ToastView(toast: toast, dismiss: dismiss)
+            .symbolEffect(.bounce, value: landed)
+            .task {
+                // After the spring has carried it up, not while it's still rising.
+                try? await Task.sleep(for: .milliseconds(180))
+                if !Motion.reduceMotion { landed = true }
+            }
+    }
+}
+
+/// The task the composer's + carries while it's dragged over a list, just above the finger:
+/// lifted off the page, with the + it came from.
 struct InsertGhost: View {
     let title: String
     /// Finger position in global coordinates.
     let location: CGPoint
+    /// The chosen accent (the glass takes a colour, not the tint).
+    var accent: Color = .accentColor
 
     var body: some View {
         GeometryReader { geo in
             let origin = geo.frame(in: .global).origin
-            Label(title.isEmpty ? "New Task" : title, systemImage: "plus.circle.fill")
-                .theoFont(.subheadline, weight: .semibold)
-                .lineLimit(1)
-                .frame(maxWidth: 240)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .glassEffect(.regular.tint(Color.accentColor.opacity(0.25)), in: .capsule)
-                .fixedSize()
-                .position(x: location.x - origin.x + 60, y: location.y - origin.y - 34)
+            Label {
+                Text(title.isEmpty ? "New Task" : title)
+            } icon: {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.tint)
+            }
+            .theoFont(.subheadline, weight: .semibold)
+            .lineLimit(1)
+            .frame(maxWidth: 240)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .glassEffect(.regular.tint(accent.opacity(0.25)), in: .capsule)
+            .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+            .fixedSize()
+            .position(x: location.x - origin.x + 60, y: location.y - origin.y - 34)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

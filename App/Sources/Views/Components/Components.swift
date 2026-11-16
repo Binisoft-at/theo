@@ -36,7 +36,13 @@ struct CheckCircle: View {
             .padding(4)
             .contentShape(Rectangle())
         }
+        // The Mac keeps its borderless button inside list rows (clicks and row selection stay as
+        // they were); on touch screens the circle gives way under the finger.
+        #if os(macOS)
+        .buttonStyle(.borderless)
+        #else
         .buttonStyle(PressableStyle(scale: 0.86))
+        #endif
         .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
         .sensoryFeedback(.success, trigger: done) { old, new in new && !old }
     }

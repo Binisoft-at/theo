@@ -21,6 +21,20 @@ enum WidgetLinks {
     @MainActor static var handler: (@MainActor (URL) -> Void)?
 }
 
+/// The colours for what things mean, the same as the app's (`Tint` in Shared/Design, which the
+/// extensions don't see): Today orange, planned indigo, deadlines blue, a passed deadline a calm
+/// orange, Power Hours teal, done green, Off Plan grey.
+enum WidgetTint {
+    static let today: Color = .orange
+    static let planned: Color = .indigo
+    static let deadline: Color = .blue
+    static let overdue: Color = .orange
+    static let powerHours: Color = .teal
+    static let done: Color = .green
+    static let offPlan: Color = .gray
+    static let ongoing: Color = .teal
+}
+
 enum WidgetStyle {
     /// A group's colour by its `TheoColor` name; Quick Entry (no group) is grey.
     static func groupColor(_ name: String?) -> Color {
@@ -79,11 +93,12 @@ enum WidgetStyle {
         }
     }
 
-    /// Overdue red, today orange, later the deadline blue.
+    /// Today orange, later the deadline blue; one that has passed stays calm (orange, as in the
+    /// app), it's ranked at the top anyway.
     static func dueColor(_ due: Date, day: Date) -> Color {
         let delta = dayDelta(due, from: day)
-        if delta < 0 { return .red }
-        return delta == 0 ? .orange : .blue
+        if delta < 0 { return WidgetTint.overdue }
+        return delta == 0 ? WidgetTint.today : WidgetTint.deadline
     }
 
     /// "3 open · 2,5 PH left", "All planned done", "Nothing planned".
@@ -124,7 +139,7 @@ enum WidgetStyle {
 struct TodaySunIcon: View {
     var body: some View {
         Image(systemName: "sun.max.fill")
-            .foregroundStyle(.orange)
+            .foregroundStyle(WidgetTint.today)
             .widgetAccentable()
     }
 }
