@@ -39,6 +39,13 @@ struct SectionHeaderRow: View {
 
     private var total: Int { info.openCount + info.doneCount }
 
+    #if os(macOS)
+    @Environment(\.textScale) private var textScale
+    private var ringSize: CGFloat { 12 * textScale }
+    #else
+    @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 15
+    #endif
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -61,8 +68,8 @@ struct SectionHeaderRow: View {
                 Spacer(minLength: 8)
                 if info.openEstimate > 0 {
                     Text(PowerHours.format(info.openEstimate))
-                        .theoFont(.caption, weight: .semibold)
-                        .monospacedDigit()
+                        .theoFont(.caption, weight: .semibold, design: .rounded)
+                        .rollingNumber(info.openEstimate)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
@@ -71,11 +78,17 @@ struct SectionHeaderRow: View {
                         .accessibilityLabel("\(PowerHours.format(info.openEstimate)) left")
                 }
                 if total > 0 {
-                    Text(info.doneCount > 0 ? "\(info.doneCount)/\(total)" : "\(info.openCount)")
-                        .theoFont(.subheadline, weight: .medium)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
+                    HStack(spacing: 5) {
+                        // A project shows how far along it is as a ring, like a parent line's subtasks.
+                        if project != nil {
+                            MiniRing(fraction: Double(info.doneCount) / Double(total), tint: color, lineWidth: max(1.5, ringSize * 0.15))
+                                .frame(width: ringSize, height: ringSize)
+                        }
+                        Text(info.doneCount > 0 ? "\(info.doneCount)/\(total)" : "\(info.openCount)")
+                            .theoFont(.subheadline, weight: .medium, design: .rounded)
+                            .rollingNumber(info.doneCount * 10_000 + info.openCount)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 if let onAdd {
                     Button(action: onAdd) {
@@ -93,13 +106,8 @@ struct SectionHeaderRow: View {
                         .theoFont(.caption, weight: .bold)
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(info.isCollapsed ? 0 : 90))
-                        .animation(.snappy, value: info.isCollapsed)
+                        .animation(Motion.resolved(Motion.tap), value: info.isCollapsed)
                 }
-            }
-            if project != nil, total > 0 {
-                ProgressView(value: Double(info.doneCount), total: Double(total))
-                    .tint(color)
-                    .scaleEffect(x: 1, y: 0.7, anchor: .center)
             }
         }
         .padding(.leading, CGFloat(info.level) * 18)

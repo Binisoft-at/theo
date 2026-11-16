@@ -86,18 +86,16 @@ extension EnvironmentValues {
 private struct TheoFont: ViewModifier {
     let style: Font.TextStyle
     let weight: Font.Weight?
+    /// `.rounded` for numbers that stand on their own (rings, badges, stats); nil = SF Pro.
+    let design: Font.Design?
 
     @Environment(\.textScale) private var scale
 
     func body(content: Content) -> some View {
         #if os(macOS)
-        content.font(.system(size: Self.macSize(style) * scale, weight: weight ?? (style == .headline ? .semibold : .regular)))
+        content.font(.system(size: Self.macSize(style) * scale, weight: weight ?? (style == .headline ? .semibold : .regular), design: design))
         #else
-        if let weight {
-            content.font(.system(style, weight: weight))
-        } else {
-            content.font(.system(style))
-        }
+        content.font(.system(style, design: design, weight: weight))
         #endif
     }
 
@@ -119,8 +117,8 @@ private struct TheoFont: ViewModifier {
 }
 
 extension View {
-    func theoFont(_ style: Font.TextStyle, weight: Font.Weight? = nil) -> some View {
-        modifier(TheoFont(style: style, weight: weight))
+    func theoFont(_ style: Font.TextStyle, weight: Font.Weight? = nil, design: Font.Design? = nil) -> some View {
+        modifier(TheoFont(style: style, weight: weight, design: design))
     }
 
     /// Applies the text size setting to everything below.

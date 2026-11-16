@@ -2,33 +2,41 @@ import Foundation
 import SwiftUI
 import TheoCore
 
-/// The round checkbox, Notes-style: hollow ring when open, filled with a check when done.
-/// The ring picks up the priority color.
+/// The round checkbox, Notes-style: a hollow ring when open; checked, the fill blooms out from
+/// the centre with a little spring and the check settles into it. The ring picks up the
+/// priority colour. It gives way under the finger like a real button.
 struct CheckCircle: View {
     let done: Bool
     let priority: Priority
     var size: CGFloat = 22
     let action: () -> Void
 
+    private var ringColor: Color {
+        priority == .normal ? Color.secondary.opacity(0.55) : priority.color
+    }
+
     var body: some View {
         Button(action: action) {
             ZStack {
-                if done {
-                    Circle().fill(.tint)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: size * 0.5, weight: .bold))
-                        .foregroundStyle(.white)
-                        .transition(.scale.combined(with: .opacity))
-                } else {
-                    Circle()
-                        .strokeBorder(priority == .normal ? Color.secondary.opacity(0.6) : priority.color, lineWidth: 1.6)
-                }
+                Circle()
+                    .strokeBorder(ringColor, lineWidth: 1.6)
+                    .opacity(done ? 0 : 1)
+                Circle()
+                    .fill(.tint)
+                    .scaleEffect(done ? 1 : 0.3)
+                    .opacity(done ? 1 : 0)
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.48, weight: .bold))
+                    .foregroundStyle(.white)
+                    .scaleEffect(done ? 1 : 0.5)
+                    .opacity(done ? 1 : 0)
             }
             .frame(width: size, height: size)
+            .animation(Motion.resolved(Motion.celebrate), value: done)
             .padding(4)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(PressableStyle(scale: 0.86))
         .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
         .sensoryFeedback(.success, trigger: done) { old, new in new && !old }
     }
@@ -70,31 +78,61 @@ struct PriorityButton: View {
     }
 }
 
-/// A small ring used in the Today header.
+/// A progress ring (the Today header, the day review, the focus timer): a soft track and an arc
+/// in the tint with round ends that grows smoothly to its new value.
 struct ProgressRing: View {
     let progress: Double
     var lineWidth: CGFloat = 5
 
     var body: some View {
         ZStack {
-            Circle().stroke(Color.secondary.opacity(0.18), lineWidth: lineWidth)
+            Circle().stroke(Color.secondary.opacity(0.16), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: max(0.0001, min(progress, 1)))
                 .stroke(.tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.snappy, value: progress)
+                .animation(Motion.resolved(Motion.layout), value: progress)
         }
     }
 }
 
+/// A small ring that fills clockwise with how much of something is done: a line's subtasks, a
+/// project's tasks. Drawn inside its frame, so it lines up with the text beside it.
+struct MiniRing: View {
+    let fraction: Double
+    var tint: Color = .accentColor
+    var lineWidth: CGFloat = 2
+
+    var body: some View {
+        let shown = min(max(fraction, 0), 1)
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: shown)
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .padding(lineWidth / 2)
+        .animation(Motion.resolved(Motion.celebrate), value: shown)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A tag. On a task line (`compact`) it stays as calm as the rest of the line; on its own it
+/// shows its colour.
 struct TagChip: View {
     let tag: String
     var compact = true
 
+    private var style: AnyShapeStyle {
+        compact ? AnyShapeStyle(HierarchicalShapeStyle.secondary) : AnyShapeStyle(TheoColor.forTag(tag).color)
+    }
+
     var body: some View {
         Text("#" + tag)
             .theoFont(compact ? .caption : .subheadline, weight: .medium)
-            .foregroundStyle(TheoColor.forTag(tag).color)
+            .foregroundStyle(style)
     }
 }
 
@@ -134,13 +172,13 @@ struct ChipButton: View {
             .padding(.vertical, 6)
             .foregroundStyle(isOn ? fill.onFillForeground(in: environment) : Color.primary)
             .background {
-                Capsule().fill(isOn ? AnyShapeStyle(fill) : AnyShapeStyle(Color.secondary.opacity(0.12)))
+                Capsule().fill(isOn ? AnyShapeStyle(fill.gradient) : AnyShapeStyle(Color.secondary.opacity(0.12)))
             }
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityAddTraits(isOn ? .isSelected : [])
-        .animation(.snappy(duration: 0.2), value: isOn)
+        .animation(Motion.resolved(Motion.tap), value: isOn)
     }
 }
 
@@ -170,7 +208,9 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: toast.symbol)
-                .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(toast.isWarning ? AnyShapeStyle(Color.red) : AnyShapeStyle(TintShapeStyle.tint))
+                .symbolEffect(.bounce, value: toast.id)
             Text(toast.message)
                 .theoFont(.subheadline, weight: .medium)
                 .lineLimit(1)
@@ -200,6 +240,7 @@ struct EmptyHint: View {
         VStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(.system(size: 38, weight: .regular))
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.tint)
             Text(title).theoFont(.headline)
             Text(message)

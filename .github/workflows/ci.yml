@@ -124,6 +124,16 @@ jobs:
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask
           shoot widgets-light -TheoWidgetGallery
+          # The insert motion, recorded: -TheoInsertDemo adds a blank line between two tasks four
+          # seconds after the page shows (TaskListView), as dragging the + there would.
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+          xcrun simctl launch "$UDID" "$BUNDLE_ID" -TheoDemo -TheoScreen today -TheoInsertDemo
+          sleep 2
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force shots/insert-motion.mp4 &
+          REC=$!
+          sleep 8
+          kill -INT "$REC" || true
+          wait "$REC" || true
           xcrun simctl ui "$UDID" appearance dark
           shoot today-dark -TheoScreen today
           shoot widgets-dark -TheoWidgetGallery
@@ -197,6 +207,12 @@ jobs:
           open "$APP" --args -TheoDemo -TheoScreen today -TheoQuickAddPanel
           sleep 14
           screencapture -x shots/mac-quickadd.png || true
+          pkill -x Theo || true
+          sleep 2
+          # The insert motion on the Mac (see the iPhone recording above).
+          open "$APP" --args -TheoDemo -TheoScreen today -TheoInsertDemo
+          sleep 3
+          screencapture -x -V 9 shots/mac-insert-motion.mov || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
       # A self-hosted Mac keeps running after the job: don't leave simulators or the app open.
