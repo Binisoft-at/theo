@@ -78,7 +78,7 @@ struct TodaySmallView: View {
     }
 }
 
-/// Under the small widget's next task: "2,5 PH left", or what got done.
+/// Under the small widget's next task: "2,5 PH left" with Power Hours' timer, or what got done.
 struct TodayFootnote: View {
     let page: WidgetSnapshot.Page
 
@@ -88,17 +88,32 @@ struct TodayFootnote: View {
         return "\(page.open) open"
     }
 
+    /// Power Hours' timer or done's check; the plain count and the empty hint go without.
+    private var symbol: String? {
+        if page.open == 0 { return page.done > 0 ? "checkmark" : nil }
+        return page.powerHoursLeft > 0 ? "timer" : nil
+    }
+
     private var color: Color {
-        if page.open == 0 { return page.done > 0 ? .green : .secondary }
-        return page.powerHoursLeft > 0 ? .teal : .secondary
+        if page.open == 0 { return page.done > 0 ? WidgetTint.done : .secondary }
+        return page.powerHoursLeft > 0 ? WidgetTint.powerHours : .secondary
     }
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(color)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
+        HStack(spacing: 3) {
+            if let symbol {
+                Image(systemName: symbol)
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
+            }
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .font(.caption.weight(.semibold))
+        .fontDesign(.rounded)
+        .monospacedDigit()
+        .foregroundStyle(color)
     }
 }
 
@@ -174,13 +189,15 @@ struct TodayLineRow: View {
         if let due = line.due {
             Text(WidgetStyle.dueText(due, hasTime: line.dueHasTime, day: day))
                 .font(.caption.weight(.medium))
+                .monospacedDigit()
                 .foregroundStyle(WidgetStyle.dueColor(due, day: day))
                 .lineLimit(1)
                 .fixedSize()
         } else if line.powerHours > 0 {
             Text(WidgetStyle.powerHours(line.powerHours))
                 .font(.caption)
-                .foregroundStyle(.teal)
+                .monospacedDigit()
+                .foregroundStyle(WidgetTint.powerHours)
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -205,7 +222,7 @@ struct TodayLineMarker: View {
         } else {
             Image(systemName: "calendar.badge.minus")
                 .font(.caption2)
-                .foregroundStyle(.gray)
+                .foregroundStyle(WidgetTint.offPlan)
         }
     }
 }
@@ -230,7 +247,7 @@ struct TodayTitleText: View {
             if line.isOngoing {
                 Image(systemName: "infinity")
                     .font(.caption2)
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(WidgetTint.ongoing)
             }
         }
     }
@@ -261,16 +278,18 @@ struct TodayCounts: View {
                 .foregroundStyle(.secondary)
             if page.powerHoursLeft > 0 {
                 Text(WidgetStyle.powerHours(page.powerHoursLeft))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(WidgetTint.powerHours)
             }
             if page.overdue > 0 {
                 Label("\(page.overdue)", systemImage: "exclamationmark.circle.fill")
                     .labelStyle(.titleAndIcon)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(WidgetTint.overdue)
                     .accessibilityLabel("\(page.overdue) overdue")
             }
         }
         .font(.caption.weight(.semibold))
+        .fontDesign(.rounded)
+        .monospacedDigit()
         .lineLimit(1)
     }
 }
@@ -306,18 +325,20 @@ struct TodayLargeNumbers: View {
         VStack(alignment: .trailing, spacing: 2) {
             if page.powerHoursLeft > 0 {
                 Text(WidgetStyle.powerHours(page.powerHoursLeft) + " left")
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(WidgetTint.powerHours)
             }
             if page.done > 0 {
                 Text("\(page.done) done")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(WidgetTint.done)
             }
             if page.overdue > 0 {
                 Text("\(page.overdue) overdue")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(WidgetTint.overdue)
             }
         }
         .font(.caption.weight(.semibold))
+        .fontDesign(.rounded)
+        .monospacedDigit()
         .lineLimit(1)
     }
 }
@@ -345,7 +366,8 @@ struct TodayEmptyMessage: View {
         HStack(spacing: 8) {
             Image(systemName: page.done > 0 ? "checkmark.circle.fill" : "calendar.badge.plus")
                 .font(.title3)
-                .foregroundStyle(page.done > 0 ? Color.green : Color.indigo)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(page.done > 0 ? WidgetTint.done : WidgetTint.planned)
                 .widgetAccentable()
             VStack(alignment: .leading, spacing: 1) {
                 Text(WidgetStyle.emptyTitle(page))
@@ -386,15 +408,16 @@ struct TodayCountRing: View {
         let progress = CGFloat(WidgetStyle.progress(page))
         ZStack {
             Circle()
-                .stroke(Color.green.opacity(0.22), lineWidth: 5)
+                .stroke(WidgetTint.done.opacity(0.22), lineWidth: 5)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(Color.green, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .stroke(WidgetTint.done, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .widgetAccentable()
             Text("\(page.open)")
                 .font(.system(size: diameter * 0.42, weight: .bold, design: .rounded))
                 .monospacedDigit()
+                .contentTransition(.numericText(value: Double(page.open)))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }

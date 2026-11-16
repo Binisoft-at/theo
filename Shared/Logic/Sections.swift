@@ -79,7 +79,7 @@ enum Sections {
             return order(a, b)
         }
         var result: [LabeledSection] = [
-            (key: "overdue", title: "Overdue", symbol: "exclamationmark.circle", color: .red, tasks: overdue.sorted(by: byDate)),
+            (key: "overdue", title: "Overdue", symbol: "exclamationmark.circle", color: Tint.overdue, tasks: overdue.sorted(by: byDate)),
             (key: "today", title: "Today", symbol: "sun.max", color: .orange, tasks: todayItems.sorted(by: byDate)),
             (key: "tomorrow", title: "Tomorrow", symbol: "sunrise", color: .yellow, tasks: tomorrow.sorted(by: byDate)),
             (key: "week", title: "This Week", symbol: "calendar", color: .blue, tasks: week.sorted(by: byDate)),
@@ -109,7 +109,7 @@ enum Sections {
 
         var result: [LabeledSection] = []
         let overdue = dated.filter { DateText.dayDelta($0.1, today: today) < 0 }.sorted(by: sorter).map { $0.0 }
-        result.append((key: "overdue", title: "Overdue", symbol: "exclamationmark.circle", color: .red, tasks: overdue))
+        result.append((key: "overdue", title: "Overdue", symbol: "exclamationmark.circle", color: Tint.overdue, tasks: overdue))
         for offset in 0...6 {
             let items = dated.filter { DateText.dayDelta($0.1, today: today) == offset }.sorted(by: sorter).map { $0.0 }
             let date = cal.date(byAdding: .day, value: offset, to: cal.startOfDay(for: today)) ?? today

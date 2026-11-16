@@ -13,12 +13,13 @@ struct WatchListsView: View {
     var body: some View {
         List {
             Section {
+                // The same colours as these pages have in the iPhone's and Mac's sidebar.
                 link(.upcoming, title: "Upcoming", symbol: "calendar", color: .red, count: upcomingCount)
-                link(.priority, title: "Priority", symbol: "exclamationmark.3", color: .orange,
+                link(.priority, title: "Priority", symbol: "exclamationmark.3", color: .pink,
                      count: openTasks.activeOnly(groups).filter { $0.priority != .normal }.count)
             }
             Section("Groups") {
-                link(.group(nil), title: String(localized: "Quick Entry"), symbol: "tray.and.arrow.down.fill", color: .secondary,
+                link(.group(nil), title: String(localized: "Quick Entry"), symbol: "tray.and.arrow.down.fill", color: .teal,
                      count: openTasks.filter { $0.groupID == nil }.count)
                 ForEach(groups) { group in
                     link(.group(group.uuid), title: group.displayName, symbol: group.symbol, color: group.color.color,
@@ -36,13 +37,36 @@ struct WatchListsView: View {
 
     private func link(_ route: WatchRoute, title: String, symbol: String, color: Color, count: Int) -> some View {
         NavigationLink(value: route) {
-            HStack {
-                WatchSectionHeader(title: title, symbol: symbol, color: color)
-                Spacer()
-                if count > 0 {
-                    Text("\(count)")
-                        .foregroundStyle(.secondary)
-                }
+            WatchListLabel(title: title, symbol: symbol, color: color, count: count)
+        }
+    }
+}
+
+/// A page in Lists: its icon white in a circle of its colour (like the watch's own Settings),
+/// the name, and how many open tasks it holds.
+struct WatchListLabel: View {
+    let title: String
+    let symbol: String
+    let color: Color
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .symbolVariant(.fill)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(color.gradient, in: Circle())
+                .accessibilityHidden(true)
+            Text(title)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if count > 0 {
+                Text("\(count)")
+                    .fontDesign(.rounded)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -61,6 +85,7 @@ struct WatchUpcomingView: View {
             sections: Sections.upcoming(openTasks.activeOnly(groups), groups: groups, today: model.dayStart).filter { !$0.tasks.isEmpty },
             emptyTitle: "Nothing Scheduled",
             emptySymbol: "calendar",
+            emptyColor: .red,
             emptyText: "Tasks with a deadline show up here."
         )
         .navigationTitle("Upcoming")
@@ -79,6 +104,7 @@ struct WatchPriorityView: View {
             sections: Sections.byPriority(openTasks.activeOnly(groups), groups: groups, includeNone: false).filter { !$0.tasks.isEmpty },
             emptyTitle: "No Priorities",
             emptySymbol: "exclamationmark.3",
+            emptyColor: .pink,
             emptyText: "Say \"!!\" when adding a task, or set a priority in its details."
         )
         .navigationTitle("Priority")
@@ -90,6 +116,8 @@ struct WatchSectionList: View {
     let sections: [LabeledSection]
     let emptyTitle: LocalizedStringKey
     let emptySymbol: String
+    /// The page's colour, for the empty state's symbol (the same as its icon in Lists).
+    var emptyColor: Color = .secondary
     let emptyText: LocalizedStringKey
 
     var body: some View {
@@ -106,7 +134,18 @@ struct WatchSectionList: View {
         }
         .overlay {
             if sections.isEmpty {
-                ContentUnavailableView(emptyTitle, systemImage: emptySymbol, description: Text(emptyText))
+                ContentUnavailableView {
+                    Label {
+                        Text(emptyTitle)
+                    } icon: {
+                        Image(systemName: emptySymbol)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(emptyColor)
+                    }
+                } description: {
+                    Text(emptyText)
+                }
+                .transition(.opacity)
             }
         }
     }
