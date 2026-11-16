@@ -67,7 +67,8 @@ struct SectionHeaderRow: View {
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.secondary.opacity(0.12)))
-                        .accessibilityLabel("\(PowerHours.format(info.openEstimate)) planned")
+                        .help("Power Hours still open here")
+                        .accessibilityLabel("\(PowerHours.format(info.openEstimate)) left")
                 }
                 if total > 0 {
                     Text(info.doneCount > 0 ? "\(info.doneCount)/\(total)" : "\(info.openCount)")

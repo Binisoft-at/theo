@@ -34,6 +34,7 @@ struct SidebarView: View {
         let tags = Sections.tags(in: openTasks)
         let tree = GroupTree.ordered(groups)
         let off = GroupTree.inactiveIDs(groups)
+        let viewCounts = openCounts(of: views, today: today)
 
         let favoriteGroups = tree.map(\.group).filter(\.isFavorite)
         let favoriteViews = views.filter(\.isFavorite)
@@ -56,7 +57,7 @@ struct SidebarView: View {
                     }
                     ForEach(favoriteViews, id: \.uuid) { view in
                         NavigationLink(value: SidebarItem.view(view.uuid)) {
-                            SidebarRow(title: view.displayName, symbol: view.symbol, color: view.color.color, count: 0)
+                            SidebarRow(title: view.displayName, symbol: view.symbol, color: view.color.color, count: viewCounts[view.uuid] ?? 0)
                         }
                         .contextMenu { viewMenu(view) }
                     }
@@ -70,6 +71,8 @@ struct SidebarView: View {
                     NavigationLink(value: SidebarItem.plan) {
                         SidebarRow(title: "Plan", symbol: "calendar.badge.plus", color: .indigo, count: tomorrowCount, shortcut: "⌘2")
                     }
+                    // The number is what's planned for tomorrow.
+                    .help("Planned for tomorrow")
                 }
                 if showsDayPages {
                     NavigationLink(value: SidebarItem.overview) {
@@ -145,7 +148,7 @@ struct SidebarView: View {
                         Button {
                             app.groupEditor = .subgroup(group)
                         } label: {
-                            Label("New Subproject…", systemImage: "folder.badge.plus")
+                            Label("New Subgroup…", systemImage: "folder.badge.plus")
                         }
                         Button(role: .destructive) {
                             groupPendingDelete = group
@@ -187,7 +190,12 @@ struct SidebarView: View {
                 Section("Views") {
                     ForEach(views, id: \.uuid) { view in
                         NavigationLink(value: SidebarItem.view(view.uuid)) {
-                            SidebarRow(title: view.displayName, symbol: view.isFavorite ? "star.fill" : view.symbol, color: view.color.color, count: 0)
+                            SidebarRow(
+                                title: view.displayName,
+                                symbol: view.isFavorite ? "star.fill" : view.symbol,
+                                color: view.color.color,
+                                count: viewCounts[view.uuid] ?? 0
+                            )
                         }
                         .contextMenu { viewMenu(view) }
                     }
@@ -249,19 +257,46 @@ struct SidebarView: View {
             presenting: groupPendingDelete
         ) { group in
             Button("Delete Group and Its Tasks", role: .destructive) {
-                if app.selection == .group(group.uuid) { app.go(.today) }
-                app.store.deleteGroup(group, keepTasks: false)
+                deleteGroup(group, keepTasks: false)
             }
             Button("Delete Group, Keep Tasks") {
-                if app.selection == .group(group.uuid) { app.go(.today) }
-                app.store.deleteGroup(group, keepTasks: true)
+                deleteGroup(group, keepTasks: true)
             }
             Button("Cancel", role: .cancel) {}
+        } message: { group in
+            Text("“\(group.displayName)” contains \(group.liveTasks.count) task\(group.liveTasks.count == 1 ? "" : "s").")
+        }
+    }
+
+    /// Deletes a group with an Undo that brings back the group, its tasks and its subgroups.
+    private func deleteGroup(_ group: TaskGroup, keepTasks: Bool) {
+        if app.selection == .group(group.uuid) {
+            if usesSelection {
+                app.go(.today)
+            } else {
+                // iPhone: the Lists page stays; nothing should reopen the deleted group.
+                app.selection = nil
+            }
+        }
+        let model = app
+        withAnimation(.snappy) { model.store.deleteGroup(group, keepTasks: keepTasks) }
+        let message = keepTasks ? "Deleted “\(group.displayName)” · tasks moved to Quick Entry" : "Deleted “\(group.displayName)”"
+        model.show(message, symbol: "trash.fill") {
+            withAnimation(.snappy) { model.store.restoreGroup(group) }
         }
     }
 }
 
 extension SidebarView {
+    /// What each saved view shows open, found the way its page finds it.
+    private func openCounts(of views: [SavedView], today: Date) -> [UUID: Int] {
+        var counts: [UUID: Int] = [:]
+        for view in views where counts[view.uuid] == nil {
+            counts[view.uuid] = QueryBuilder.build(tasks: allOpen, groups: groups, query: view.query, today: today, collapsed: []).matched.count
+        }
+        return counts
+    }
+
     @ViewBuilder
     func viewMenu(_ view: SavedView) -> some View {
         Button {
@@ -327,16 +362,27 @@ struct SidebarRow: View {
 }
 
 #if os(macOS)
-/// The shortcuts worth remembering, small and grey under the sidebar.
+/// The shortcuts worth remembering, small and grey under the sidebar (the pages' own numbers
+/// sit next to each item).
 struct ShortcutLegend: View {
-    private static let items: [(keys: String, action: String)] = [
-        ("⌘N", "New task"), ("⌥⌘N", "Subtask"), ("Space", "Done"), ("⌘]  ⌘[", "In / out"),
-        ("⌥⌘1–3", "Priority"), ("⌥⌘M", "Matrix"), ("⌥⌘D  ⌥⌘L", "Today / not"), ("⌥⌘F", "Focus"),
-    ]
+    @AppStorage(HotKeyChoice.preferenceKey) private var hotKeyRaw = HotKeyChoice.standard.rawValue
+
+    private var items: [(keys: String, action: String)] {
+        var list: [(keys: String, action: String)] = [
+            ("⌘N", "New task"), ("⌥⌘N", "Subtask"), ("Return", "Edit line"), ("Esc", "Done editing"),
+            ("Space", "Done"), ("⌫", "Delete"), ("⌘]  ⌘[", "In / out"), ("←  →", "Fold / unfold"),
+            ("⌥⌘1–3", "Priority"), ("⌥⌘M", "Matrix"), ("⌥⌘D  ⌥⌘L", "Today / Tomorrow"), ("⌥⌘F", "Focus"),
+            ("⌘F", "Search"),
+        ]
+        // The Quick Add shortcut, as chosen in Settings.
+        let hotKey = HotKeyChoice(rawValue: hotKeyRaw) ?? .standard
+        if hotKey != .off { list.append((keys: hotKey.title, action: "Add from any app")) }
+        return list
+    }
 
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 2) {
-            ForEach(Self.items, id: \.keys) { item in
+            ForEach(items, id: \.keys) { item in
                 GridRow {
                     Text(item.keys)
                         .monospaced()

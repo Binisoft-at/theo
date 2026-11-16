@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// Everything you'd want to change from the wrist: done, Not Today, priority, position,
+/// Everything you'd want to change from the wrist: done, Today or Tomorrow, priority, position,
 /// deadline, group, delete.
 struct WatchTaskDetailView: View {
     let task: TaskItem
@@ -44,8 +44,9 @@ struct WatchTaskDetailView: View {
                     Button {
                         store.plan([task], for: isPlannedToday ? tomorrow : model.dayStart)
                     } label: {
-                        Label(isPlannedToday ? "Not Today" : "Do Today", systemImage: isPlannedToday ? "moon.zzz" : "sun.max")
+                        Label(isPlannedToday ? "Tomorrow" : "Today", systemImage: isPlannedToday ? "moon.zzz.fill" : "sun.max.fill")
                     }
+                    .foregroundStyle(isPlannedToday ? Color.indigo : Color.orange)
                     Button {
                         store.moveToEdge(task, top: true)
                     } label: {

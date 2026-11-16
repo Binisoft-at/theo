@@ -12,20 +12,20 @@ private struct PlanLine: ChecklistItem, Estimated {
 
 @Suite("Power Hours")
 struct PowerHoursTests {
-    @Test(arguments: [("mail lesen (0,25PH)", 0.25), ("deploy 0.5ph", 0.5), ("haeb app 2 PH", 2.0), ("pflanzen (1,5PH) heute", 1.5)])
+    @Test(arguments: [("Zeitung lesen (0,25PH)", 0.25), ("deploy 0.5ph", 0.5), ("build the app 2 PH", 2.0), ("Blumen gießen (1,5PH) heute", 1.5)])
     func findsEstimates(text: String, expected: Double) {
         #expect(PowerHours.find(in: text)?.value == expected)
     }
 
     @Test func ignoresWordsThatOnlyContainPH() {
         #expect(PowerHours.find(in: "graph the photos") == nil)
-        #expect(PowerHours.find(in: "jakup rest 1.6k (?)") == nil)
+        #expect(PowerHours.find(in: "pay the rest 1.6k (?)") == nil)
     }
 
     @Test func parserTakesTheEstimateOutOfTheTitle() {
-        let entry = QuickParser.parse("alex rest (0,5PH)", groups: [])
+        let entry = QuickParser.parse("call back (0,5PH)", groups: [])
         #expect(entry.estimate == 0.5)
-        #expect(entry.title == "alex rest")
+        #expect(entry.title == "call back")
     }
 
     @Test(arguments: [("1,5", 1.5), ("0.25", 0.25), ("2 PH", 2.0)])
@@ -239,22 +239,22 @@ struct RankedOrderTests {
 @Suite("Exact dates and nested import")
 struct ImportExtrasTests {
     @Test func exactDeadlineToken() {
-        let entry = QuickParser.parse("mail absenden (0,25PH) 📅 2026-11-04", groups: [], options: [.exactDates, .estimate])
+        let entry = QuickParser.parse("Brief absenden (0,25PH) 📅 2026-11-04", groups: [], options: [.exactDates, .estimate])
         let parts = Calendar.current.dateComponents([.year, .month, .day], from: entry.due!)
         #expect(parts.year == 2026 && parts.month == 11 && parts.day == 4)
         #expect(entry.estimate == 0.25)
-        #expect(entry.title == "mail absenden")
+        #expect(entry.title == "Brief absenden")
     }
 
     @Test func exactDatesNeverGuess() {
-        let entry = QuickParser.parse("Empl 09.09 keine antwort", groups: [], options: [.exactDates])
+        let entry = QuickParser.parse("Anfrage 09.09 keine Antwort", groups: [], options: [.exactDates])
         #expect(entry.due == nil)
-        #expect(entry.title == "Empl 09.09 keine antwort")
+        #expect(entry.title == "Anfrage 09.09 keine Antwort")
     }
 
     @Test func headingLevels() {
-        let lines = NotesImport.parse("# haeb tasks\n## 1. Laufend\n- [ ] doks schicken", plainLinesAreHeadings: false)
+        let lines = NotesImport.parse("# Work tasks\n## 1. Clients\n- [ ] send the documents", plainLinesAreHeadings: false)
         #expect(lines.map(\.level) == [1, 2, 1])
-        #expect(lines[1].title == "1. Laufend")
+        #expect(lines[1].title == "1. Clients")
     }
 }

@@ -52,3 +52,84 @@ public enum Reminders {
         offsets.map { due.addingTimeInterval(-Double($0) * 60) }.filter { $0 > now }.sorted()
     }
 }
+
+// MARK: - Notification hygiene
+
+extension Reminders {
+    /// Every Theo reminder request starts with this, followed by its task's UUID:
+    /// "theo.task.<uuid>.<offset>" for the reminders, "theo.task.<uuid>.snooze" for a snooze.
+    public static let idPrefix = "theo.task."
+    /// Snoozes made by earlier versions: "theo.snooze.<uuid>".
+    public static let legacySnoozePrefix = "theo.snooze."
+    static let snoozeSuffix = ".snooze"
+
+    /// The request for one reminder of a task.
+    public static func identifier(task: UUID, offset: Int) -> String {
+        idPrefix + task.uuidString + "." + String(offset)
+    }
+
+    /// One snooze per task, so a second snooze replaces the first.
+    public static func snoozeIdentifier(task: UUID) -> String {
+        idPrefix + task.uuidString + snoozeSuffix
+    }
+
+    public static func isSnooze(_ identifier: String) -> Bool {
+        identifier.hasPrefix(legacySnoozePrefix)
+            || (identifier.hasPrefix(idPrefix) && identifier.hasSuffix(snoozeSuffix))
+    }
+
+    /// The task a Theo reminder belongs to; nil for anything else (the focus timer, say).
+    public static func taskID(in identifier: String) -> UUID? {
+        let rest: Substring
+        if identifier.hasPrefix(idPrefix) {
+            rest = identifier.dropFirst(idPrefix.count)
+        } else if identifier.hasPrefix(legacySnoozePrefix) {
+            rest = identifier.dropFirst(legacySnoozePrefix.count)
+        } else {
+            return nil
+        }
+        // A UUID string is 36 characters; what follows is the offset or ".snooze".
+        return UUID(uuidString: String(rest.prefix(36)))
+    }
+
+    /// Notifications to take away: those of tasks that no longer want reminders (done,
+    /// deleted, without a time, reminders off, in a switched-off group). Anything that
+    /// belongs to no task stays.
+    public static func staleIdentifiers(_ items: [(id: String, taskID: UUID?)], keep: Set<UUID>) -> [String] {
+        items.compactMap { item -> String? in
+            guard let task = item.taskID, !keep.contains(task) else { return nil }
+            return item.id
+        }
+    }
+
+    /// Pending requests to remove before the reminders are rebuilt: every regular Theo
+    /// reminder (they are added again from the tasks), plus the snoozes, old-style ones
+    /// included, of tasks that no longer want reminders. A snooze of a task that still
+    /// does stays until it fires.
+    public static func pendingToRemove(_ identifiers: [String], keep: Set<UUID>) -> [String] {
+        var regular: [String] = []
+        var snoozes: [(id: String, taskID: UUID?)] = []
+        for id in identifiers {
+            if isSnooze(id) {
+                snoozes.append((id: id, taskID: Reminders.taskID(in: id)))
+            } else if id.hasPrefix(idPrefix) {
+                regular.append(id)
+            }
+        }
+        return regular + staleIdentifiers(snoozes, keep: keep)
+    }
+
+    /// "Tomorrow" or "Next Week" from a banner moves the deadline to that day only when it is
+    /// earlier, so a reminder sent days ahead never pulls a deadline closer.
+    public static func pushesDeadline(_ due: Date?, by days: Int, today: Date, calendar: Calendar = .current) -> Bool {
+        guard let due else { return false }
+        return DateText.dayDelta(due, today: today, calendar: calendar) < days
+    }
+
+    /// An ongoing task never finishes: once it was checked off from its earliest reminder for
+    /// the current deadline on, the remaining reminders for that deadline are moot.
+    public static func isSettled(lastDone: Date?, due: Date, offsets: [Int]) -> Bool {
+        guard let lastDone, let earliest = offsets.max() else { return false }
+        return lastDone >= due.addingTimeInterval(-Double(earliest) * 60)
+    }
+}

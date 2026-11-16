@@ -19,7 +19,7 @@ final class TaskGroup {
     var createdAt: Date = Date()
     var modifiedAt: Date = Date()
     var deletedAt: Date?
-    /// The group this one sits inside (a subproject); nil = top level.
+    /// The group this one sits inside (a subgroup); nil = top level.
     var parentUUID: UUID?
     /// Off: its tasks (and its subgroups') stay out of Today, Plan, Upcoming and the other
     /// lists until it's switched back on. They still show on its own page.

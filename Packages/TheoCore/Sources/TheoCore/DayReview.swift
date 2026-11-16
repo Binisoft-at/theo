@@ -21,6 +21,22 @@ public enum DayReview {
         return days.reduce(0) { $0 + $1.powerHours } / Double(days.count)
     }
 
+    /// What a usual working day gets done: the average Power Hours of the days that had anything
+    /// finished, so days off and the days before Theo was used don't pull it down. 0 while fewer
+    /// than `minimumDays` such days are known: one day says little.
+    public static func activeAverage(_ days: [Day], minimumDays: Int = 2) -> Double {
+        let active = days.filter { $0.done > 0 }
+        guard !active.isEmpty, active.count >= minimumDays else { return 0 }
+        return active.reduce(0) { $0 + $1.powerHours } / Double(active.count)
+    }
+
+    /// Whether a day's plan (open and done Power Hours) is clearly more than a usual day gets
+    /// done: more than `factor` times the average. Never without an average to compare with.
+    public static func isOverplanned(planned: Double, average: Double, factor: Double = 1.3) -> Bool {
+        guard average > 0.0001 else { return false }
+        return planned > average * factor + 1e-9
+    }
+
     /// The day against the average (1 = an average day); nil without anything to compare with.
     public static func ratio(_ value: Double, average: Double) -> Double? {
         average > 0.0001 ? value / average : nil

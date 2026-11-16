@@ -141,41 +141,69 @@ extension AppModel {
         finishPhase(now: Date())
     }
 
-    /// Called every second while a timer is visible, and when the app becomes active.
+    /// Called every second while a timer is visible (the focus sheet, Today's pill), and when the
+    /// app becomes active.
     func tickFocus(now: Date = Date()) {
         guard let session = focus, !session.isPaused, session.remaining(at: now) <= 0 else { return }
         finishPhase(now: now)
     }
 
-    /// Focus → break starts right away; break → the next focus phase waits for a tap.
+    /// Focus → break starts right away; break → the next focus phase waits for a tap. A phase
+    /// that ran out while nobody looked ends when it really ended, not now: the break starts
+    /// then, and if that break is over by now as well, it ends too.
     private func finishPhase(now: Date) {
         guard var session = focus else { return }
-        logStretch(session, now: now)
-        switch session.phase {
-        case .focus:
-            session.rounds += 1
-            session.phase = .rest
-            session.duration = breakMinutes * 60
-            session.pausedRemaining = nil
-        case .rest:
-            session.phase = .focus
-            session.duration = focusMinutes * 60
-            session.pausedRemaining = session.duration
-        }
-        session.startedAt = now
+        repeat {
+            let end = session.isPaused ? now : min(now, session.startedAt.addingTimeInterval(session.duration))
+            logStretch(session, now: end)
+            switch session.phase {
+            case .focus:
+                session.rounds += 1
+                session.phase = .rest
+                session.duration = breakMinutes * 60
+                session.pausedRemaining = nil
+            case .rest:
+                session.phase = .focus
+                session.duration = focusMinutes * 60
+                session.pausedRemaining = session.duration
+            }
+            session.startedAt = end
+        } while session.phase == .rest && session.remaining(at: now) <= 0
         focus = session
         saveFocus()
     }
 
-    /// Books focused time on the task and in today's log.
+    /// Books focused time on the task and in that day's log. An ongoing task checked off during
+    /// the stretch got a finished copy at that moment: the time up to then goes on the copy (it
+    /// was work for that day), only the rest on the task.
     private func logStretch(_ session: FocusSession, now: Date) {
         guard session.phase == .focus else { return }
         let seconds = session.elapsed(at: now)
         guard seconds >= 5 else { return }
-        if !isSandbox { FocusLog.add(seconds, on: now) }
-        if let id = session.taskID, let task = store.task(id: id) {
-            store.addFocusTime(task, seconds: seconds)
+        // A phase that ran out before `now` stopped counting at its end.
+        let end = session.startedAt.addingTimeInterval(seconds)
+        if !isSandbox { FocusLog.add(seconds, on: end) }
+        let store = self.store
+        guard let id = session.taskID, let task = store.task(id: id) else { return }
+        var cursor = session.startedAt
+        // `lastDoneAt` keeps whole seconds only, hence the second of slack; the copies'
+        // `completedAt` is exact.
+        if let lastDone = task.lastDoneAt, lastDone.addingTimeInterval(1) > session.startedAt {
+            let logs = store.liveTasks()
+                .compactMap { copy -> (copy: TaskItem, doneAt: Date)? in
+                    guard copy.loggedFor == id, copy.isDone, let doneAt = copy.completedAt,
+                          doneAt > session.startedAt else { return nil }
+                    return (copy: copy, doneAt: doneAt)
+                }
+                .sorted { $0.doneAt < $1.doneAt }
+            // Oldest first: each copy gets the focused time since the one before it.
+            for entry in logs {
+                let upTo = min(entry.doneAt, end)
+                store.addFocusTime(entry.copy, seconds: upTo.timeIntervalSince(cursor))
+                cursor = max(cursor, upTo)
+            }
         }
+        store.addFocusTime(task, seconds: end.timeIntervalSince(cursor))
     }
 
     private func scheduleFocusNotification() {

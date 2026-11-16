@@ -37,6 +37,9 @@ struct Toast: Identifiable, Equatable {
     var symbol: String = "checkmark.circle.fill"
     var undo: (() -> Void)?
 
+    /// Something went wrong (a triangle symbol): drawn in red and kept on screen longer.
+    var isWarning: Bool { symbol.hasPrefix("exclamationmark") }
+
     static func == (lhs: Toast, rhs: Toast) -> Bool { lhs.id == rhs.id }
 }
 
@@ -54,7 +57,7 @@ struct TaskBatch: Identifiable {
 
 enum GroupEditorTarget: Identifiable {
     case new
-    /// A new subproject inside this group.
+    /// A new subgroup inside this group.
     case subgroup(TaskGroup)
     case edit(TaskGroup)
 
@@ -144,16 +147,31 @@ final class AppModel {
 
     /// Set to focus the quick entry field; the field resets it once focused.
     var wantsQuickEntryFocus = false
+    /// Mac and iPad: the toolbar search over every task. While it holds text, the results
+    /// replace the page; a page change clears it.
+    var searchText = ""
+    /// Set by Find… (⌘F) to put the cursor in the search field; RootView resets it.
+    var wantsSearchFocus = false
     /// Selected rows in the current list (macOS + iOS edit mode).
     var selectedRowIDs: Set<String> = []
     /// iOS multi-select mode.
     var isSelecting = false
 
-    /// The model used by the scene; lets UIKit callbacks (Home Screen quick actions) reach it.
-    static weak var shared: AppModel?
+    /// The model used by the scene; lets UIKit callbacks (Home Screen quick actions), notification
+    /// actions and App Intents reach it. Strong, so Siri/Shortcuts still find it when Theo was
+    /// launched in the background without a window.
+    static var shared: AppModel?
+    /// A row to select once the page `reveal(_:)` switched to is on screen (RootView applies it
+    /// after it clears the old page's selection).
+    @ObservationIgnored var pendingRevealRowID: String?
 
     /// Start of the current logical day, refreshed by `refreshDay()`.
     var dayStart: Date
+
+    /// Listens for failed saves (`TaskStore.save()` posts "TheoSaveFailed").
+    @ObservationIgnored private var saveFailureObserver: NSObjectProtocol?
+    /// When the last "Couldn't save" toast showed: at most one a minute.
+    @ObservationIgnored private var lastSaveWarning: Date?
 
     init(container: ModelContainer, isSandbox: Bool = false) {
         self.container = container
@@ -171,6 +189,17 @@ final class AppModel {
         }
         let stored = UserDefaults.standard.stringArray(forKey: Prefs.collapsedTasks) ?? []
         collapsedTaskIDs = Set(stored.compactMap(UUID.init(uuidString:)))
+        // A save that fails keeps failing, and everything after it would be lost on quit: say so.
+        saveFailureObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("TheoSaveFailed"),
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let message = note.userInfo?["message"] as? String ?? "unknown error"
+            MainActor.assumeIsolated {
+                self?.reportSaveFailure(message)
+            }
+        }
         applyLaunchArguments()
         if let selection, selection != .today { go(selection) }
         AppModel.shared = self
@@ -180,11 +209,26 @@ final class AppModel {
 
     func refreshDay() {
         let start = DayBoundary.current.start(of: Date())
-        if start != dayStart { dayStart = start }
+        guard start != dayStart else { return }
+        dayStart = start
+        // A Mac can stay open for days without its window ever going inactive, so the new day
+        // also empties expired trash and takes the daily backup.
+        guard !isSandbox, !Persistence.isDemo else { return }
+        store.purgeExpired()
+        backups.backUpIfDue()
+    }
+
+    /// The red toast for a failed save, at most once a minute (every later save fails too).
+    private func reportSaveFailure(_ message: String) {
+        let now = Date()
+        if let lastSaveWarning, now.timeIntervalSince(lastSaveWarning) < 60 { return }
+        lastSaveWarning = now
+        show("Couldn't save: \(message)", symbol: "exclamationmark.triangle.fill")
     }
 
     func go(_ item: SidebarItem) {
         detailPath = NavigationPath()
+        searchText = ""
         selection = item
         compactColumn = .detail
         switch item {
@@ -204,7 +248,24 @@ final class AppModel {
     var todayKey: Date { Calendar.current.startOfDay(for: dayStart) }
 
     func plan(_ tasks: [TaskItem], for day: Date?) {
-        let before = tasks.map { (task: $0, day: $0.plannedDay) }
+        // Nothing selected (⌥⌘D, ⌥⌘L): no "0 planned" message.
+        guard !tasks.isEmpty else { return }
+        // The store plans whole blocks (subtasks too) and starts or ends each line's run of
+        // plans, so Undo puts back both values for every line it can touch. Old ongoing logs
+        // inside a block keep their day, unless one was passed in itself.
+        let passed = Set(tasks.map(ObjectIdentifier.init))
+        var layouts: [UUID?: SectionLayout] = [:]
+        var seen = Set<ObjectIdentifier>()
+        var before: [(task: TaskItem, day: Date?, since: Date?)] = []
+        for task in tasks {
+            let layout = layouts[task.groupID] ?? store.layout(for: task.groupID)
+            layouts[task.groupID] = layout
+            for line in layout.block(of: task) where !seen.contains(ObjectIdentifier(line)) {
+                seen.insert(ObjectIdentifier(line))
+                guard line.loggedFor == nil || passed.contains(ObjectIdentifier(line)) else { continue }
+                before.append((task: line, day: line.plannedDay, since: line.plannedSince))
+            }
+        }
         store.plan(tasks, for: day)
         var label = ""
         if let day {
@@ -215,16 +276,32 @@ final class AppModel {
             ? (tasks.count == 1 ? "Taken off the plan" : "\(tasks.count) taken off the plan")
             : (tasks.count == 1 ? "Planned for \(label)" : "\(tasks.count) planned for \(label)")
         show(message, symbol: "calendar.badge.checkmark") { [weak self] in
-            for item in before { item.task.plannedDay = item.day }
+            for item in before {
+                var changed = false
+                if item.task.plannedDay != item.day {
+                    item.task.plannedDay = item.day
+                    changed = true
+                }
+                if item.task.plannedSince != item.since {
+                    item.task.plannedSince = item.since
+                    changed = true
+                }
+                if changed { item.task.touch() }
+            }
             self?.store.save()
         }
     }
 
+    /// ⌘N, the Home Screen's New Task and the Quick Add hotkey. Plan, Upcoming and Priority keep
+    /// their page, because they have a bar of their own (Plan's plans for the day it shows);
+    /// pages without one send the task to Today.
     func requestQuickEntry() {
         switch selection {
-        case .history, .trash, .upcoming, .priority, .matrix, .plan, .overview, .tag, .none: go(.today)
+        case .history, .trash, .matrix, .overview, .tag, .none: go(.today)
         default: if phonePath.isEmpty { go(selection ?? .today) }
         }
+        // Search results have no bar: back to the page.
+        searchText = ""
         detailPath = NavigationPath()
         compactColumn = .detail
         wantsQuickEntryFocus = true
@@ -239,8 +316,10 @@ final class AppModel {
         let toast = Toast(message: message, symbol: symbol, undo: undo)
         withAnimation(.snappy) { self.toast = toast }
         let id = toast.id
+        // Undo and warnings stay long enough to be read and reached.
+        let seconds = undo == nil && !toast.isWarning ? 2.2 : 4.5
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(undo == nil ? 2.2 : 4.5))
+            try? await Task.sleep(for: .seconds(seconds))
             if self.toast?.id == id {
                 withAnimation(.snappy) { self.toast = nil }
             }
@@ -258,23 +337,27 @@ final class AppModel {
         }
     }
 
+    /// The row checkbox (see `check(_:)`).
     func toggle(_ task: TaskItem) {
-        store.toggle(task)
+        check(task)
     }
 
-    /// Files tasks under another group, with Undo.
+    /// Files tasks under another group, with Undo. Arriving there can add the group's traits
+    /// (importance, PH, tags, a deadline) and a suggestion; Undo takes those back too.
     func move(_ tasks: [TaskItem], toGroup groupID: UUID?) {
-        let moved = tasks.flatMap { store.layout(for: $0.groupID).block(of: $0) }
-        let before = moved.map { (task: $0, group: $0.group, order: $0.sortOrder, indent: $0.indent) }
+        guard !tasks.isEmpty else { return }
+        var seen = Set<ObjectIdentifier>()
+        var before: [MoveSnapshot] = []
+        for task in tasks {
+            for line in store.layout(for: task.groupID).block(of: task) where !seen.contains(ObjectIdentifier(line)) {
+                seen.insert(ObjectIdentifier(line))
+                before.append(MoveSnapshot(line))
+            }
+        }
         store.move(tasks, toGroup: groupID)
         let name = store.group(id: groupID)?.displayName ?? "Quick Entry"
         show("Moved to \(name)", symbol: "folder.fill") { [weak self] in
-            for item in before {
-                item.task.group = item.group
-                item.task.sortOrder = item.order
-                item.task.indent = item.indent
-                item.task.touch()
-            }
+            for snapshot in before { snapshot.restore() }
             self?.store.save()
         }
     }
@@ -323,17 +406,21 @@ final class AppModel {
         tour = nil
     }
 
-    /// "Not Today": onto tomorrow's plan.
+    /// "Tomorrow" (Plan for Tomorrow): onto tomorrow's plan.
     func deferToTomorrow(_ tasks: [TaskItem]) {
         plan(tasks, for: DayBoundary.current.dayStart(byAdding: 1, to: dayStart))
     }
 
+    /// The selected tasks in a fixed order (list position, then id), so commands that take the
+    /// first one don't pick a different task each time.
     var selectedTasks: [TaskItem] {
         let ids = selectedRowIDs.compactMap { id -> UUID? in
             guard id.hasPrefix("t-") else { return nil }
             return UUID(uuidString: String(id.dropFirst(2)))
         }
-        return ids.compactMap { store.task(id: $0) }.filter { $0.deletedAt == nil }
+        return ids.compactMap { store.task(id: $0) }
+            .filter { $0.deletedAt == nil }
+            .sorted { ($0.sortOrder, $0.uuid.uuidString) < ($1.sortOrder, $1.uuid.uuidString) }
     }
 
     // MARK: - Launch arguments (screenshots)
@@ -365,6 +452,21 @@ final class AppModel {
             default: selection = .today
             }
         }
+        // The highest-ranked task on today's page, shown with its details: the Mac's details
+        // column (-TheoSelectFirst) or the iPhone's details sheet (-TheoDetailFirst).
+        let selectFirst = args.contains("-TheoSelectFirst")
+        let detailFirst = args.contains("-TheoDetailFirst")
+        if selectFirst || detailFirst {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                guard let task = topTaskPlannedToday() else { return }
+                if detailFirst {
+                    detailTask = task
+                } else {
+                    showDetails(task)
+                }
+            }
+        }
         if args.contains("-TheoRadialDemo") {
             // The circular picker opened from the send button, pointing at 1 PH.
             Task { @MainActor in
@@ -378,5 +480,65 @@ final class AppModel {
                 radialPick = pick
             }
         }
+    }
+
+    /// The open task planned for today that ranks first (a top-level line when there is one).
+    private func topTaskPlannedToday() -> TaskItem? {
+        // Today leaves out switched-off groups, so the pick does too.
+        let planned = store.liveTasks().activeOnly(store.liveGroups()).filter { !$0.isDone && $0.isPlanned(for: dayStart) }
+        let roots = planned.filter { $0.indent == 0 }
+        let candidates = roots.isEmpty ? planned : roots
+        return candidates.min { a, b in
+            let scoreA = a.matrixScore(today: dayStart)
+            let scoreB = b.matrixScore(today: dayStart)
+            return scoreA != scoreB ? scoreA > scoreB : a.sortOrder < b.sortOrder
+        }
+    }
+}
+
+/// What moving a task to another group can change (its place, and what the new group's traits
+/// add), so Undo puts all of it back.
+private struct MoveSnapshot {
+    let task: TaskItem
+    let group: TaskGroup?
+    let sortOrder: Double
+    let indent: Int
+    let importance: Double
+    let priorityRaw: Int
+    let estimate: Double
+    let tagsRaw: String
+    let dueDate: Date?
+    let dueHasTime: Bool
+    let repeatAnchorDay: Int?
+    let traitProposalGroupID: UUID?
+
+    init(_ task: TaskItem) {
+        self.task = task
+        group = task.group
+        sortOrder = task.sortOrder
+        indent = task.indent
+        importance = task.importance
+        priorityRaw = task.priorityRaw
+        estimate = task.estimate
+        tagsRaw = task.tagsRaw
+        dueDate = task.dueDate
+        dueHasTime = task.dueHasTime
+        repeatAnchorDay = task.repeatAnchorDay
+        traitProposalGroupID = task.traitProposalGroupID
+    }
+
+    func restore() {
+        task.group = group
+        task.sortOrder = sortOrder
+        task.indent = indent
+        task.importance = importance
+        task.priorityRaw = priorityRaw
+        task.estimate = estimate
+        task.tagsRaw = tagsRaw
+        task.dueDate = dueDate
+        task.dueHasTime = dueHasTime
+        task.repeatAnchorDay = repeatAnchorDay
+        task.traitProposalGroupID = traitProposalGroupID
+        task.touch()
     }
 }

@@ -36,7 +36,7 @@ public struct TutorialSnapshot: Equatable, Sendable {
     public var deletedCount = 0
     public var groupCount = 0
     public var collapsedCount = 0
-    /// Open task IDs in page order.
+    /// Open task IDs in the order the page ranks them.
     public var order: [String] = []
     public var detailsOpen = false
     public var estimateSum = 0.0
@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 8
+    public static let version = 9
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -158,7 +158,7 @@ public enum TutorialCatalog {
     public static let finish = TutorialStep(
         id: "finish", since: 1, symbol: "checkmark.seal",
         title: "You're all set",
-        body: "Replay this tour any time from Settings or the ⋯ menu on Today. New features show up here as a short \u{201C}What's new\u{201D} tour.",
+        body: "Replay this tour any time from Settings or the ⋯ menu on Today. New features show up here as a short \u{201C}What's new\u{201D} tour, and Settings → What's New shows it again.",
         goal: .none
     )
 
@@ -178,6 +178,13 @@ public enum TutorialCatalog {
             goal: .addTaskWithDetails
         ),
         TutorialStep(
+            id: "dates-de", since: 9, symbol: "calendar",
+            title: "Dates, the way you say them",
+            body: "Type “Zahnarzt morgen 9 Uhr” and Theo sets the deadline. It also understands “bis Freitag”, “am 15.12.”, “in 3 Tagen”, “jeden Montag” and “alle 2 Wochen”, in English too. The date chip shows which words it took; tap the × next to it to keep them in the title.",
+            macBody: "Type “Zahnarzt morgen 9 Uhr” and Theo sets the deadline. It also understands “bis Freitag”, “am 15.12.”, “in 3 Tagen”, “jeden Montag” and “alle 2 Wochen”, in English too. The date chip shows which words it took; click the × next to it to keep them in the title.",
+            goal: .addTask
+        ),
+        TutorialStep(
             id: "complete", since: 1, symbol: "checkmark.circle",
             title: "Check it off",
             body: "Tap the circle next to a task. It sinks to the bottom, like in Notes. Tap it again to bring it back.",
@@ -195,7 +202,7 @@ public enum TutorialCatalog {
             id: "subtask", since: 1, symbol: "arrow.turn.down.right",
             title: "Break it down",
             body: "Touch and hold \u{201C}Call grandma\u{201D} → Add Subtask. While editing a line, ⇥ above the keyboard indents it, and in the bottom bar \u{201C}- \u{201D} files a line under the task you just added.",
-            macBody: "Right-click \u{201C}Call grandma\u{201D} and choose Add Subtask (⌥⌘N). While editing a line, Tab indents and Shift-Tab outdents. In the bottom bar, start with \u{201C}- \u{201D} to add a subtask to the task you just added.",
+            macBody: "Right-click \u{201C}Call grandma\u{201D} and click Subtask (or select it and press ⌥⌘N). While editing a line, Tab indents and Shift-Tab outdents. In the bottom bar, start with \u{201C}- \u{201D} to add a subtask to the task you just added.",
             goal: .addSubtask
         ),
         TutorialStep(
@@ -213,11 +220,18 @@ public enum TutorialCatalog {
             goal: .reorder
         ),
         TutorialStep(
-            id: "not-today", since: 1, symbol: "moon.zzz",
-            title: "Not today",
+            id: "not-today", since: 1, symbol: "moon.zzz.fill",
+            title: "Leave it for tomorrow",
             body: "Swipe left on a task and tap Tomorrow. It moves to tomorrow's plan.",
-            macBody: "Right-click a task and choose Not Today (⌥⌘L). It moves to tomorrow's plan.",
+            macBody: "Right-click a task and click Tomorrow, or select it and press ⌥⌘L (Plan for Tomorrow). It moves to tomorrow's plan.",
             goal: .deferTask
+        ),
+        TutorialStep(
+            id: "swipe-today", since: 9, symbol: "sun.max.fill",
+            title: "Today in one swipe",
+            body: "On any list, swipe left on a task and tap Today to put it on today's plan. On a task that's already on today, the same spot says Tomorrow.",
+            macBody: "Swipe left with two fingers on a task and click Today, or select it and press ⌥⌘D. On a task that's already on today, the same spot says Tomorrow.",
+            goal: .none
         ),
         TutorialStep(
             id: "undo", since: 1, symbol: "arrow.uturn.backward",
@@ -229,57 +243,71 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "group", since: 1, symbol: "folder.badge.plus",
             title: "Groups are headings",
-            body: "Tap the folder button at the top to add a heading like Work or Home. Tap a heading to fold it, and drag tasks between headings.",
-            macBody: "Press ⇧⌘N (File → New Group…) to add a heading like Work or Home. In the main window it's also the folder button in the toolbar. Click a heading to fold it, and drag tasks between headings.",
+            body: "Tap ⋯ → New Group to add a heading like Work or Home. Tap a heading to fold it, and drag tasks between headings.",
+            macBody: "Press ⇧⌘N (or Today's ⋯ → New Group…) to add a heading like Work or Home. Click a heading to fold it, and drag tasks between headings.",
             goal: .addGroup
         ),
         TutorialStep(
             id: "details", since: 1, symbol: "info.circle",
             title: "Everything else",
-            body: "Tap a task to edit it, then tap ⓘ for notes, deadline, tags and subtasks. Touch and hold opens the full menu.",
-            macBody: "Select a task and press ⌘I (or right-click → Details…) for notes, deadline, tags and subtasks.",
+            body: "Tap a task to edit it, then tap ⓘ for the description, deadline, plan and subtasks. The Plan row on top puts it on Today, Tomorrow, Next Week or any day you pick. Touch and hold opens the full menu.",
+            macBody: "Select a task and press ⌘I (or right-click → Details) for the description, deadline, plan and subtasks. The Plan row on top puts it on Today, Tomorrow, Next Week or any day you pick. In the main window they sit in the column on the right.",
             goal: .openDetails
         ),
         TutorialStep(
             id: "estimate", since: 2, symbol: "timer",
             title: "Time it in Power Hours",
             body: "One PH is 50 focused minutes. Type \u{201C}0,5ph\u{201D} in the bottom bar, tap the PH chip, or touch and hold a task → Estimate. Today adds up what's planned and what's done.",
-            macBody: "One PH is 50 focused minutes. Type \u{201C}0,5ph\u{201D} in the bottom bar, click the PH chip, or right-click a task → Estimate. Today adds up what's planned and what's done.",
+            macBody: "One PH is 50 focused minutes. Type \u{201C}0,5ph\u{201D} in the bottom bar, click the PH chip, or right-click a task and pick its Power Hours. Today adds up what's planned and what's done.",
             goal: .estimate
         ),
         TutorialStep(
             id: "matrix", since: 3, symbol: "square.grid.3x3",
             title: "Urgent and important",
-            body: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: touch and hold → Place in Matrix.",
-            macBody: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: right-click → Place in Matrix (⌥⌘M).",
+            body: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: touch and hold → Place in Matrix. On the Matrix page, tap a dot to see its name and tap it again to open it.",
+            macBody: "Drag the ⊞ handle at the right of the bottom bar onto the grid: left is due today, right is 14 days out (or no date), up is more important (1–10). It snaps into place, and the task shows up ranked everywhere. For an existing task: select it and press ⌥⌘M (Place in Matrix). On the Matrix page, point at a dot to see its name and click it to show it in the details column.",
             goal: .placeInMatrix
         ),
         TutorialStep(
             id: "focus", since: 2, symbol: "scope",
             title: "Focus for a Power Hour",
             body: "Touch and hold a task → Start Focus. 50 minutes of focus, then a break, and the time is booked on the task. Close the timer and it keeps running.",
-            macBody: "Select a task and press ⌥⌘F (or right-click → Start Focus). 50 minutes of focus, then a break, and the time is booked on the task.",
+            macBody: "Select a task and press ⌥⌘F (or right-click → Focus). 50 minutes of focus, then a break, and the time is booked on the task.",
             goal: .startFocus
         ),
         TutorialStep(
             id: "reminder", since: 2, symbol: "bell.badge",
             title: "Never miss a time",
-            body: "Add \u{201C}call the bank tomorrow 9am\u{201D}. Tasks with a time remind you. In a task's details you can add earlier reminders, follow-ups and repeats like \u{201C}every week\u{201D}.",
+            body: "Add \u{201C}call the bank tomorrow 9am\u{201D}. Tasks with a time remind you, and the reminder's buttons check it off, snooze it or move it to tomorrow. In a task's details you can add earlier reminders, follow-ups and repeats like \u{201C}every week\u{201D}.",
             goal: .addReminder
         ),
         TutorialStep(
             id: "subproject", since: 2, symbol: "folder.badge.plus",
-            title: "Projects inside projects",
-            body: "Touch and hold the Work heading → New Subproject. Subprojects sit under their parent and fold away with it.",
-            macBody: "Right-click the Work heading → New Subproject. Subprojects sit under their parent and fold away with it.",
+            title: "Groups inside groups",
+            body: "Touch and hold the Work heading → New Subgroup. Subgroups sit under their parent and fold away with it.",
+            macBody: "Right-click the Work heading and choose New Subgroup. Subgroups sit under their parent and fold away with it.",
             goal: .addSubproject
         ),
         TutorialStep(
             id: "plan", since: 3, symbol: "calendar.badge.plus",
             title: "Plan your day",
             body: "Today only shows what you picked for it. Open Plan, choose a day and tap tasks to add them: unfinished ones from earlier days and anything due are suggested first.",
-            macBody: "Today only shows what you picked for it. Open Plan (⌘2), choose a day and click tasks to add them: unfinished ones from earlier days and anything due are suggested first.",
+            macBody: "Today only shows what you picked for it. Open Plan (⌘2), choose a day and click a task's circle to add it: unfinished ones from earlier days and anything due are suggested first.",
             goal: .planTask
+        ),
+        TutorialStep(
+            id: "plan-actions", since: 9, symbol: "calendar.badge.plus",
+            title: "Plan with all the tools",
+            body: "In Plan, tap a task to put it on the day, and tap again to take it off. Touch and hold it for the menu: Quick Edit opens the colourful panel, Details the whole task. An indigo sun marks what's on today. Planning tomorrow offers “Still open today” with Add All; later days fold earlier plans away under “Already planned earlier”.",
+            macBody: "In Plan, click a task's circle (or double-click the task) to plan it, click the task to see it in the details column, and right-click it for the menu with Quick Edit. Planning tomorrow offers “Still open today” with Add All; later days fold earlier plans away under “Already planned earlier”.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "carry-over", since: 9, symbol: "arrow.uturn.forward",
+            title: "Nothing slips overnight",
+            body: "If something you planned stays open, Today shows “↪ N unfinished from earlier” at the top: Bring Over puts it back on today. Tasks due by today that aren't planned get an Add. Tap the hint to open Plan; × hides it for the day.",
+            macBody: "If something you planned stays open, Today shows “↪ N unfinished from earlier” at the top: Bring Over puts it back on today. Tasks due by today that aren't planned get an Add. Click the hint to open Plan; × hides it for the day.",
+            goal: .none
         ),
         TutorialStep(
             id: "insert", since: 4, symbol: "plus.square.dashed",
@@ -317,8 +345,8 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "ongoing", since: 5, symbol: "infinity",
             title: "Work that never ends",
-            body: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or touch and hold → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
-            macBody: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or right-click → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. For a fixed rhythm, give it a deadline and a repeat instead.",
+            body: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or touch and hold → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. Give it a deadline and a repeat too, and it comes back on its own.",
+            macBody: "Some tasks are never finished, like checking the account or answering mail. Type \u{201C}laufend\u{201D} or \u{221E} with one (or right-click → Ongoing). Checking it off logs it for the day, Power Hours and all, and the task stays for next time. Plan offers it under Ongoing. Give it a deadline and a repeat too, and it comes back on its own.",
             goal: .none
         ),
         TutorialStep(
@@ -345,8 +373,8 @@ public enum TutorialCatalog {
         TutorialStep(
             id: "quick-edit", since: 8, symbol: "slider.horizontal.3",
             title: "Change a task in one tap",
-            body: "Touch and hold a task → Quick Edit: done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours and group, each one tap, in colour. Everything else is under Details.",
-            macBody: "Right-click a task: its quick actions open right above it in colour (done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours, group). Select a task and its full details sit in the column on the right, editable in place (⌥⌘I shows or hides it). Control-click still opens the full menu.",
+            body: "Touch and hold a task → Quick Edit: done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours and group, each one tap, in colour. On a task that's already on today, the sun says Off Plan. Everything else is under Details.",
+            macBody: "Right-click a task: its quick actions open right above it in colour (done, today or tomorrow, subtask, ongoing, focus, priority, deadline, Power Hours, group); on a task that's already on today, the sun says Off Plan. Select a task and its full details sit in the column on the right, with round quick actions on top, editable in place (⌥⌘I shows or hides it). Control-click still opens the full menu.",
             goal: .none
         ),
         TutorialStep(
@@ -357,10 +385,17 @@ public enum TutorialCatalog {
             goal: .none
         ),
         TutorialStep(
+            id: "capture-anywhere", since: 9, symbol: "mic",
+            title: "Add from anywhere",
+            body: "Say “Add a task to Theo” to Siri, or put Theo's Quick Entry on the Action button (Settings → Action Button → Shortcut → Theo). The Shortcuts app has Add Task, What's Left Today and Quick Entry, and Add Task understands the same shortcuts as the bottom bar. Ask Siri “What's left in Theo” for the rest of your day.",
+            macBody: "Press ⌃⌥⌘N in any app to jump into Theo's bottom bar (change it in Settings → Quick Add). Spotlight adds one without switching: ⌘Space, type “Add Task”, then the task, then Return. ⌘F searches every task from any page.",
+            goal: .none
+        ),
+        TutorialStep(
             id: "everywhere", since: 1, symbol: "applewatch",
             title: "Everywhere you are",
-            body: "Today, Plan, Lists and Search are in the tab bar; Upcoming, the Matrix, History and each group are under Lists. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
-            macBody: "Today, Plan, Upcoming, the Matrix, History and each group are in the sidebar (⌘1–7), with their shortcuts in grey. ⇧⌘F opens the focus timer. The menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            body: "Today, Plan, Overview, Lists and Search are in the tab bar; Upcoming, the Matrix, History and each group are under Lists. Search finds everything. Theo syncs with your Mac through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
+            macBody: "Every page is in the sidebar with its shortcut in grey (⌘1–9, ⇧⌘O Overview, ⇧⌘A All Tasks), and the keys worth remembering are listed below it. ⌘F searches everything, ⇧⌘F opens the focus timer, and the menu bar icon adds tasks from anywhere. Theo syncs with your iPhone through iCloud, and on Apple Watch you can check things off and add tasks by voice.",
             goal: .none
         ),
         finish,

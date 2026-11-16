@@ -57,10 +57,12 @@ public struct ParsedEntry: Equatable, Sendable {
 /// - `!`, `!!`, `!!!` or `p3`/`p2`/`p1` set the priority
 /// - `#tag` adds a tag
 /// - `@group` files the task into a group (prefix match, spaces ignored)
-/// - dates and times ("tomorrow 5pm", "next friday", "oct 30") become the deadline
+/// - dates and times ("tomorrow 5pm", "morgen 9 Uhr", "bis Freitag", "am 15.12.", "oct 30")
+///   become the deadline (see `RelativeDate`; Apple's date detector catches the rest)
 /// - `📅 2026-11-04` or `due:2026-11-04` set an exact deadline (also understood by Import)
 /// - `0,5PH` / `(1PH)` set the estimate in Power Hours
-/// - `daily`, `weekly`, `every 3 days`, `täglich` ... make it repeat
+/// - `daily`, `weekly`, `every 3 days`, `täglich`, `jeden Montag`, `alle 2 Wochen` ... make it
+///   repeat ("every Monday" also makes the next Monday the deadline)
 /// - `∞`, `laufend`, `ongoing` or `andauernd` make it an ongoing task
 /// - everything after ` // ` is the task's description
 public enum QuickParser {
@@ -99,7 +101,20 @@ public enum QuickParser {
 
     private static let detector: NSDataDetector? = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
 
-    public static func parse(_ fullText: String, groups: [GroupRef], options: Options = .all, now: Date = Date()) -> ParsedEntry {
+    /// - Parameters:
+    ///   - now: the logical day the words are measured from: "morgen" is the day after it.
+    ///     Pass the start of the logical day (`app.dayStart`), so "tomorrow" typed at 01:30 is
+    ///     still the day after the day you're in. Defaults to the moment of the call.
+    ///   - clock: the current moment; a time alone ("um 9") that has passed is tomorrow's.
+    public static func parse(
+        _ fullText: String,
+        groups: [GroupRef],
+        options: Options = .all,
+        now: Date = Date(),
+        clock: Date = Date(),
+        calendar: Calendar = .current
+    ) -> ParsedEntry {
+        let today = calendar.startOfDay(for: now)
         let split = splitNote(fullText)
         var entry = ParsedEntry(title: split.title.trimmingCharacters(in: .whitespacesAndNewlines))
         entry.notes = split.note
@@ -107,7 +122,7 @@ public enum QuickParser {
         var source = split.title
         let text = split.title
 
-        if options.contains(.exactDates) || options.contains(.dates), let found = exactDate(in: source) {
+        if options.contains(.exactDates) || options.contains(.dates), let found = exactDate(in: source, calendar: calendar) {
             entry.due = found.date
             entry.dueText = String(source[found.range])
             source.removeSubrange(found.range)
@@ -116,8 +131,11 @@ public enum QuickParser {
             entry.estimate = found.value
             source.replaceSubrange(found.range, with: " ")
         }
-        if options.contains(.recurrence), let found = Recurrence.find(in: source) {
+        // "every Monday": the first one is the deadline unless the text names another date.
+        var repeatFirstDue: Date?
+        if options.contains(.recurrence), let found = Recurrence.find(in: source, today: today, calendar: calendar) {
             entry.recurrence = found.recurrence
+            repeatFirstDue = found.firstDue
             source.replaceSubrange(found.range, with: " ")
         }
 
@@ -148,23 +166,55 @@ public enum QuickParser {
 
         var title = kept.joined(separator: " ")
 
-        if options.contains(.dates), entry.due == nil, let detector, !title.isEmpty {
-            let range = NSRange(title.startIndex..., in: title)
-            if let match = detector.matches(in: title, options: [], range: range).first,
-               let date = match.date,
-               let swiftRange = Range(match.range, in: title) {
-                let matched = String(title[swiftRange])
+        if options.contains(.dates), entry.due == nil, !title.isEmpty {
+            if let match = RelativeDate.find(in: title, today: today, now: clock, calendar: calendar) {
+                // Our own reading wins; the detector would read "15.12" as a time.
                 var remaining = title
-                remaining.removeSubrange(swiftRange)
-                remaining = cleanupAfterDateRemoval(remaining)
+                remaining.removeSubrange(match.range)
+                remaining = cleanupAfterDateRemoval(remaining, leading: false)
                 if !remaining.isEmpty {
-                    let hasTime = containsTime(matched)
-                    entry.due = hasTime ? date : Calendar.current.startOfDay(for: date)
-                    entry.dueHasTime = hasTime
-                    entry.dueText = matched
+                    var due = match.date
+                    // "Standup jeden Montag 9 Uhr": the time belongs to the first Monday.
+                    if !match.hasDay, let first = repeatFirstDue {
+                        let time = calendar.dateComponents([.hour, .minute], from: match.date)
+                        due = calendar.date(bySettingHour: time.hour ?? 0, minute: time.minute ?? 0, second: 0, of: first) ?? first
+                    }
+                    entry.due = match.hasTime ? due : calendar.startOfDay(for: due)
+                    entry.dueHasTime = match.hasTime
+                    entry.dueText = String(title[match.range])
                     title = remaining
                 }
+            } else if let detector {
+                let range = NSRange(title.startIndex..., in: title)
+                if let match = detector.matches(in: title, options: [], range: range).first,
+                   let date = match.date,
+                   let swiftRange = Range(match.range, in: title) {
+                    let matched = String(title[swiftRange])
+                    var remaining = title
+                    remaining.removeSubrange(swiftRange)
+                    remaining = cleanupAfterDateRemoval(remaining)
+                    // Bare numbers ("09.09", "2026") are references more often than deadlines, and
+                    // day words our own reading turned down ("am Morgen", "ab Montag") stay text,
+                    // like a part of the day alone ("Joggen morgens" is a habit, not a deadline).
+                    let onlyDigits = matched.allSatisfy { $0.isNumber || $0 == "." || $0 == " " }
+                    let words = RelativeDate.tokenize(matched)
+                    let declined = words.contains { RelativeDate.knownWords.contains($0.word) }
+                        || words.allSatisfy { RelativeDate.dayParts.contains($0.word) }
+                    let blocked = title[..<swiftRange.lowerBound].split(separator: " ").last
+                        .map { RelativeDate.blockers.contains($0.lowercased()) } ?? false
+                    if !remaining.isEmpty, !onlyDigits, !declined, !blocked {
+                        let hasTime = containsTime(matched)
+                        entry.due = hasTime ? date : calendar.startOfDay(for: date)
+                        entry.dueHasTime = hasTime
+                        entry.dueText = matched
+                        title = remaining
+                    }
+                }
             }
+        }
+        if entry.due == nil, let repeatFirstDue {
+            entry.due = repeatFirstDue
+            entry.dueHasTime = false
         }
 
         entry.title = collapseSpaces(title)
@@ -184,7 +234,7 @@ public enum QuickParser {
     }
 
     /// `📅 2026-11-04` or `due:2026-11-04`.
-    static func exactDate(in text: String) -> (date: Date, range: Range<String.Index>)? {
+    static func exactDate(in text: String, calendar: Calendar = .current) -> (date: Date, range: Range<String.Index>)? {
         guard let range = text.range(of: #"(?:📅|due:)\s*\d{4}-\d{2}-\d{2}"#, options: [.regularExpression, .caseInsensitive]) else {
             return nil
         }
@@ -194,8 +244,8 @@ public enum QuickParser {
         components.year = digits[0]
         components.month = digits[1]
         components.day = digits[2]
-        guard let date = Calendar.current.date(from: components) else { return nil }
-        return (Calendar.current.startOfDay(for: date), range)
+        guard let date = calendar.date(from: components) else { return nil }
+        return (calendar.startOfDay(for: date), range)
     }
 
     public static func priority(for lower: String) -> Priority? {
@@ -222,18 +272,27 @@ public enum QuickParser {
         s.lowercased().filter { $0.isLetter || $0.isNumber }
     }
 
-    private static func containsTime(_ s: String) -> Bool {
+    /// Whether what the detector matched names a time: a colon time ("14:30"), am/pm, "Uhr" or a
+    /// time word. A dotted "15.12" is a day and month, never a time.
+    static func containsTime(_ s: String) -> Bool {
         let lower = s.lowercased()
-        let words = ["am", "pm", "a.m", "p.m", "noon", "midnight", "morning", "evening", "tonight", "afternoon", "night", "o'clock", "uhr"]
-        for word in words where lower.contains(word) { return true }
-        if lower.range(of: #"\d{1,2}[:.]\d{2}"#, options: .regularExpression) != nil { return true }
+        if lower.range(of: #"\b(?:noon|midnight|morning|evening|tonight|afternoon|night|o'clock|uhr)\b"#, options: .regularExpression) != nil {
+            return true
+        }
+        if lower.range(of: #"\d\s*(?:am|pm|a\.m|p\.m)\b"#, options: .regularExpression) != nil { return true }
+        if lower.range(of: #"\d{1,2}:\d{2}"#, options: .regularExpression) != nil { return true }
         if lower.range(of: #"\bat \d"#, options: .regularExpression) != nil { return true }
         return false
     }
 
-    private static func cleanupAfterDateRemoval(_ s: String) -> String {
+    /// - Parameter leading: also drop a connector left at the start ("by oct 30 send it"). Off
+    ///   for our own reading, whose match already took its connectors, so "Zum Arzt gehen morgen"
+    ///   keeps "Zum".
+    private static func cleanupAfterDateRemoval(_ s: String, leading: Bool = true) -> String {
         var result = collapseSpaces(s)
-        let danglers = [" at", " on", " by", " due", " until", " before", " for", " in", " from"]
+        // "ab" stays: "ab Montag" (starting Monday) is never taken as a deadline.
+        let danglers = [" at", " on", " by", " due", " until", " before", " for", " in", " from",
+                        " bis", " am", " um", " zum", " für", " vor"]
         var changed = true
         while changed {
             changed = false
@@ -242,9 +301,10 @@ public enum QuickParser {
                 changed = true
             }
         }
-        let leading = ["on ", "by ", "at ", "due "]
-        for d in leading where result.lowercased().hasPrefix(d) {
-            result = String(result.dropFirst(d.count))
+        if leading {
+            for d in ["on ", "by ", "at ", "due ", "bis ", "am ", "um ", "zum "] where result.lowercased().hasPrefix(d) {
+                result = String(result.dropFirst(d.count))
+            }
         }
         return result.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",-–")))
     }

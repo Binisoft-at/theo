@@ -31,6 +31,45 @@ public enum Checklist {
         return end
     }
 
+    /// The line each line is a subtask of (its index), nil for top-level lines. `depths` as
+    /// `depths(of:)` returns them.
+    public static func parents(depths: [Int]) -> [Int?] {
+        var open: [Int] = []
+        var result: [Int?] = []
+        result.reserveCapacity(depths.count)
+        for index in depths.indices {
+            while let last = open.last, depths[last] >= depths[index] { open.removeLast() }
+            result.append(open.last)
+            open.append(index)
+        }
+        return result
+    }
+
+    /// Nesting depth of each line once some lines are left off a page: a shown line sits under
+    /// its nearest ancestor that is shown too, so a subtask whose parent isn't on the page stands
+    /// at the top level instead of under whatever line happens to come before it. nil for the
+    /// lines left off. `ordered` is the whole section in manual order; `isVisible` gets an index
+    /// into it.
+    public static func visibleDepths<Item: ChecklistItem>(ordered items: [Item], isVisible: (Int) -> Bool) -> [Int?] {
+        let levels = depths(of: items)
+        var ancestors: [(depth: Int, visible: Bool)] = []
+        var visibleAncestors = 0
+        var result: [Int?] = []
+        result.reserveCapacity(items.count)
+        for index in items.indices {
+            let depth = levels[index]
+            while let last = ancestors.last, last.depth >= depth {
+                ancestors.removeLast()
+                if last.visible { visibleAncestors -= 1 }
+            }
+            let visible = isVisible(index)
+            result.append(visible ? visibleAncestors : nil)
+            ancestors.append((depth: depth, visible: visible))
+            if visible { visibleAncestors += 1 }
+        }
+        return result
+    }
+
     /// Display order: nested, open lines ranked by `rank` (highest first, manual order breaks ties;
     /// manual order only without a rank), completed lines (and their subtasks) after the open
     /// ones of the same level, most recently completed first. With `showCompleted == false`

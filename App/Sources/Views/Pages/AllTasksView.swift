@@ -84,7 +84,7 @@ struct AllTasksView: View {
             #endif
         }
         .alert("Save as View", isPresented: $naming) {
-            TextField("Name, e.g. HAEB this week", text: $newName)
+            TextField("Name, e.g. Admin this week", text: $newName)
             Button("Save") { saveAsView() }
             Button("Cancel", role: .cancel) { newName = "" }
         } message: {
@@ -213,6 +213,14 @@ struct AllTasksView: View {
                     Label("Reset to Standard", systemImage: "arrow.counterclockwise")
                 }
             }
+            #if os(iOS)
+            // Pick matches to move, plan or tag several at once (the selection bar below).
+            Button {
+                app.isSelecting = true
+            } label: {
+                Label("Select Tasks", systemImage: "checklist")
+            }
+            #endif
         } label: {
             Label("More", systemImage: "ellipsis")
         }
@@ -236,6 +244,16 @@ struct QueryEditor: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// Groups that are off, or inside one that is (shown dimmed with a pause sign).
+    private var offIDs: Set<UUID> { GroupTree.inactiveIDs(groups) }
+
+    private var groupsFooter: String {
+        if query.groupIDs.isEmpty && !query.quickEntryOnly {
+            return "Nothing ticked: every group that's switched on. A group includes its subgroups."
+        }
+        return offIDs.isEmpty ? "A group includes its subgroups." : "A group includes its subgroups. Off subgroups stay hidden unless ticked."
+    }
+
     var body: some View {
         Form {
             Section {
@@ -258,8 +276,10 @@ struct QueryEditor: View {
             Section {
                 Toggle("Only Quick Entry", isOn: $query.quickEntryOnly)
                 if !query.quickEntryOnly {
+                    let off = offIDs
                     ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
                         let id = item.group.uuid
+                        let isOff = off.contains(id)
                         Button {
                             if let index = query.groupIDs.firstIndex(of: id) {
                                 query.groupIDs.remove(at: index)
@@ -270,7 +290,13 @@ struct QueryEditor: View {
                             HStack {
                                 Label(item.group.displayName, systemImage: item.group.symbol)
                                     .foregroundStyle(item.group.color.color)
+                                    .opacity(isOff ? 0.5 : 1)
                                     .padding(.leading, CGFloat(item.level) * 14)
+                                if isOff {
+                                    Image(systemName: "pause.circle")
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityLabel("Off")
+                                }
                                 Spacer()
                                 if query.groupIDs.contains(id) {
                                     Image(systemName: "checkmark")
@@ -285,7 +311,7 @@ struct QueryEditor: View {
             } header: {
                 Text("Groups")
             } footer: {
-                Text(query.groupIDs.isEmpty && !query.quickEntryOnly ? "Nothing ticked: every group that's switched on. A group includes its subgroups." : "A group includes its subgroups.")
+                Text(groupsFooter)
             }
 
             if !tags.isEmpty {

@@ -22,6 +22,9 @@ final class BackupManager {
     private(set) var files: [URL] = []
     private(set) var lastBackup: Date?
     private(set) var lastError: String?
+    /// When the last automatic backup failed: the next try waits 30 minutes, instead of
+    /// encoding everything again on every 30-second tick.
+    @ObservationIgnored private var lastAutomaticFailure: Date?
 
     init(container: ModelContainer, enabled: Bool) {
         self.container = container
@@ -37,21 +40,53 @@ final class BackupManager {
 
     private var store: TaskStore { TaskStore(context: container.mainContext) }
 
-    /// Once a day (at launch and when the app comes back), quietly.
+    /// Why a backup wasn't written.
+    enum Problem: LocalizedError {
+        /// Theo runs on a temporary in-memory store: there's nothing safe to copy, and a restore
+        /// wouldn't be kept.
+        case storeNotOpen
+        /// Nothing to copy while earlier copies exist: an empty file must not push a good one out.
+        case empty
+
+        var errorDescription: String? {
+            switch self {
+            case .storeNotOpen: "Theo couldn't open your tasks, so backups and restores are paused. Quit and reopen Theo."
+            case .empty: "Skipped an empty backup: there were no tasks or groups to copy."
+            }
+        }
+    }
+
+    /// Once a day, quietly: at launch, when the app comes back (iPhone) or becomes active (Mac),
+    /// and when a new day starts while it's open. A cheap date check when nothing is due.
     func backUpIfDue() {
-        guard enabled else { return }
-        if let lastBackup, Date().timeIntervalSince(lastBackup) < 20 * 3600 { return }
-        _ = try? backUpNow()
+        guard enabled, Persistence.storeKind != .memory else { return }
+        let now = Date()
+        if let lastBackup, now.timeIntervalSince(lastBackup) < 20 * 3600 { return }
+        if let lastAutomaticFailure, now.timeIntervalSince(lastAutomaticFailure) < 30 * 60 { return }
+        do {
+            try backUpNow()
+            lastAutomaticFailure = nil
+        } catch {
+            lastAutomaticFailure = now
+        }
     }
 
     @discardableResult
     func backUpNow() throws -> URL {
+        guard Persistence.storeKind != .memory else {
+            lastError = Problem.storeNotOpen.errorDescription
+            throw Problem.storeNotOpen
+        }
         guard let folder = Self.folder else { throw CocoaError(.fileNoSuchFile) }
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let now = Date()
+            let backup = snapshot(at: now)
+            if backup.tasks.isEmpty && backup.groups.isEmpty && Self.hasBackups(in: folder) {
+                throw Problem.empty
+            }
             let url = folder.appendingPathComponent(Backup.fileName(for: now))
-            try snapshot(at: now).encoded().write(to: url, options: .atomic)
+            try backup.encoded().write(to: url, options: .atomic)
             lastBackup = now
             UserDefaults.standard.set(now, forKey: Self.lastKey)
             prune(folder)
@@ -62,6 +97,12 @@ final class BackupManager {
             lastError = error.localizedDescription
             throw error
         }
+    }
+
+    /// Whether the folder already holds at least one backup file.
+    private static func hasBackups(in folder: URL) -> Bool {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        return names.contains { $0.hasPrefix("Theo Backup ") && $0.hasSuffix(".json") }
     }
 
     func refreshList() {
@@ -125,7 +166,16 @@ final class BackupManager {
     /// how many tasks came back.
     @discardableResult
     func restore(_ backup: Backup) throws -> Int {
-        if enabled { try backUpNow() }
+        // Restoring into the temporary in-memory store would look fine and then vanish on quit.
+        guard Persistence.storeKind != .memory else { throw Problem.storeNotOpen }
+        if enabled {
+            do {
+                try backUpNow()
+            } catch Problem.empty {
+                // Nothing there now, so nothing to keep before replacing it.
+                lastError = nil
+            }
+        }
         let context = container.mainContext
         // Out with the current data for good (it's in the backup just made), so no two records
         // share an ID.

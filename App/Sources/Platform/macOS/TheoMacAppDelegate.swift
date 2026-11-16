@@ -7,6 +7,27 @@ enum MainWindow {
     static var isVisible: Bool {
         NSApp.windows.contains { $0.isVisible && $0.canBecomeMain }
     }
+
+    /// Opens the main window when none is showing, by sending ourselves the "reopen" Apple
+    /// event a click on the Dock icon sends (works from anywhere, no SwiftUI environment needed).
+    @MainActor
+    static func reopen() {
+        NSApp.activate()
+        guard !isVisible else { return }
+        let target = NSAppleEventDescriptor(processIdentifier: ProcessInfo.processInfo.processIdentifier)
+        let event = NSAppleEventDescriptor(
+            eventClass: AEEventClass(kCoreEventClass),
+            eventID: AEEventID(kAEReopenApplication),
+            targetDescriptor: target,
+            returnID: AEReturnID(kAutoGenerateReturnID),
+            transactionID: AETransactionID(kAnyTransactionID)
+        )
+        do {
+            _ = try event.sendEvent(options: [.noReply], timeout: 2)
+        } catch {
+            print("Theo: reopen event failed: \(error)")
+        }
+    }
 }
 
 /// The menu bar icon. It is the one SwiftUI view that exists right after launch, so it
@@ -25,31 +46,68 @@ struct MenuBarLabel: View {
     }
 }
 
-/// Last-resort safety net: if there is still no window shortly after launch, send ourselves
-/// the same "reopen" Apple event a click on the Dock icon sends.
+/// The Mac's app-level hooks: the Quick Add shortcut, the daily care a window's scene phase
+/// doesn't trigger on the Mac (it stays "active" for days), a save on quit, and the Dock menu.
+/// Last-resort safety net: if there is still no window shortly after launch, it sends itself the
+/// same "reopen" Apple event a click on the Dock icon sends.
 final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // CloudKit's silent pushes: changes from the iPhone arrive within seconds instead of
         // whenever the Mac happens to check.
         NSApplication.shared.registerForRemoteNotifications()
+        MainActor.assumeIsolated {
+            GlobalHotKey.shared.apply(HotKeyChoice.stored)
+        }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             guard !MainWindow.isVisible else { return }
             print("Theo: opening main window via reopen event")
-            NSApp.activate()
-            let target = NSAppleEventDescriptor(processIdentifier: ProcessInfo.processInfo.processIdentifier)
-            let event = NSAppleEventDescriptor(
-                eventClass: AEEventClass(kCoreEventClass),
-                eventID: AEEventID(kAEReopenApplication),
-                targetDescriptor: target,
-                returnID: AEReturnID(kAutoGenerateReturnID),
-                transactionID: AETransactionID(kAnyTransactionID)
-            )
-            do {
-                _ = try event.sendEvent(options: [.noReply], timeout: 2)
-            } catch {
-                print("Theo: reopen event failed: \(error)")
-            }
+            MainWindow.reopen()
+        }
+    }
+
+    /// Switching back to Theo: a new day, the daily backup and the reminders are checked here,
+    /// because the window's scene phase doesn't change when another app comes to the front.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            guard let app = AppModel.shared else { return }
+            app.refreshDay()
+            app.backups.backUpIfDue()
+            app.reminders?.scheduleSoon()
+        }
+    }
+
+    /// ⌘Q right after typing: hand the last edits to the store (and iCloud) instead of relying
+    /// on autosave.
+    func applicationWillTerminate(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            guard let app = AppModel.shared else { return }
+            app.store.save()
+        }
+    }
+
+    /// Right-click on the Dock icon.
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let newTask = NSMenuItem(title: "New Task", action: #selector(dockNewTask), keyEquivalent: "")
+        newTask.target = self
+        menu.addItem(newTask)
+        let today = NSMenuItem(title: "Today", action: #selector(dockToday), keyEquivalent: "")
+        today.target = self
+        menu.addItem(today)
+        return menu
+    }
+
+    @objc private func dockNewTask() {
+        MainActor.assumeIsolated {
+            GlobalHotKey.fire()
+        }
+    }
+
+    @objc private func dockToday() {
+        MainActor.assumeIsolated {
+            MainWindow.reopen()
+            AppModel.shared?.go(.today)
         }
     }
 }

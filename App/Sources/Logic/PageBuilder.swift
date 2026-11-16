@@ -30,7 +30,7 @@ struct SectionHeaderInfo: Identifiable {
     let collapsible: Bool
     /// Power Hours still open in the section.
     var openEstimate: Double = 0
-    /// Subproject depth (0 = top-level group).
+    /// Subgroup depth (0 = top-level group).
     var level: Int = 0
 }
 
@@ -45,6 +45,9 @@ struct RowStyle {
     var subtasksFolded = false
     /// Open Power Hours of the line with all its subtasks (shown as the parent's total).
     var blockEstimate: Double = 0
+    /// A subtask shown without its parent (the parent isn't on the page): the parent's title,
+    /// so the line keeps its context.
+    var parentTitle: String?
 }
 
 /// The flat row model behind every task list. Headers are rows too, exactly like headings
@@ -77,30 +80,87 @@ enum PageBuilder {
         var collapsedTasks: Set<UUID> = []
         /// Ranks open lines by importance and urgency as of this day (nil = manual order).
         var rankDay: Date?
+        /// Every live task of each group (open and done, keyed by `groupID`), when the page shows
+        /// only some of them (Today, a group page). Lines are then nested by their real parents:
+        /// a subtask whose parent isn't on the page stands at the top level, instead of under
+        /// whatever line comes before it. nil = nest by the lines on the page alone.
+        var fullSections: [UUID?: [TaskItem]]?
+    }
+
+    /// A task with the indent it has on the page (its stored one, or one less for every
+    /// ancestor that isn't on the page).
+    private struct DisplayLine: ChecklistItem, Estimated {
+        let task: TaskItem
+        let indent: Int
+        /// Its parent, when that isn't on the page.
+        var hiddenParent: TaskItem?
+
+        var sortOrder: Double { task.sortOrder }
+        var isDone: Bool { task.isDone }
+        var completedAt: Date? { task.completedAt }
+        var estimate: Double { task.estimate }
+    }
+
+    /// One section's lines (all of one group) as the page nests them; see `Options.fullSections`.
+    private static func displayLines(_ tasks: [TaskItem], fullSections: [UUID?: [TaskItem]]?) -> [DisplayLine] {
+        let stored = tasks.map { DisplayLine(task: $0, indent: $0.indent) }
+        guard let first = tasks.first, let full = fullSections?[first.groupID] else { return stored }
+        let sectionID = first.groupID
+        guard tasks.allSatisfy({ $0.groupID == sectionID }) else { return stored }
+        let ordered = full.sorted { $0.sortOrder < $1.sortOrder }
+        let shown = Set(tasks.map(\.uuid))
+        let depths = Checklist.visibleDepths(ordered: ordered) { shown.contains(ordered[$0].uuid) }
+        let parents = Checklist.parents(depths: Checklist.depths(of: ordered))
+        var placed: [UUID: (depth: Int, hiddenParent: TaskItem?)] = [:]
+        for index in ordered.indices {
+            guard let depth = depths[index] else { continue }
+            var hiddenParent: TaskItem?
+            if let parent = parents[index], !shown.contains(ordered[parent].uuid) {
+                hiddenParent = ordered[parent]
+            }
+            placed[ordered[index].uuid] = (depth: depth, hiddenParent: hiddenParent)
+        }
+        // A line missing from the full section: keep the stored nesting rather than guess.
+        guard tasks.allSatisfy({ placed[$0.uuid] != nil }) else { return stored }
+        return tasks.map { task in
+            let place = placed[task.uuid]
+            return DisplayLine(task: task, indent: place?.depth ?? task.indent, hiddenParent: place?.hiddenParent)
+        }
     }
 
     /// One section's task rows: nested, completed lines at the bottom of their level, parents
     /// carrying their subtask counts, and the subtasks of folded parents left out.
     static func taskRows(_ tasks: [TaskItem], options: Options) -> [ListRow] {
-        let rank: ((TaskItem) -> Double)? = options.rankDay.map { day in { $0.matrixScore(today: day) } }
-        let all = Checklist.displayOrder(tasks, showCompleted: true, rank: rank)
+        let rank: ((DisplayLine) -> Double)? = options.rankDay.map { day in { $0.task.matrixScore(today: day) } }
+        let all = Checklist.displayOrder(displayLines(tasks, fullSections: options.fullSections), showCompleted: true, rank: rank)
         let depths = all.map(\.depth)
         var rows: [ListRow] = []
         var index = 0
         while index < all.count {
-            let task = all[index].item
+            let line = all[index].item
+            let task = line.task
+            let depth = all[index].depth
             let end = Checklist.blockEnd(after: index, depths: depths)
             if task.isDone && options.completed == .hide {
                 index = end
                 continue
             }
-            let children = all[(index + 1)..<end].map(\.item)
+            // An ongoing task's old logs aren't subtasks, even when they sit inside a block.
+            // Indents relative to this line, so the total reads the nesting the page shows.
+            let children = all[(index + 1)..<end]
+                .filter { $0.item.task.loggedFor == nil }
+                .map { DisplayLine(task: $0.item.task, indent: $0.depth - depth) }
             var style = options.style
+            // A subtask under its parent doesn't repeat the parent's group.
+            if depth > 0 { style.showGroup = false }
             style.subtaskCount = children.count
             style.subtasksDone = children.filter(\.isDone).count
             style.subtasksFolded = !children.isEmpty && options.collapsedTasks.contains(task.uuid)
-            style.blockEstimate = children.isEmpty ? 0 : PowerHours.total([task] + children, where: { !$0.isDone })
-            rows.append(.task(task, depth: all[index].depth, style: style))
+            style.blockEstimate = children.isEmpty ? 0 : PowerHours.total([DisplayLine(task: task, indent: 0)] + children, where: { !$0.isDone })
+            if let parent = line.hiddenParent {
+                style.parentTitle = parent.trimmedTitle.isEmpty ? "New Task" : parent.trimmedTitle
+            }
+            rows.append(.task(task, depth: depth, style: style))
             index = style.subtasksFolded ? end : index + 1
         }
         return rows
@@ -172,7 +232,7 @@ enum PageBuilder {
                 placeholder: "Dump anything here. Sort it later."
             )
         }
-        // Subprojects follow their parent and fold away with it.
+        // Subgroups follow their parent and fold away with it.
         var foldedBelow: Int?
         for (group, level) in GroupTree.ordered(groups) {
             if let foldedBelow, level > foldedBelow { continue }
@@ -202,7 +262,8 @@ enum PageBuilder {
                 openCount: open,
                 doneCount: section.tasks.count - open,
                 isCollapsed: false,
-                collapsible: false
+                collapsible: false,
+                openEstimate: estimateTotals(section.tasks, fullSections: options.fullSections).open
             )))
             var open1 = section.tasks.filter { !$0.isDone }
             if let day = options.rankDay {
@@ -232,7 +293,7 @@ enum PageBuilder {
                 doneCount: section.tasks.count - open,
                 isCollapsed: false,
                 collapsible: false,
-                openEstimate: PowerHours.total(section.tasks, where: { !$0.isDone })
+                openEstimate: estimateTotals(section.tasks, fullSections: options.fullSections).open
             )))
             rows += rankedRows(section.tasks, options: options)
         }
@@ -257,7 +318,7 @@ enum PageBuilder {
             doneCount: tasks.count - open,
             isCollapsed: collapsed,
             collapsible: true,
-            openEstimate: PowerHours.total(tasks, where: { !$0.isDone }),
+            openEstimate: estimateTotals(tasks, fullSections: options.fullSections).open,
             level: level
         )))
         guard !collapsed else { return }
@@ -268,7 +329,7 @@ enum PageBuilder {
         rows += lines
     }
 
-    /// A group's own page: its tasks, then each subproject under its own heading.
+    /// A group's own page: its tasks, then each subgroup under its own heading.
     static func groupPage(groupID: UUID?, tasks: [TaskItem], groups: [TaskGroup], options: Options) -> [ListRow] {
         var rows = taskRows(tasks.filter { $0.groupID == groupID }, options: options)
         guard let groupID else { return rows }
@@ -294,13 +355,15 @@ enum PageBuilder {
     }
 
     /// Planned and finished Power Hours of a set of tasks, totalled per group so nesting is
-    /// read correctly.
-    static func estimateTotals(_ tasks: [TaskItem]) -> (open: Double, done: Double) {
+    /// read correctly. With `fullSections` (see `Options`) a subtask whose parent isn't in the
+    /// set counts on its own, not as part of the line before it.
+    static func estimateTotals(_ tasks: [TaskItem], fullSections: [UUID?: [TaskItem]]? = nil) -> (open: Double, done: Double) {
         var open = 0.0
         var done = 0.0
         for section in Dictionary(grouping: tasks, by: \.groupID).values {
-            open += PowerHours.total(section, where: { !$0.isDone })
-            done += PowerHours.total(section, where: \.isDone)
+            let lines = displayLines(section, fullSections: fullSections)
+            open += PowerHours.total(lines, where: { !$0.isDone })
+            done += PowerHours.total(lines, where: { $0.isDone })
         }
         return (open, done)
     }

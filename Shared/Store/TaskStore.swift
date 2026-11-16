@@ -78,6 +78,8 @@ struct TaskStore {
 
     @discardableResult
     func addTask(_ entry: ParsedEntry, defaultGroupID: UUID?, placement: NewTaskPlacement) -> TaskItem {
+        // Something that repeats needs a first date, however it was added.
+        let entry = entry.withFirstOccurrence(today: DayBoundary.current.start(of: Date()))
         let group = self.group(id: entry.groupID ?? defaultGroupID)
         let siblings = sectionTasks(group?.uuid)
         let order: Double
@@ -118,6 +120,7 @@ struct TaskStore {
         new.importance = Matrix.defaultImportance
         new.estimate = PowerHours.defaultForNewTasks
         new.plannedDay = task.plannedDay
+        if task.plannedDay != nil { new.plannedSince = task.plannedSince }
         applyTraits(to: new, propose: false)
         normalizeIfNeeded(groupID: task.groupID)
         save()
@@ -136,6 +139,7 @@ struct TaskStore {
         new.importance = Matrix.defaultImportance
         new.estimate = PowerHours.defaultForNewTasks
         new.plannedDay = task.plannedDay
+        if task.plannedDay != nil { new.plannedSince = task.plannedSince }
         applyTraits(to: new, propose: false)
         normalizeIfNeeded(groupID: task.groupID)
         save()
@@ -146,6 +150,7 @@ struct TaskStore {
     /// `first` the first one, right under the parent. Adding work under a finished task reopens it.
     @discardableResult
     func addSubtask(_ entry: ParsedEntry, to parent: TaskItem, first: Bool = false) -> TaskItem {
+        let entry = entry.withFirstOccurrence(today: DayBoundary.current.start(of: Date()))
         let layout = self.layout(for: parent.groupID)
         guard let index = layout.index(of: parent) else {
             return addTask(entry, defaultGroupID: parent.groupID, placement: .bottom)
@@ -170,6 +175,7 @@ struct TaskStore {
         task.recurrence = entry.recurrence
         task.importance = Matrix.importance(for: entry.priority, current: Matrix.defaultImportance)
         task.plannedDay = parent.plannedDay
+        if parent.plannedDay != nil { task.plannedSince = parent.plannedSince }
         if entry.ongoing { task.isOngoing = true }
         if !entry.notes.isEmpty { task.notes = entry.notes }
         applyTraits(to: task, values: Self.typedValues(entry, task), propose: false)
@@ -183,14 +189,58 @@ struct TaskStore {
         return task
     }
 
+    /// A copy right after the task's block, with its own fresh, open subtasks (the original
+    /// keeps its own).
     func duplicate(_ task: TaskItem) {
-        let copy = insertTask(after: task, title: task.title)
+        let copy = insertSibling(after: task, title: task.title)
         copy.notes = task.notes
         copy.priorityRaw = task.priorityRaw
+        copy.importance = task.importance
+        copy.estimate = task.estimate
         copy.dueDate = task.dueDate
         copy.dueHasTime = task.dueHasTime
         copy.tagsRaw = task.tagsRaw
+        copy.recurrenceRaw = task.recurrenceRaw
+        copy.repeatAnchorDay = task.repeatAnchorDay
+        copy.remindersRaw = task.remindersRaw
+        if task.isOngoing { copy.isOngoing = true }
+        recreateChecklist(from: task, under: copy)
         save()
+    }
+
+    /// Gives `copy` fresh, open lines for the subtasks of `original`: same titles, notes,
+    /// estimates, marks and tags, no dates, repeats or focus time, at the same relative depth.
+    /// So a repeating or duplicated checklist keeps its steps and the original keeps its own.
+    private func recreateChecklist(from original: TaskItem, under copy: TaskItem) {
+        let source = layout(for: original.groupID)
+        guard let start = source.index(of: original) else { return }
+        let end = source.blockEnd(after: start)
+        guard end > start + 1 else { return }
+        let target = layout(for: copy.groupID)
+        guard let copyIndex = target.index(of: copy) else { return }
+        let copyDepth = target.depths[copyIndex]
+        let upper = target.items.first(where: { $0.sortOrder > copy.sortOrder })?.sortOrder
+        var children: [TaskItem] = []
+        for index in (start + 1)..<end {
+            let line = source.items[index]
+            guard line.deletedAt == nil, line.loggedFor == nil else { continue }
+            let depth = copyDepth + source.depths[index] - source.depths[start]
+            let child = TaskItem(title: line.title, sortOrder: copy.sortOrder, indent: depth)
+            context.insert(child)
+            child.group = copy.group
+            child.notes = line.notes
+            child.estimate = line.estimate
+            child.priorityRaw = line.priorityRaw
+            child.importance = line.importance
+            child.tagsRaw = line.tagsRaw
+            if line.isOngoing { child.isOngoing = true }
+            child.plannedDay = copy.plannedDay
+            if copy.plannedDay != nil { child.plannedSince = copy.plannedSince }
+            children.append(child)
+        }
+        guard !children.isEmpty else { return }
+        assignOrders(children, lower: copy.sortOrder, upper: upper)
+        normalizeIfNeeded(groupID: copy.groupID)
     }
 
     // MARK: - Completing
@@ -199,6 +249,10 @@ struct TaskStore {
         setDone([task], !task.isDone)
     }
 
+    /// Checks tasks off or reopens them. Checking off a parent closes its open subtasks and
+    /// remembers that, a repeating task files its next occurrence, an ongoing one is logged.
+    /// Reopening undoes what the check did: the subtasks it closed open again and a next
+    /// occurrence nobody has changed yet is taken back (the task gets its repeat back).
     func setDone(_ tasks: [TaskItem], _ done: Bool) {
         let now = Date()
         var touched = Set<ObjectIdentifier>()
@@ -218,7 +272,12 @@ struct TaskStore {
             guard task.isDone != done else { return }
             task.isDone = done
             task.completedAt = done ? now : nil
-            if done { task.deferredUntil = nil }
+            if done {
+                task.deferredUntil = nil
+                task.plannedSince = nil
+            } else {
+                task.doneWith = nil
+            }
             task.touch()
         }
         for task in tasks {
@@ -230,18 +289,39 @@ struct TaskStore {
             apply(task)
             if done {
                 // Completing a parent completes its subtasks, like checking off a whole block.
-                for child in layout(for: task.groupID).block(of: task).dropFirst() { apply(child) }
+                for child in layout(for: task.groupID).block(of: task).dropFirst() {
+                    let wasOpen = !child.isDone && !child.isOngoing
+                    apply(child)
+                    if wasOpen && child.isDone { child.doneWith = task.uuid }
+                }
                 if !wasDone { scheduleNextOccurrence(of: task, now: now) }
+            } else if wasDone && task.loggedFor == nil {
+                for child in layout(for: task.groupID).block(of: task).dropFirst() where child.isDone && child.doneWith == task.uuid {
+                    apply(child)
+                }
+                takeBackNextCopy(of: task, at: now)
             }
         }
         save()
     }
 
-    /// Checking off an ongoing task: a finished copy goes under it (it counts in History and
-    /// the day review, Power Hours and focus time included) and the task stays open. Planned for
-    /// that day, it comes off the plan: the copy shows there as done.
+    /// Start of the logical day after the one `now` is in, as a calendar midnight (the form
+    /// deadlines without a time and planned days are stored in).
+    private func logicalTomorrow(after now: Date) -> Date {
+        let boundary = DayBoundary.current
+        return Calendar.current.startOfDay(for: boundary.dayStart(byAdding: 1, to: boundary.start(of: now)))
+    }
+
+    /// Checking off an ongoing task: a finished copy goes to the end of its section (it counts
+    /// in History and the day review, Power Hours and focus time included) and the task stays
+    /// open. With a repeat whose day has come, its deadline moves to the next occurrence and it's
+    /// planned for that day, so it comes back on its own. Otherwise, planned for that day or
+    /// earlier, it comes off the plan: the copy shows there as done.
     private func logOngoing(_ task: TaskItem, at now: Date) {
-        let log = insertSibling(after: task, title: task.title)
+        let order = (sectionTasks(task.groupID).map(\.sortOrder).max() ?? 0) + 1
+        let log = TaskItem(title: task.title, sortOrder: order)
+        context.insert(log)
+        log.group = task.group?.deletedAt == nil ? task.group : nil
         log.isDone = true
         log.completedAt = now
         log.estimate = task.estimate
@@ -250,22 +330,44 @@ struct TaskStore {
         log.priorityRaw = task.priorityRaw
         log.tagsRaw = task.tagsRaw
         log.plannedDay = task.plannedDay
-        log.traitProposalGroupID = nil
         log.loggedFor = task.uuid
         task.focusSeconds = 0
         task.lastDoneAt = now
-        if let planned = task.plannedDay, planned <= now { task.plannedDay = nil }
+        let calendar = Calendar.current
+        let tomorrow = logicalTomorrow(after: now)
+        if let recurrence = task.recurrence, let due = task.dueDate, due < tomorrow {
+            // A second log on the same day doesn't push it further: the deadline is ahead then.
+            log.prevDue = due
+            let anchor = recurrence.keepsDayOfMonth ? (task.repeatAnchorDay ?? calendar.component(.day, from: due)) : nil
+            let next = recurrence.nextOccurrence(after: due, notBefore: tomorrow, anchorDay: anchor, calendar: calendar)
+            task.dueDate = next
+            task.repeatAnchorDay = anchor
+            task.plannedDay = calendar.startOfDay(for: next)
+            task.plannedSince = task.plannedDay
+        } else if let planned = task.plannedDay, planned <= now {
+            task.plannedDay = nil
+            task.plannedSince = nil
+        }
         task.touch()
     }
 
     /// Takes a log back: the copy goes away and the ongoing task is planned again where it was.
+    /// When the log moved a repeating deadline on (and no later log followed), that deadline
+    /// comes back too.
     private func unlog(_ log: TaskItem, original id: UUID) {
         if let original = task(id: id), original.deletedAt == nil {
             original.focusSeconds += log.focusSeconds
-            if original.plannedDay == nil { original.plannedDay = log.plannedDay }
-            let earlier = liveTasks().filter { $0.loggedFor == id && $0 !== log && $0.isDone }
-                .compactMap(\.completedAt).max()
-            original.lastDoneAt = earlier
+            let others = liveTasks().filter { $0.loggedFor == id && $0 !== log && $0.isDone }
+            let isLatest = !others.contains { ($0.completedAt ?? .distantPast) > (log.completedAt ?? .distantPast) }
+            if let prevDue = log.prevDue, isLatest {
+                original.dueDate = prevDue
+                original.plannedDay = log.plannedDay
+                original.plannedSince = log.plannedDay
+            } else if original.plannedDay == nil, let planned = log.plannedDay {
+                original.plannedDay = planned
+                if original.plannedSince == nil { original.plannedSince = planned }
+            }
+            original.lastDoneAt = others.compactMap(\.completedAt).max()
             original.touch()
         }
         log.deletedAt = Date()
@@ -285,19 +387,18 @@ struct TaskStore {
         save()
     }
 
-    /// Completing a repeating task files its next occurrence right where it was, hidden until
-    /// that day. The finished one stays in History without the repeat, so reopening it doesn't
-    /// create a second copy.
+    /// Completing a repeating task files its next occurrence right after it (after its
+    /// subtasks), planned for that day, with fresh open steps. The finished one stays in History
+    /// with its own checked-off steps and without the repeat, and remembers the copy so
+    /// reopening it can take the copy back. Without a deadline the repeat counts from today; an
+    /// overdue one catches up to tomorrow at the earliest, never to a day already past.
     private func scheduleNextOccurrence(of task: TaskItem, now: Date) {
-        guard let recurrence = task.recurrence, let due = task.dueDate else { return }
-        var next = recurrence.next(after: due)
-        let today = Calendar.current.startOfDay(for: now)
-        var steps = 0
-        while next < today && steps < 1000 {
-            next = recurrence.next(after: next)
-            steps += 1
-        }
-        let copy = insertTask(after: task, title: task.title)
+        guard let recurrence = task.recurrence else { return }
+        let calendar = Calendar.current
+        let base = task.dueDate ?? calendar.startOfDay(for: DayBoundary.current.start(of: now))
+        let anchor = recurrence.keepsDayOfMonth ? (task.repeatAnchorDay ?? calendar.component(.day, from: base)) : nil
+        let next = recurrence.nextOccurrence(after: base, notBefore: logicalTomorrow(after: now), anchorDay: anchor, calendar: calendar)
+        let copy = insertSibling(after: task, title: task.title)
         copy.notes = task.notes
         copy.priorityRaw = task.priorityRaw
         copy.tagsRaw = task.tagsRaw
@@ -308,9 +409,37 @@ struct TaskStore {
         copy.remindersRaw = task.remindersRaw
         copy.dueDate = next
         copy.dueHasTime = task.dueHasTime
+        copy.repeatAnchorDay = anchor
         // A repeat is planned for its day on its own.
-        copy.plannedDay = Calendar.current.startOfDay(for: next)
+        copy.plannedDay = calendar.startOfDay(for: next)
+        copy.plannedSince = copy.plannedDay
+        recreateChecklist(from: task, under: copy)
         task.recurrenceRaw = ""
+        task.nextCopyID = copy.uuid
+    }
+
+    /// Reopening a repeating task takes back the next occurrence its check filed, as long as
+    /// nobody has changed that copy (judged by what it says, not by timestamps: the Mac's
+    /// inspector edits without touching them). The task gets its repeat back. A changed copy
+    /// stays, and so does the task as it is.
+    private func takeBackNextCopy(of task: TaskItem, at now: Date) {
+        guard let id = task.nextCopyID else { return }
+        task.nextCopyID = nil
+        guard let copy = self.task(id: id), copy.deletedAt == nil, !copy.isDone,
+              copy.groupID == task.groupID,
+              copy.title == task.title, copy.notes == task.notes,
+              copy.estimate == task.estimate, copy.priorityRaw == task.priorityRaw,
+              copy.importance == task.importance, copy.tagsRaw == task.tagsRaw else { return }
+        let copyBlock = layout(for: copy.groupID).block(of: copy)
+        let copySteps = copyBlock.dropFirst().filter { $0.loggedFor == nil }
+        let ownSteps = layout(for: task.groupID).block(of: task).dropFirst().filter { $0.loggedFor == nil }
+        guard copySteps.allSatisfy({ !$0.isDone }), copySteps.map(\.title) == ownSteps.map(\.title) else { return }
+        for item in copyBlock {
+            item.deletedAt = now
+            item.touch()
+        }
+        task.recurrenceRaw = copy.recurrenceRaw
+        task.repeatAnchorDay = copy.repeatAnchorDay
     }
 
     // MARK: - Deleting
@@ -342,6 +471,57 @@ struct TaskStore {
             task.touch()
         }
         save()
+    }
+
+    /// Recently Deleted's Restore: each task comes back with the lines of its block that went
+    /// with it in the same delete (same moment, same group), so a parent gets its steps back.
+    /// A line whose parent stays deleted comes back at its closest remaining level instead of
+    /// under whatever line now sits above it. Logs of ongoing tasks come back on their own.
+    func restoreWithBlock(_ tasks: [TaskItem]) {
+        let deleted = (try? context.fetch(FetchDescriptor<TaskItem>(predicate: #Predicate<TaskItem> { $0.deletedAt != nil }))) ?? []
+        let requested = Set(tasks.map(ObjectIdentifier.init))
+        var restoring: [TaskItem] = []
+        var seen = Set<ObjectIdentifier>()
+        for task in tasks.sorted(by: { $0.sortOrder < $1.sortOrder }) {
+            guard let deletedAt = task.deletedAt, !seen.contains(ObjectIdentifier(task)) else { continue }
+            guard task.loggedFor == nil else {
+                seen.insert(ObjectIdentifier(task))
+                restoring.append(task)
+                continue
+            }
+            let groupUUID = task.group?.uuid
+            let together = deleted.filter { other in
+                guard let otherDeleted = other.deletedAt, other.loggedFor == nil else { return false }
+                return other.group?.uuid == groupUUID && abs(otherDeleted.timeIntervalSince(deletedAt)) < 1
+            }
+            let togetherIDs = Set(together.map(ObjectIdentifier.init))
+            // The section as it was: what's still there plus what went in the same delete.
+            let sectionIsLive = task.group == nil || task.group?.deletedAt == nil
+            let layout = SectionLayout((sectionIsLive ? sectionTasks(task.groupID) : []) + together)
+            guard let index = layout.index(of: task) else { continue }
+            var ancestors: [Int] = []
+            var level = layout.depths[index]
+            var j = index - 1
+            while j >= 0 && level > 0 {
+                if layout.depths[j] < level {
+                    ancestors.append(j)
+                    level = layout.depths[j]
+                }
+                j -= 1
+            }
+            // A parent picked as well brings this line back with its own block.
+            if ancestors.contains(where: { requested.contains(ObjectIdentifier(layout.items[$0])) }) { continue }
+            let keptParent = ancestors.first { !togetherIDs.contains(ObjectIdentifier(layout.items[$0])) }
+            let shift = layout.depths[index] - (keptParent.map { layout.depths[$0] + 1 } ?? 0)
+            for i in index..<layout.blockEnd(after: index) {
+                let item = layout.items[i]
+                guard togetherIDs.contains(ObjectIdentifier(item)), !seen.contains(ObjectIdentifier(item)) else { continue }
+                seen.insert(ObjectIdentifier(item))
+                if shift > 0 { item.indent = max(0, layout.depths[i] - shift) }
+                restoring.append(item)
+            }
+        }
+        restore(restoring)
     }
 
     func purge(_ tasks: [TaskItem]) {
@@ -409,6 +589,11 @@ struct TaskStore {
     /// deadline beyond the matrix's two weeks stays).
     func setDueDay(_ task: TaskItem, days: Int?, today: Date) {
         let calendar = Calendar.current
+        let before = task.dueDate
+        defer {
+            // A deadline moved by hand is the new day a monthly repeat keeps.
+            if task.dueDate != before { task.repeatAnchorDay = nil }
+        }
         guard let days else {
             if let due = task.dueDate, (Matrix.daysUntil(due, today: today) ?? 0) <= Matrix.horizonDays {
                 task.dueDate = nil
@@ -475,7 +660,17 @@ struct TaskStore {
         for task in tasks {
             for item in layout(for: task.groupID).block(of: task) where !seen.contains(ObjectIdentifier(item)) {
                 seen.insert(ObjectIdentifier(item))
+                // Old ongoing logs can still sit inside a parent's block: they keep the day they
+                // were logged on, so History and the Day Review don't move.
+                guard item === task || item.loggedFor == nil else { continue }
                 guard item.plannedDay != key else { continue }
+                // Moving it to another day (carrying it over, Tomorrow) keeps the day its run of
+                // plans began; a fresh plan starts one.
+                if let key {
+                    if !item.isDone && (item.plannedDay == nil || item.plannedSince == nil) { item.plannedSince = key }
+                } else {
+                    item.plannedSince = nil
+                }
                 item.plannedDay = key
                 item.touch()
             }
@@ -498,8 +693,10 @@ struct TaskStore {
         UserDefaults.standard.set(true, forKey: key)
     }
 
-    /// One-time: older tasks only had priority marks; give them a matching importance.
+    /// One-time: older tasks only had priority marks; give them a matching importance. Also
+    /// runs the later one-time repairs (AppModel calls this at every launch).
     func syncImportanceWithPriority() {
+        runOneTimeRepairs()
         let key = "importanceFromPriority"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         for task in liveTasks() where task.priority != .normal && Matrix.priority(forImportance: task.importance) != task.priority {
@@ -507,6 +704,32 @@ struct TaskStore {
         }
         save()
         UserDefaults.standard.set(true, forKey: key)
+    }
+
+    /// Repairs, once per device, what older versions left behind: tasks whose marks ("!!"
+    /// typed into a line, Duplicate) disagree with their importance get the importance the marks
+    /// stand for, and open repeating tasks without a deadline (added by paste, the menu bar or
+    /// the Watch) get today as their first date, so checking them off files the next one.
+    func runOneTimeRepairs() {
+        let defaults = UserDefaults.standard
+        let importanceKey = "importanceFromPriority2"
+        let firstDateKey = "repeatFirstDate"
+        let fixImportance = !defaults.bool(forKey: importanceKey)
+        let fixFirstDate = !defaults.bool(forKey: firstDateKey)
+        guard fixImportance || fixFirstDate else { return }
+        let today = Calendar.current.startOfDay(for: DayBoundary.current.start(of: Date()))
+        for task in liveTasks() {
+            if fixImportance && Matrix.priority(forImportance: task.importance) != task.priority {
+                task.importance = Matrix.importance(for: task.priority, current: task.importance)
+            }
+            if fixFirstDate && !task.isDone && task.dueDate == nil && task.recurrence != nil {
+                task.dueDate = today
+                task.dueHasTime = false
+            }
+        }
+        save()
+        defaults.set(true, forKey: importanceKey)
+        defaults.set(true, forKey: firstDateKey)
     }
 
     func setEstimate(_ tasks: [TaskItem], _ powerHours: Double) {
@@ -517,9 +740,17 @@ struct TaskStore {
         save()
     }
 
+    /// Sets how tasks repeat. Something that repeats needs a first date: without a deadline
+    /// it gets today.
     func setRecurrence(_ tasks: [TaskItem], _ recurrence: Recurrence?) {
+        let today = Calendar.current.startOfDay(for: DayBoundary.current.start(of: Date()))
         for task in tasks {
+            if task.recurrence != recurrence { task.repeatAnchorDay = nil }
             task.recurrence = recurrence
+            if recurrence != nil && task.dueDate == nil {
+                task.dueDate = today
+                task.dueHasTime = false
+            }
             task.touch()
         }
         save()
@@ -545,14 +776,18 @@ struct TaskStore {
 
     func setDue(_ tasks: [TaskItem], _ date: Date?, hasTime: Bool = false) {
         for task in tasks {
-            task.dueDate = date.map { hasTime ? $0 : Calendar.current.startOfDay(for: $0) }
+            let due = date.map { hasTime ? $0 : Calendar.current.startOfDay(for: $0) }
+            // A deadline moved by hand is the new day a monthly repeat keeps.
+            if task.dueDate != due { task.repeatAnchorDay = nil }
+            task.dueDate = due
             task.dueHasTime = date == nil ? false : hasTime
             task.touch()
         }
         save()
     }
 
-    /// "Not Today": hide until the next logical day starts.
+    /// Hides tasks from Today until the given logical day starts (the old way of putting a
+    /// task off; "Tomorrow" now plans it for tomorrow instead).
     func deferTasks(_ tasks: [TaskItem], until dayStart: Date?) {
         for task in tasks {
             task.deferredUntil = dayStart
@@ -875,7 +1110,7 @@ struct TaskStore {
         return group
     }
 
-    /// Moves a group inside another one (a subproject), or to the top level with nil.
+    /// Moves a group inside another one (a subgroup), or to the top level with nil.
     func setParent(_ group: TaskGroup, _ parentID: UUID?) {
         guard parentID != group.uuid, group.parentUUID != parentID else { return }
         if let parentID, GroupTree.descendants(of: group.uuid, in: liveGroups()).contains(where: { $0.uuid == parentID }) { return }
@@ -892,15 +1127,21 @@ struct TaskStore {
         save()
     }
 
+    /// Deletes a group. Subgroups move up a level and remember where they were; with
+    /// `keepTasks` its tasks go to Quick Entry and remember their group. `restoreGroup` (Undo,
+    /// Recently Deleted) puts both back.
     func deleteGroup(_ group: TaskGroup, keepTasks: Bool) {
         let now = Date()
-        // Subprojects move up a level instead of disappearing with their parent.
+        // Subgroups move up a level instead of disappearing with their parent.
         for child in liveGroups() where child.parentUUID == group.uuid {
             child.parentUUID = group.parentUUID
+            child.formerParent = group.uuid
             child.touch()
         }
         if keepTasks {
-            move(group.liveTasks, toGroup: nil)
+            let kept = group.liveTasks
+            move(kept, toGroup: nil)
+            for task in kept { task.formerGroup = group.uuid }
         } else {
             for task in group.liveTasks {
                 task.deletedAt = now
@@ -912,6 +1153,8 @@ struct TaskStore {
         save()
     }
 
+    /// Undo of a group delete, and Recently Deleted's Restore: the group comes back with the
+    /// tasks deleted along with it, the tasks "Keep Tasks" moved out, and its subgroups.
     func restoreGroup(_ group: TaskGroup) {
         if let deletedAt = group.deletedAt {
             for task in group.tasks ?? [] {
@@ -923,11 +1166,25 @@ struct TaskStore {
         }
         group.deletedAt = nil
         group.touch()
+        // Tasks a "Keep Tasks" delete filed under Quick Entry go back, in their order and
+        // nesting; ones moved elsewhere since stay where they are.
+        var next = (sectionTasks(group.uuid).map(\.sortOrder).max() ?? 0) + 1
+        for task in liveTasks() where task.formerGroup == group.uuid {
+            task.formerGroup = nil
+            guard task.groupID == nil else { continue }
+            task.group = group
+            task.sortOrder = next
+            task.traitProposalGroupID = nil
+            task.touch()
+            next += 1
+        }
+        // Subgroups it had nest in it again, unless they were moved somewhere else since.
+        for child in liveGroups() where child.formerParent == group.uuid && child !== group {
+            if child.parentUUID == group.parentUUID { child.parentUUID = group.uuid }
+            child.formerParent = nil
+            child.touch()
+        }
         save()
-    }
-
-    func completeAll(in groupID: UUID?) {
-        setDone(sectionTasks(groupID).filter { !$0.isDone }, true)
     }
 
     func setCollapsed(_ group: TaskGroup, _ collapsed: Bool) {
@@ -987,11 +1244,18 @@ struct TaskStore {
         }
     }
 
+    /// Saves the context. A failure is posted as "TheoSaveFailed" (with `message`) so the app
+    /// can say so instead of losing changes silently.
     func save() {
         do {
             try context.save()
         } catch {
             print("Theo: save failed: \(error)")
+            NotificationCenter.default.post(
+                name: Notification.Name("TheoSaveFailed"),
+                object: nil,
+                userInfo: ["message": error.localizedDescription]
+            )
         }
     }
 }

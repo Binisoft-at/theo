@@ -33,7 +33,7 @@ struct GroupEditorView: View {
         return nil
     }
 
-    /// Groups this one can sit inside: anything but itself and its own subprojects.
+    /// Groups this one can sit inside: anything but itself and its own subgroups.
     private var parentOptions: [(group: TaskGroup, level: Int)] {
         guard let existing else { return GroupTree.ordered(groups) }
         let excluded = Set([existing.uuid] + GroupTree.descendants(of: existing.uuid, in: groups).map(\.uuid))
@@ -115,7 +115,7 @@ struct GroupEditorView: View {
                         Label("Inside", systemImage: "folder")
                     }
                 } footer: {
-                    Text("Put a group inside another one to make it a subproject.")
+                    Text("Put a group inside another one to make it a subgroup.")
                 }
 
                 Section {
@@ -163,7 +163,7 @@ struct GroupEditorView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(existing != nil ? "Edit Group" : (parentID == nil ? "New Group" : "New Subproject"))
+            .navigationTitle(existing != nil ? "Edit Group" : (parentID == nil ? "New Group" : "New Subgroup"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

@@ -267,7 +267,8 @@ struct MatrixPlacementOverlay: View {
 }
 
 /// The Matrix page: every task on the grid (drag a dot to move it, or drop a task from the
-/// strip), and below it the list in rank order.
+/// strip), and below it the list in rank order. On the Mac, hovering a dot names it and a
+/// click shows it in the details column; on iPhone a second tap on a picked dot opens it.
 struct MatrixPageView: View {
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone == false }, sort: \TaskItem.sortOrder)
@@ -277,6 +278,8 @@ struct MatrixPageView: View {
     @AppStorage("matrixScope") private var onlyToday = false
     @State private var selectedID: UUID?
     @State private var dragging: (id: UUID, cell: MatrixGeometry.Cell)?
+    /// The dot under the pointer (Mac, iPad with a pointer): its title shows beside it.
+    @State private var hoveredID: UUID?
     /// A crowded spot that was tapped: its tasks, to pick one.
     @State private var cluster: MatrixCluster?
 
@@ -287,16 +290,26 @@ struct MatrixPageView: View {
 
     var body: some View {
         let tasks = scoped.sorted { $0.matrixScore(today: app.dayStart) > $1.matrixScore(today: app.dayStart) }
+        let rows = PageBuilder.rankedRows(tasks, options: PageBuilder.Options(style: RowStyle(showGroup: true), rankDay: app.dayStart))
         VStack(spacing: 0) {
-            grid(tasks: tasks)
+            grid(tasks: tasks, listed: Set(rows.map(\.id)))
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
             tray(tasks: tasks)
             TaskListView(
-                rows: PageBuilder.rankedRows(tasks, options: PageBuilder.Options(style: RowStyle(showGroup: true), rankDay: app.dayStart)),
+                rows: rows,
                 allowsReorder: false
             )
         }
+        #if os(macOS)
+        .onChange(of: app.selectedRowIDs) { _, ids in
+            // Another row picked in the list below lets go of the picked dot, so a click on
+            // the grid never moves a task that isn't the selected one any more.
+            if let id = selectedID, let task = allOpen.first(where: { $0.uuid == id }), !ids.contains(task.rowID) {
+                selectedID = nil
+            }
+        }
+        #endif
         .navigationTitle("Matrix")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -310,7 +323,8 @@ struct MatrixPageView: View {
         }
     }
 
-    private func grid(tasks: [TaskItem]) -> some View {
+    /// `listed`: the row IDs of the ranked list below the grid.
+    private func grid(tasks: [TaskItem], listed: Set<String>) -> some View {
         MatrixBoard { size in
             let points = restingPoints(tasks, size: size)
             // Three or more tasks in one cell become one bubble with a count (the picked or
@@ -339,6 +353,9 @@ struct MatrixPageView: View {
                     let cell = MatrixGeometry.cell(of: first, today: app.dayStart)
                     let best = members.map { $0.matrixScore(today: app.dayStart) }.max() ?? 0
                     MatrixClusterBubble(count: members.filter { !active.contains($0.uuid) }.count, color: Matrix.color(forScore: best))
+                        #if os(macOS)
+                        .help(Self.clusterHelp(members.filter { !active.contains($0.uuid) }))
+                        #endif
                         .position(MatrixGeometry.center(of: cell, in: size))
                         .onTapGesture {
                             cluster = MatrixCluster(id: key, cell: cell, taskIDs: members.map(\.uuid))
@@ -358,6 +375,16 @@ struct MatrixPageView: View {
                 Circle()
                     .fill(Color.white.opacity(0.001))
                     .frame(width: 30, height: 30)
+                    #if os(macOS)
+                    .help(Self.title(of: task) + " · " + MatrixGeometry.describe(shownCell(task)))
+                    #endif
+                    .onHover { inside in
+                        if inside {
+                            hoveredID = task.uuid
+                        } else if hoveredID == task.uuid {
+                            hoveredID = nil
+                        }
+                    }
                     .position(point)
                     .gesture(
                         DragGesture(minimumDistance: 2)
@@ -371,19 +398,22 @@ struct MatrixPageView: View {
                                 selectedID = task.uuid
                             }
                     )
-                    .simultaneousGesture(TapGesture().onEnded { selectedID = selectedID == task.uuid ? nil : task.uuid })
+                    .simultaneousGesture(TapGesture().onEnded { tapDot(task, listed: listed) })
                     .accessibilityElement()
                     .accessibilityLabel(task.trimmedTitle)
                     .accessibilityValue(MatrixGeometry.describe(shownCell(task)))
             }
             ForEach(Array(tasks.enumerated()).filter { !hidden.contains($0.element.uuid) }, id: \.element.uuid) { index, task in
                 let isActive = selectedID == task.uuid || dragging?.id == task.uuid
+                let isHovered = hoveredID == task.uuid
                 let point = shownPoint(task, resting: points[index], size: size)
-                // Picked or dragged tasks always show their title; the others only when it fits.
-                let side: Bool? = isActive ? (sides[task.uuid] ?? (point.x < size.width * 0.55)) : sides[task.uuid]
+                // Picked, dragged and hovered tasks always show their title; the others only
+                // when it fits.
+                let side: Bool? = isActive || isHovered ? (sides[task.uuid] ?? (point.x < size.width * 0.55)) : sides[task.uuid]
                 if let onRight = side {
                     MatrixLabel(point: point, title: task.trimmedTitle, isSelected: isActive, onRight: onRight)
                         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: shownCell(task).key)
+                        .zIndex(isActive || isHovered ? 1 : 0)
                 }
             }
         }
@@ -396,6 +426,9 @@ struct MatrixPageView: View {
                     Button {
                         selectedID = task.uuid
                         self.cluster = nil
+                        #if os(macOS)
+                        showOnMac(task, listed: listed)
+                        #endif
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
@@ -416,6 +449,51 @@ struct MatrixPageView: View {
             }
             .presentationDetents([.medium, .large])
         }
+    }
+
+    /// A dot was tapped (not dragged). Mac: picks it and shows it in the details column, with
+    /// its row selected in the list below; clicking it again lets go. (A dot picked by a drag
+    /// or in the strip isn't shown yet, so a click shows it.) iPhone and iPad: the first tap
+    /// picks it (bigger, titled), a second tap opens its details.
+    private func tapDot(_ task: TaskItem, listed: Set<String>) {
+        #if os(macOS)
+        if selectedID == task.uuid && app.selectedRowIDs.contains(task.rowID) {
+            selectedID = nil
+            if app.selectedRowIDs == [task.rowID] { app.selectedRowIDs = [] }
+        } else {
+            selectedID = task.uuid
+            showOnMac(task, listed: listed)
+        }
+        #else
+        if selectedID == task.uuid {
+            // Let go too, so a later tap on the grid doesn't move it by surprise.
+            selectedID = nil
+            app.showDetails(task)
+        } else {
+            selectedID = task.uuid
+        }
+        #endif
+    }
+
+    /// The details column shows the task: selected in the ranked list below when it's there,
+    /// otherwise on a page that lists it.
+    private func showOnMac(_ task: TaskItem, listed: Set<String>) {
+        if listed.contains(task.rowID) {
+            app.showDetails(task)
+        } else {
+            app.reveal(task)
+        }
+    }
+
+    private static func title(of task: TaskItem) -> String {
+        task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle
+    }
+
+    /// A crowded spot's tooltip: the titles in it, highest ranked first.
+    private static func clusterHelp(_ members: [TaskItem]) -> String {
+        let shown = members.prefix(8).map { title(of: $0) }
+        let more = members.count > shown.count ? ", and \(members.count - shown.count) more" : ""
+        return shown.joined(separator: ", ") + more
     }
 
     /// Cells holding three or more tasks.

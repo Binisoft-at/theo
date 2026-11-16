@@ -8,7 +8,7 @@ public enum NotesImport {
         public var done: Bool
         public var indent: Int
         public var isHeading: Bool
-        /// Heading level: 1 for `#` (a group), 2 for `##` (a subproject inside it) ...
+        /// Heading level: 1 for `#` (a group), 2 for `##` (a subgroup inside it) ...
         public var level: Int
         /// A `> …` line: a note for the task above, not a task of its own.
         public var isNote: Bool

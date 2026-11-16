@@ -29,8 +29,11 @@ enum QueryBuilder {
             }
         }
 
-        // Groups switched off stay out unless the query asks for them by name.
-        let off = query.groupIDs.isEmpty && !query.quickEntryOnly ? GroupTree.inactiveIDs(groups) : []
+        // Groups switched off stay out, the same rule as a group's page: a group the query names
+        // shows (even inside a group that's off), and so do its subgroups, except the ones that
+        // are off themselves; ticking one of those by name brings it back too.
+        let named = Set(query.groupIDs)
+        let off: Set<UUID> = query.quickEntryOnly ? [] : GroupTree.inactiveIDs(groups.filter { !named.contains($0.uuid) })
         let byID = Dictionary(groups.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
         func path(_ id: UUID?) -> [UUID] {
             var result: [UUID] = []
@@ -77,8 +80,11 @@ enum QueryBuilder {
         }
 
         func block(_ task: TaskItem, depth: Int, into rows: inout [ListRow]) {
-            let all = descendants(task, children: children)
+            // An ongoing task's old logs aren't subtasks, even when they sit inside a block.
+            let all = descendants(task, children: children).filter { $0.loggedFor == nil }
             var style = RowStyle(showGroup: query.grouping != .group && query.grouping != .topGroup)
+            // A subtask under its parent doesn't repeat the parent's group.
+            if depth > 0 { style.showGroup = false }
             style.subtaskCount = all.count
             style.subtasksDone = all.filter(\.isDone).count
             style.subtasksFolded = !all.isEmpty && collapsed.contains(task.uuid)

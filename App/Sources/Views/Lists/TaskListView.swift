@@ -15,6 +15,9 @@ struct TaskListView<Header: View>: View {
     var defaultGroupID: UUID?
     /// New lines made here are planned for this day (Today).
     var plansFor: Date?
+    /// A ranked list across groups (Today's default): dragging a line only changes how
+    /// important it is, never its group, order or nesting.
+    var rankOnly = false
     @ViewBuilder var header: () -> Header
 
     @Environment(AppModel.self) private var app
@@ -60,18 +63,17 @@ struct TaskListView<Header: View>: View {
                         if insertBeforeFirst && rows.first?.id == row.id { InsertionLine(leading: Self.lineLeading(row), edge: .top) }
                     }
                     #if os(macOS)
-                    // Hover just above or below a divider: it lights up with a +; click to add a
-                    // task (or subtask) right there.
-                    .overlay(alignment: .bottom) {
-                        HoverInsertLine(leading: Self.lineLeading(row), edge: .bottom) {
+                    // Near a divider it lights up with a + tab; a click on the tab adds a task (or
+                    // subtask) right there. A click anywhere else on the row still selects it.
+                    // Only a task as the first row offers its top edge: above a heading there's
+                    // no section for a new line to join.
+                    .modifier(HoverInsertZone(leading: Self.lineLeading(row), offersTop: row.task != nil && rows.first?.id == row.id) { edge in
+                        if edge == .top {
+                            insertTask(between: (above: rowBefore(row), below: row), entry: nil)
+                        } else {
                             insertTask(between: (above: row, below: rowAfter(row)), entry: nil)
                         }
-                    }
-                    .overlay(alignment: .top) {
-                        HoverInsertLine(leading: Self.lineLeading(row), edge: .top) {
-                            insertTask(between: (above: rowBefore(row), below: row), entry: nil)
-                        }
-                    }
+                    })
                     #endif
             }
             .onMove(perform: allowsReorder ? move : nil)
@@ -89,6 +91,10 @@ struct TaskListView<Header: View>: View {
                 }
             }
             if app.isSelecting {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    selectAllButton
+                    selectMenu
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { app.endSelection() }
                 }
@@ -96,7 +102,7 @@ struct TaskListView<Header: View>: View {
         }
         .safeAreaInset(edge: .bottom) {
             if app.isSelecting {
-                SelectionBar()
+                SelectionBar(rows: rows)
             }
         }
         #else
@@ -105,6 +111,8 @@ struct TaskListView<Header: View>: View {
         // A readable width on a big screen: lines don't stretch across the whole window.
         .frame(maxWidth: 920)
         .frame(maxWidth: .infinity)
+        // The window the list is in: its right-click watcher only takes clicks there.
+        .background(ListWindowReader(monitor: rightClick))
         .contextMenu(forSelectionType: String.self) { ids in
             selectionMenu(ids)
         } primaryAction: { ids in
@@ -119,7 +127,11 @@ struct TaskListView<Header: View>: View {
             guard focusedID == nil else { return .ignored }
             let tasks = app.selectedTasks
             guard !tasks.isEmpty else { return .ignored }
-            withAnimation(.snappy) { app.store.setDone(tasks, !tasks.allSatisfy(\.isDone)) }
+            let done = !tasks.allSatisfy(\.isDone)
+            // Checking off moves the selection on to the next open line.
+            let next = done ? nextOpenRow(afterChecking: tasks) : nil
+            withAnimation(.snappy) { app.markDone(tasks, done) }
+            if let next { app.selectedRowIDs = [next] }
             return .handled
         }
         .onKeyPress(.return) {
@@ -127,7 +139,12 @@ struct TaskListView<Header: View>: View {
             beginEdit(task)
             return .handled
         }
+        .onKeyPress(.rightArrow) { foldKey(unfold: true) }
+        .onKeyPress(.leftArrow) { foldKey(unfold: false) }
         #endif
+        .onChange(of: rows.map(\.id)) { oldIDs, newIDs in
+            followSelection(from: oldIDs, to: newIDs)
+        }
         .onChange(of: focusedID) { oldValue, newValue in
             if let newValue, newValue == pendingEditID { pendingEditID = nil }
             if let oldValue, oldValue != newValue, let task = lookupTask(oldValue) {
@@ -199,7 +216,11 @@ struct TaskListView<Header: View>: View {
             }
             Button("Delete Group, Keep Tasks") {
                 app.store.deleteGroup(group, keepTasks: true)
-                app.show("Tasks moved to Quick Entry", symbol: "tray.and.arrow.down.fill")
+                let model = self.app
+                // Undo brings the group back with its tasks and subgroups.
+                model.show("Deleted “\(group.displayName)” · tasks moved to Quick Entry", symbol: "tray.and.arrow.down.fill") {
+                    model.store.restoreGroup(group)
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: { group in
@@ -237,7 +258,7 @@ struct TaskListView<Header: View>: View {
                 onSplit: { split(task, $0) },
                 onInfo: {
                     focusedID = nil
-                    app.detailTask = task
+                    app.showDetails(task)
                 },
                 onIndent: { delta in
                     if delta > 0 {
@@ -250,7 +271,8 @@ struct TaskListView<Header: View>: View {
                     withAnimation(.snappy) { app.toggleSubtasks(task) }
                 }
             )
-            .moveDisabled(!allowsReorder || task.isDone || isEditing(task))
+            // On a ranked list a subtask snaps back under its parent anyway.
+            .moveDisabled(!allowsReorder || task.isDone || isEditing(task) || (rankOnly && depth > 0))
             // Swipe right: tuck under the line above (or take a subtask back out).
             .listRowInsets(EdgeInsets(top: 0, leading: Self.rowInset, bottom: 0, trailing: Self.rowInset))
             .popover(isPresented: Binding(get: { actionTaskID == task.uuid }, set: { if !$0 { actionTaskID = nil } }), arrowEdge: .top) {
@@ -295,26 +317,36 @@ struct TaskListView<Header: View>: View {
                     Label("Delete", systemImage: "trash")
                 }
                 if !task.isDone {
-                    Button {
-                        app.deferToTomorrow([task])
-                    } label: {
-                        Label("Tomorrow", systemImage: "moon.zzz")
+                    // Onto today's plan from any page; once it's on today, on to tomorrow's.
+                    if task.isPlanned(for: app.dayStart) {
+                        Button {
+                            withAnimation(.snappy) { app.deferToTomorrow([task]) }
+                        } label: {
+                            Label("Tomorrow", systemImage: "moon.zzz.fill")
+                        }
+                        .tint(.indigo)
+                    } else {
+                        Button {
+                            withAnimation(.snappy) { app.plan([task], for: app.dayStart) }
+                        } label: {
+                            Label("Today", systemImage: "sun.max.fill")
+                        }
+                        .tint(.orange)
                     }
-                    .tint(.indigo)
                     if let due = task.dueDate, DateText.dayDelta(due, today: app.dayStart) < 0 {
                         Button {
                             withAnimation(.snappy) { app.store.postpone([task], days: 1, today: app.dayStart) }
                         } label: {
                             Label("+1 Day", systemImage: "calendar.badge.plus")
                         }
-                        .tint(.orange)
+                        .tint(.blue)
                     } else {
                         Button {
                             app.dateBatch = TaskBatch(tasks: [task])
                         } label: {
                             Label("Deadline", systemImage: "calendar")
                         }
-                        .tint(.orange)
+                        .tint(.blue)
                     }
                 }
             }
@@ -363,18 +395,14 @@ struct TaskListView<Header: View>: View {
             Button {
                 app.groupEditor = .subgroup(group)
             } label: {
-                Label("New Subproject…", systemImage: "folder.badge.plus")
+                Label("New Subgroup…", systemImage: "folder.badge.plus")
             }
             Button {
                 app.go(.group(group.uuid))
             } label: {
                 Label("Open as Page", systemImage: "arrow.up.forward.square")
             }
-            Button {
-                withAnimation(.snappy) { app.store.completeAll(in: group.uuid) }
-            } label: {
-                Label("Complete All", systemImage: "checkmark.circle")
-            }
+            completeShownButton(info)
             Divider()
             Button(role: .destructive) {
                 groupPendingDelete = group
@@ -387,14 +415,43 @@ struct TaskListView<Header: View>: View {
             } label: {
                 Label("Add Task", systemImage: "plus")
             }
-            Button {
-                withAnimation(.snappy) { app.store.completeAll(in: nil) }
-            } label: {
-                Label("Complete All", systemImage: "checkmark.circle")
-            }
+            completeShownButton(info)
         case .label:
             EmptyView()
         }
+    }
+
+    /// A header's Complete finishes only the open lines shown under it (on Today, a group's
+    /// tasks for today, not all of them), with Undo. Hidden when none are shown.
+    @ViewBuilder
+    private func completeShownButton(_ info: SectionHeaderInfo) -> some View {
+        let shown = openTasksShown(under: info)
+        if !shown.isEmpty {
+            Button {
+                app.complete(shown)
+            } label: {
+                Label(shown.count == 1 ? "Complete 1 Task" : "Complete \(shown.count) Shown", systemImage: "checkmark.circle")
+            }
+        }
+    }
+
+    /// The open lines listed under a header, up to the next header (ongoing ones never finish).
+    /// A folded section lists none.
+    private func openTasksShown(under info: SectionHeaderInfo) -> [TaskItem] {
+        let headerID = ListRow.header(info).id
+        guard let index = rows.firstIndex(where: { $0.id == headerID }) else { return [] }
+        var shown: [TaskItem] = []
+        for row in rows[(index + 1)...] {
+            switch row {
+            case .header:
+                return shown
+            case .placeholder:
+                continue
+            case .task(let task, _, _):
+                if !task.isDone && !task.isOngoing { shown.append(task) }
+            }
+        }
+        return shown
     }
 
     @ViewBuilder
@@ -444,7 +501,7 @@ struct TaskListView<Header: View>: View {
             }
             Button {
                 focusedID = nil
-                app.detailTask = task
+                app.showDetails(task)
             } label: {
                 Label("Custom…", systemImage: "slider.horizontal.3")
             }
@@ -502,10 +559,18 @@ struct TaskListView<Header: View>: View {
             } label: {
                 Label("Move to…", systemImage: "folder")
             }
-            Button {
-                app.deferToTomorrow([task])
-            } label: {
-                Label("Not Today", systemImage: "moon.zzz")
+            if task.isPlanned(for: app.dayStart) {
+                Button {
+                    app.deferToTomorrow([task])
+                } label: {
+                    Label("Plan for Tomorrow", systemImage: "moon.zzz.fill")
+                }
+            } else {
+                Button {
+                    app.plan([task], for: app.dayStart)
+                } label: {
+                    Label("Do Today", systemImage: "sun.max.fill")
+                }
             }
             Button {
                 focusedID = nil
@@ -521,7 +586,7 @@ struct TaskListView<Header: View>: View {
             }
             Button {
                 focusedID = nil
-                app.detailTask = task
+                app.showDetails(task)
             } label: {
                 Label("Details…", systemImage: "info.circle")
             }
@@ -536,6 +601,50 @@ struct TaskListView<Header: View>: View {
             Image(systemName: "keyboard.chevron.compact.down")
         }
         .accessibilityLabel("Done Editing")
+    }
+
+    /// While selecting: every line on this page, or none again.
+    private var selectAllButton: some View {
+        let ids = Set(rows.compactMap { $0.task?.rowID })
+        let all = !ids.isEmpty && ids.isSubset(of: app.selectedRowIDs)
+        return Button(all ? "Select None" : "Select All") {
+            app.selectedRowIDs = all ? [] : ids
+        }
+        .disabled(ids.isEmpty)
+    }
+
+    /// While selecting: picks the open lines on this page that need the same thing done.
+    private var selectMenu: some View {
+        Menu {
+            selectPick("Overdue", symbol: "exclamationmark.circle") { task in
+                task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) < 0 } ?? false
+            }
+            selectPick("Due Today", symbol: "calendar") { task in
+                task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) == 0 } ?? false
+            }
+            selectPick("Unfinished from Earlier", symbol: "clock.arrow.circlepath") { task in
+                task.isLeftOver(before: app.dayStart)
+            }
+            selectPick("Not Planned", symbol: "calendar.badge.minus") { task in
+                task.plannedDay == nil
+            }
+        } label: {
+            Label("Select", systemImage: "line.3.horizontal.decrease.circle")
+        }
+    }
+
+    /// Selects the open lines on this page that match (instead of what was selected).
+    private func selectPick(_ title: String, symbol: String, where matches: (TaskItem) -> Bool) -> some View {
+        let ids = Set(rows.compactMap { row -> String? in
+            guard let task = row.task, !task.isDone, matches(task) else { return nil }
+            return task.rowID
+        })
+        return Button {
+            app.selectedRowIDs = ids
+        } label: {
+            Label(ids.isEmpty ? title : "\(title) (\(ids.count))", systemImage: symbol)
+        }
+        .disabled(ids.isEmpty)
     }
     #endif
 
@@ -618,16 +727,39 @@ struct TaskListView<Header: View>: View {
         withAnimation(.snappy) {
             switch moved {
             case .task(let task, let depth, _):
-                app.store.drop(task: task, at: newIndex, in: newRows, defaultGroupID: defaultGroupID)
                 // Lists are ranked: the task takes just enough importance to stay where it was put.
                 let neighbours = Self.neighbours(of: newIndex, depth: depth, in: newRows)
-                app.store.rank(task, between: neighbours.above, and: neighbours.below, today: app.dayStart)
+                if rankOnly {
+                    rerank(task, between: neighbours, movedUp: newIndex < from)
+                } else {
+                    app.store.drop(task: task, at: newIndex, in: newRows, defaultGroupID: defaultGroupID)
+                    app.store.rank(task, between: neighbours.above, and: neighbours.below, today: app.dayStart)
+                }
             case .header(let info):
                 if case .group(let group) = info.kind {
                     app.store.drop(group: group, at: newIndex, in: newRows)
                 }
             case .placeholder:
                 break
+            }
+        }
+    }
+
+    /// A drag on a ranked list across groups (Today): the task only becomes more or less
+    /// important, so it ranks where it was dropped. Its group, stored order and nesting stay as
+    /// they are. Undo puts its importance (and the marks that follow it) back.
+    private func rerank(_ task: TaskItem, between neighbours: (above: TaskItem?, below: TaskItem?), movedUp: Bool) {
+        let importance = task.importance
+        let priorityRaw = task.priorityRaw
+        app.store.rank(task, between: neighbours.above, and: neighbours.below, today: app.dayStart)
+        guard task.importance != importance || task.priorityRaw != priorityRaw else { return }
+        let model = app
+        model.show("Moved \(movedUp ? "up" : "down") · importance \(task.importanceLevel)", symbol: "arrow.up.arrow.down") {
+            withAnimation(.snappy) {
+                task.importance = importance
+                task.priorityRaw = priorityRaw
+                task.touch()
+                model.store.save()
             }
         }
     }
@@ -721,7 +853,8 @@ struct TaskListView<Header: View>: View {
 
     #if os(macOS)
     /// A right-click on a task opens the colourful quick actions above it instead of the plain
-    /// menu (Control-click still shows the menu).
+    /// menu (Control-click still shows the menu). Only clicks in this list's own window count
+    /// (see `RightClickMonitor`).
     private func startRightClick() {
         rightClick.handler = { event in
             guard isVisible, let content = event.window?.contentView else { return false }
@@ -735,7 +868,107 @@ struct TaskListView<Header: View>: View {
         }
         rightClick.start()
     }
+
+    /// → unfolds the selected parent's subtasks and ← folds them; ← on a subtask goes up to its
+    /// parent. Anything else (editing, several selected) passes the key on.
+    private func foldKey(unfold: Bool) -> KeyPress.Result {
+        guard focusedID == nil, app.selectedRowIDs.count == 1, let id = app.selectedRowIDs.first,
+              let index = rows.firstIndex(where: { $0.id == id }),
+              case .task(let task, let depth, let style) = rows[index] else { return .ignored }
+        if style.subtaskCount > 0 && style.subtasksFolded == unfold {
+            withAnimation(.snappy) { app.toggleSubtasks(task) }
+            return .handled
+        }
+        guard !unfold, depth > 0, let parent = parentRowID(of: index, depth: depth) else { return .ignored }
+        app.selectedRowIDs = [parent]
+        return .handled
+    }
+
+    /// The row of the line a subtask sits under, within its section.
+    private func parentRowID(of index: Int, depth: Int) -> String? {
+        var j = index - 1
+        while j >= 0 {
+            switch rows[j] {
+            case .header:
+                return nil
+            case .placeholder:
+                break
+            case .task(_, let d, _):
+                if d < depth { return rows[j].id }
+            }
+            j -= 1
+        }
+        return nil
+    }
+
+    /// The line to select once `tasks` are checked off: the next open one below the last of
+    /// them (their subtasks close with them, so they're skipped), else the closest open one above.
+    private func nextOpenRow(afterChecking tasks: [TaskItem]) -> String? {
+        let ids = Set(tasks.map(\.rowID))
+        var closing = Set<String>()
+        var blockDepth: Int?
+        for row in rows {
+            guard case .task(_, let depth, _) = row else {
+                blockDepth = nil
+                continue
+            }
+            if let parentDepth = blockDepth, depth > parentDepth {
+                closing.insert(row.id)
+                continue
+            }
+            blockDepth = nil
+            if ids.contains(row.id) {
+                closing.insert(row.id)
+                blockDepth = depth
+            }
+        }
+        let closed = closing
+        guard let first = rows.firstIndex(where: { closed.contains($0.id) }),
+              let last = rows.lastIndex(where: { closed.contains($0.id) }) else { return nil }
+        func isOpenLine(_ row: ListRow) -> Bool {
+            guard case .task(let task, _, _) = row else { return false }
+            return !task.isDone && !closed.contains(row.id)
+        }
+        if let below = rows[(last + 1)...].first(where: isOpenLine) { return below.id }
+        return rows[..<first].last(where: isOpenLine)?.id
+    }
+
+    /// The first open line after the last of `gone` (in the old order) that's still listed,
+    /// else the closest one before the first of them.
+    private func openRow(near gone: Set<String>, in oldIDs: [String]) -> String? {
+        let open = Set(rows.compactMap { row -> String? in
+            guard case .task(let task, _, _) = row, !task.isDone else { return nil }
+            return row.id
+        })
+        guard let first = oldIDs.firstIndex(where: { gone.contains($0) }),
+              let last = oldIDs.lastIndex(where: { gone.contains($0) }) else { return nil }
+        if let after = oldIDs[(last + 1)...].first(where: { open.contains($0) }) { return after }
+        return oldIDs[..<first].last(where: { open.contains($0) })
+    }
     #endif
+
+    /// Rows that went away (checked off while finished ones are hidden, deleted, moved, planned
+    /// for another day) leave the selection, so the next key press or bulk action never acts on
+    /// a task that isn't on the page any more. On the Mac the next open line is selected instead.
+    /// IDs that weren't on this list before (a task revealed from elsewhere) are left alone.
+    private func followSelection(from oldIDs: [String], to newIDs: [String]) {
+        // A list kept alive off screen (another tab) leaves the visible page's selection alone.
+        guard isVisible else { return }
+        let selected = app.selectedRowIDs
+        guard !selected.isEmpty else { return }
+        let before = Set(oldIDs)
+        let after = Set(newIDs)
+        let gone = selected.filter { before.contains($0) && !after.contains($0) }
+        guard !gone.isEmpty else { return }
+        let kept = selected.subtracting(gone)
+        #if os(macOS)
+        if kept.isEmpty, let next = openRow(near: gone, in: oldIDs) {
+            app.selectedRowIDs = [next]
+            return
+        }
+        #endif
+        app.selectedRowIDs = kept
+    }
 
     private func rowBefore(_ row: ListRow) -> ListRow? {
         guard let index = rows.firstIndex(where: { $0.id == row.id }), index > 0 else { return nil }
@@ -769,6 +1002,9 @@ struct TaskListView<Header: View>: View {
             new = app.store.insertSibling(after: aboveTask, title: title)
             if Self.depth(of: point.above) != Self.depth(of: point.below) { neighbours.below = nil }
         } else if case .header(let info)? = point.above, info.kind.acceptsTasks {
+            // A blank line has to show to be typed into (and to be dropped again when left
+            // empty): a folded section opens first.
+            if entry == nil && info.isCollapsed { toggleCollapse(info) }
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: info.kind.groupID, placement: .top)
         } else if let belowTask {
             new = app.store.addTask(ParsedEntry(title: title), defaultGroupID: belowTask.groupID, placement: .top)
@@ -783,9 +1019,11 @@ struct TaskListView<Header: View>: View {
         if let entry {
             if entry.priority != .normal { app.store.setPriority([new], entry.priority) }
             if let due = entry.due { app.store.setDue([new], due, hasTime: entry.dueHasTime) }
-            new.tags = entry.tags
+            // Added to the tags the group's traits gave it, so a group's own tag stays.
+            if !entry.tags.isEmpty { new.tags = new.tags + entry.tags }
             if let estimate = entry.estimate { new.estimate = estimate }
-            new.recurrence = entry.recurrence
+            // A repeat needs a first date: without a deadline it starts today.
+            if entry.recurrence != nil { app.store.setRecurrence([new], entry.recurrence) }
             if entry.ongoing { new.isOngoing = true }
             if !entry.notes.isEmpty { new.notes = entry.notes }
             app.store.save()
@@ -857,11 +1095,12 @@ struct TaskListView<Header: View>: View {
 }
 
 extension TaskListView where Header == EmptyView {
-    init(rows: [ListRow], allowsReorder: Bool = true, defaultGroupID: UUID? = nil, plansFor: Date? = nil) {
+    init(rows: [ListRow], allowsReorder: Bool = true, defaultGroupID: UUID? = nil, plansFor: Date? = nil, rankOnly: Bool = false) {
         self.rows = rows
         self.allowsReorder = allowsReorder
         self.defaultGroupID = defaultGroupID
         self.plansFor = plansFor
+        self.rankOnly = rankOnly
         self.header = { EmptyView() }
     }
 }
@@ -872,17 +1111,21 @@ final class RowFrames {
 }
 
 #if os(macOS)
-/// Watches right-clicks in the app's windows; the handler returns true when it took one.
+/// Watches right-clicks in the list's window; the handler returns true when it took one.
+/// Clicks in other windows (Settings, the menu bar panel, a popover) and clicks while a sheet
+/// covers the window (the tour) are left alone.
 @MainActor
 final class RightClickMonitor {
     var handler: ((NSEvent) -> Bool)?
+    /// The window the list is in (set by `ListWindowReader`).
+    weak var hostWindow: NSWindow?
     private var token: Any?
 
     func start() {
         guard token == nil else { return }
         token = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
             MainActor.assumeIsolated {
-                guard let handler = self?.handler else { return event }
+                guard let monitor = self, let handler = monitor.handler, monitor.accepts(event) else { return event }
                 return handler(event) ? nil : event
             }
         }
@@ -892,31 +1135,108 @@ final class RightClickMonitor {
         if let token { NSEvent.removeMonitor(token) }
         token = nil
     }
+
+    private func accepts(_ event: NSEvent) -> Bool {
+        guard let host = hostWindow, event.window === host else { return false }
+        return host.attachedSheet == nil
+    }
 }
 
-/// A thin strip along a row's top or bottom edge: hovered, the divider there lights up with a +,
-/// and a click adds a task right there.
-struct HoverInsertLine: View {
+/// Tells the list's right-click watcher which window the list is in.
+struct ListWindowReader: NSViewRepresentable {
+    let monitor: RightClickMonitor
+
+    func makeNSView(context: Context) -> ListWindowView {
+        let view = ListWindowView()
+        view.monitor = monitor
+        return view
+    }
+
+    func updateNSView(_ view: ListWindowView, context: Context) {
+        view.monitor = monitor
+        if let window = view.window { monitor.hostWindow = window }
+    }
+}
+
+/// An empty view that reports the window it moves into. It never takes clicks.
+final class ListWindowView: NSView {
+    weak var monitor: RightClickMonitor?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        monitor?.hostWindow = window
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// The Mac's hover insert: with the pointer near a row's bottom edge (or the first row's top
+/// edge) the divider there lights up with a + tab, and a click on the tab adds a task right
+/// there. The tab sits inside this row and is the only part that takes clicks, so a click
+/// anywhere else still selects the row and a double-click still edits it.
+struct HoverInsertZone: ViewModifier {
     let leading: CGFloat
-    let edge: VerticalEdge
-    let action: () -> Void
+    /// The first row also offers its top edge (a task above it).
+    let offersTop: Bool
+    let onInsert: (VerticalEdge) -> Void
 
-    @State private var hovering = false
+    @State private var edge: VerticalEdge?
+    @State private var height: CGFloat = 0
 
-    var body: some View {
-        ZStack(alignment: edge == .bottom ? .bottom : .top) {
-            Color.clear
-                .contentShape(Rectangle())
-            if hovering {
-                InsertionLine(leading: leading, edge: edge)
+    /// How close to an edge the pointer has to come to light it up.
+    private static let zone: CGFloat = 5
+    /// The clickable + tab, a little larger than the drawn one.
+    private static let tabWidth: CGFloat = 18
+    private static let tabHeight: CGFloat = 16
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: edge == .top ? .top : .bottom) {
+                if let edge {
+                    ZStack(alignment: edge == .top ? .topLeading : .bottomLeading) {
+                        InsertionLine(leading: leading, edge: edge)
+                        Button {
+                            onInsert(edge)
+                        } label: {
+                            Color.clear
+                                .frame(width: Self.tabWidth, height: Self.tabHeight)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, max(0, leading - Self.tabWidth))
+                        .help("Add a task here")
+                        .accessibilityLabel("Add a task here")
+                    }
                     .transition(.opacity)
+                }
             }
-        }
-        .frame(height: 7)
-        .onHover { hovering = $0 }
-        .onTapGesture(perform: action)
-        .help("Add a task here")
-        .animation(.easeOut(duration: 0.1), value: hovering)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.height
+            } action: { newHeight in
+                height = newHeight
+            }
+            .onContinuousHover { phase in
+                let next: VerticalEdge?
+                switch phase {
+                case .active(let point):
+                    next = Self.litEdge(at: point.y, height: height, current: edge, offersTop: offersTop)
+                case .ended:
+                    next = nil
+                }
+                if next != edge { edge = next }
+            }
+            .animation(.easeOut(duration: 0.1), value: edge)
+    }
+
+    /// The edge the pointer is at. Once lit, an edge stays lit over its whole tab, so the tab
+    /// doesn't vanish while the pointer moves onto it.
+    private static func litEdge(at y: CGFloat, height: CGFloat, current: VerticalEdge?, offersTop: Bool) -> VerticalEdge? {
+        guard height > 0 else { return nil }
+        let bottomReach = current == .bottom ? tabHeight : zone
+        let topReach = current == .top ? tabHeight : zone
+        if y >= height - bottomReach { return .bottom }
+        if offersTop && y <= topReach { return .top }
+        return nil
     }
 }
 #endif
@@ -947,59 +1267,138 @@ struct InsertionLine: View {
 }
 
 #if os(iOS)
-/// Bulk actions while selecting multiple tasks on iPhone/iPad.
+/// Bulk actions while selecting tasks on iPhone and iPad: how many are selected, then one
+/// labelled button per action, in the quick-action panel's colours. Today, Tomorrow, Deadline,
+/// PH and Priority keep the selection so several changes can follow each other; Done, Move and
+/// Delete end it.
 struct SelectionBar: View {
+    /// The page's rows: the bar acts only on selected lines that are on the page.
+    let rows: [ListRow]
+
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        let tasks = app.selectedTasks
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                Button {
-                    withAnimation(.snappy) { app.store.setDone(tasks, true) }
-                    app.endSelection()
-                } label: {
-                    Image(systemName: "checkmark.circle")
+        let selected = app.selectedRowIDs
+        let tasks = rows.compactMap(\.task).filter { selected.contains($0.rowID) }
+        VStack(spacing: 8) {
+            Text(tasks.isEmpty ? "Tap tasks to select them" : "\(tasks.count) selected")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 4) {
+                    actions(tasks)
                 }
-                Button {
-                    app.moveBatch = TaskBatch(tasks: tasks)
-                } label: {
-                    Image(systemName: "folder")
-                }
-                Button {
-                    app.dateBatch = TaskBatch(tasks: tasks)
-                } label: {
-                    Image(systemName: "calendar")
-                }
-                Menu {
-                    ForEach(Priority.allCases.reversed()) { priority in
-                        Button(priority.title) { app.store.setPriority(tasks, priority) }
-                    }
-                } label: {
-                    Image(systemName: "exclamationmark.circle")
-                        .frame(width: 44, height: 44)
-                        .glassEffect(.regular.interactive(), in: .circle)
-                }
-                Button {
-                    app.deferToTomorrow(tasks)
-                    app.endSelection()
-                } label: {
-                    Image(systemName: "moon.zzz")
-                }
-                Button(role: .destructive) {
-                    app.delete(tasks)
-                    app.endSelection()
-                } label: {
-                    Image(systemName: "trash")
+                .padding(.horizontal, 12)
+            }
+        }
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func actions(_ tasks: [TaskItem]) -> some View {
+        let open = tasks.filter { !$0.isDone }
+        let allDone = !tasks.isEmpty && open.isEmpty
+        actionButton(allDone ? "Reopen" : "Done", allDone ? "arrow.uturn.backward" : "checkmark", .green, enabled: !tasks.isEmpty) {
+            if allDone {
+                withAnimation(.snappy) { app.store.setDone(tasks, false) }
+            } else if open.contains(where: { !$0.isOngoing }) {
+                app.complete(open)
+            } else {
+                // Only ongoing tasks: each one is logged for today, as its checkbox does.
+                withAnimation(.snappy) { app.store.setDone(open, true) }
+            }
+            app.endSelection()
+        }
+        if !open.isEmpty && open.allSatisfy({ $0.isPlanned(for: app.dayStart) }) {
+            actionButton("Off Plan", "calendar.badge.minus", .gray) {
+                withAnimation(.snappy) { app.plan(open, for: nil) }
+            }
+        } else {
+            actionButton("Today", "sun.max.fill", .orange, enabled: !open.isEmpty) {
+                withAnimation(.snappy) { app.plan(open, for: app.dayStart) }
+            }
+        }
+        actionButton("Tomorrow", "moon.zzz.fill", .indigo, enabled: !open.isEmpty) {
+            withAnimation(.snappy) { app.deferToTomorrow(open) }
+        }
+        actionButton("Deadline", "calendar", .blue, enabled: !tasks.isEmpty) {
+            app.dateBatch = TaskBatch(tasks: tasks)
+        }
+        Menu {
+            ForEach(PowerHours.presets, id: \.self) { value in
+                Button(PowerHours.format(value)) {
+                    app.store.setEstimate(tasks, value)
                 }
             }
-            .font(.title3)
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .disabled(tasks.isEmpty)
+            Divider()
+            Button(role: .destructive) {
+                app.store.setEstimate(tasks, 0)
+            } label: {
+                Label("No Estimate", systemImage: "xmark.circle")
+            }
+        } label: {
+            actionLabel("PH", "timer", .teal)
         }
-        .padding(.bottom, 8)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .disabled(tasks.isEmpty)
+        .opacity(tasks.isEmpty ? 0.4 : 1)
+        .accessibilityLabel("Power Hours")
+        actionButton("Move", "folder.fill", .brown, enabled: !tasks.isEmpty) {
+            app.moveBatch = TaskBatch(tasks: tasks)
+        }
+        Menu {
+            ForEach(Priority.allCases.reversed()) { priority in
+                Button {
+                    app.store.setPriority(tasks, priority)
+                } label: {
+                    Label(priority == .normal ? "No Priority" : "\(priority.title) \(priority.marks)", systemImage: priority.symbol)
+                }
+            }
+        } label: {
+            actionLabel("Priority", "exclamationmark", .purple)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .disabled(tasks.isEmpty)
+        .opacity(tasks.isEmpty ? 0.4 : 1)
+        .accessibilityLabel("Priority")
+        actionButton("Delete", "trash.fill", .red, enabled: !tasks.isEmpty) {
+            app.delete(tasks)
+            app.endSelection()
+        }
+    }
+
+    private func actionButton(_ title: String, _ symbol: String, _ color: Color, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            actionLabel(title, symbol, color)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .accessibilityLabel(title)
+    }
+
+    /// A round, coloured icon with its name underneath, like the quick-action panel's.
+    private func actionLabel(_ title: String, _ symbol: String, _ color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(color.gradient))
+            Text(title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .frame(minWidth: 54)
+        .contentShape(Rectangle())
     }
 }
 #endif

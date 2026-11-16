@@ -8,6 +8,24 @@ enum Persistence {
     /// Why the CloudKit store couldn't be opened (shown in Settings), if it couldn't.
     nonisolated(unsafe) static var startupError: String?
 
+    /// Where this launch keeps the tasks.
+    enum StoreKind {
+        /// On this device and in the private iCloud database (the normal case).
+        case cloud
+        /// On this device only: no iCloud container is configured, or the iCloud store
+        /// couldn't be opened (`startupError` says why).
+        case local
+        /// In memory only: nothing is kept after quitting (the demo data, or both stores failed;
+        /// `localError` says why).
+        case memory
+    }
+
+    /// Set by `makeContainer()`. The app warns while it isn't `.cloud`, and backups pause while
+    /// it is `.memory`, so an empty store can't replace good copies.
+    nonisolated(unsafe) private(set) static var storeKind: StoreKind = .cloud
+    /// Why the local store couldn't be opened either, if it couldn't.
+    nonisolated(unsafe) private(set) static var localError: String?
+
     /// Launch arguments used for screenshots and UI smoke tests.
     static var isDemo: Bool { ProcessInfo.processInfo.arguments.contains("-TheoDemo") }
 
@@ -23,6 +41,7 @@ enum Persistence {
             let config = ModelConfiguration("TheoDemo", schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none)
             if let container = try? ModelContainer(for: schema, configurations: config) {
                 DemoData.seed(container.mainContext)
+                storeKind = .memory
                 return container
             }
         }
@@ -34,7 +53,9 @@ enum Persistence {
                 #if DEBUG && !os(watchOS)
                 initializeCloudKitSchemaIfNeeded(containerID: containerID, storeURL: config.url)
                 #endif
-                return try ModelContainer(for: schema, configurations: config)
+                let container = try ModelContainer(for: schema, configurations: config)
+                storeKind = .cloud
+                return container
             } catch {
                 print("Theo: CloudKit store unavailable (\(error)). Falling back to local store.")
                 startupError = error.localizedDescription
@@ -42,9 +63,13 @@ enum Persistence {
         }
         do {
             let config = ModelConfiguration("Theo", schema: schema, groupContainer: .none, cloudKitDatabase: .none)
-            return try ModelContainer(for: schema, configurations: config)
+            let container = try ModelContainer(for: schema, configurations: config)
+            storeKind = .local
+            return container
         } catch {
             print("Theo: local store unavailable (\(error)). Using in-memory store.")
+            localError = error.localizedDescription
+            storeKind = .memory
             let config = ModelConfiguration("TheoMemory", schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none)
             return try! ModelContainer(for: schema, configurations: config)
         }

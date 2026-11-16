@@ -23,7 +23,8 @@ final class TaskItem {
     var priorityRaw: Int = 0
     var dueDate: Date?
     var dueHasTime: Bool = false
-    /// Hidden from Today until this logical day starts ("Not Today").
+    /// Hidden from Today until this logical day starts (the old way of putting a task off,
+    /// before "Tomorrow" planned it for the next day).
     var deferredUntil: Date?
     /// Comma separated, lowercase tags without the leading '#'.
     var tagsRaw: String = ""

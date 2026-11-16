@@ -16,19 +16,27 @@ extension TaskStore {
             i -= 1
         }
         if let targetKind, !targetKind.acceptsTasks { return }
-        // Pages without headings (a single group page) drop into the page's own group.
-        let targetGroupID = targetKind.map { $0.groupID } ?? defaultGroupID
+        // Pages without headings drop into the page's own group, or (a list across groups)
+        // keep the task in its own group: never into Quick Entry by accident.
+        let targetGroupID: UUID?
+        if let targetKind {
+            targetGroupID = targetKind.groupID
+        } else {
+            targetGroupID = defaultGroupID ?? task.groupID
+        }
 
         let source = layout(for: task.groupID)
         let block = source.block(of: task)
         let blockIDs = Set(block.map(ObjectIdentifier.init))
         let rootDepth = source.depth(of: task)
 
+        // Neighbours from another group (a list across groups) say nothing about the stored
+        // order or nesting in the target group, so they're skipped.
         var previous: (task: TaskItem, depth: Int)?
         var j = newIndex - 1
         while j >= 0 {
             if case .header = rows[j] { break }
-            if case .task(let t, let d, _) = rows[j], !blockIDs.contains(ObjectIdentifier(t)), !t.isDone {
+            if case .task(let t, let d, _) = rows[j], !blockIDs.contains(ObjectIdentifier(t)), !t.isDone, t.groupID == targetGroupID {
                 previous = (t, d)
                 break
             }
@@ -38,7 +46,7 @@ extension TaskStore {
         var k = newIndex + 1
         while k < rows.count {
             if case .header = rows[k] { break }
-            if case .task(let t, let d, _) = rows[k], !blockIDs.contains(ObjectIdentifier(t)), !t.isDone {
+            if case .task(let t, let d, _) = rows[k], !blockIDs.contains(ObjectIdentifier(t)), !t.isDone, t.groupID == targetGroupID {
                 next = (t, d)
                 break
             }
@@ -106,22 +114,39 @@ extension TaskStore {
 
     // MARK: - Inline shortcuts
 
-    /// "!!" and "#tag" typed into a line become its priority and tags once you leave the line.
+    /// "!!", "#tag", "0,5PH", "∞" (or "laufend", "ongoing", "andauernd") and " // description"
+    /// typed into a line take effect once you leave the line, like in the composer. The marks
+    /// set a matching importance, so the line ranks the way it looks. Dates and repeats stay as
+    /// typed: an inline line has no preview of what would be understood.
     func applyInlineShortcuts(_ task: TaskItem) {
-        guard task.deletedAt == nil, task.title.contains("!") || task.title.contains("#") else { return }
-        let parsed = QuickParser.parse(task.title, groups: [], options: [.priority, .tags])
-        guard !parsed.title.isEmpty, parsed.priority != .normal || !parsed.tags.isEmpty else { return }
+        guard task.deletedAt == nil, Self.mayHaveInlineShortcuts(task.title) else { return }
+        let parsed = QuickParser.parse(task.title, groups: [], options: [.priority, .tags, .estimate, .ongoing])
+        let found = parsed.priority != .normal || !parsed.tags.isEmpty || parsed.estimate != nil || parsed.ongoing || !parsed.notes.isEmpty
+        guard !parsed.title.isEmpty, found else { return }
         task.title = parsed.title
-        if parsed.priority != .normal { task.priority = parsed.priority }
+        if parsed.priority != .normal {
+            task.importance = Matrix.importance(for: parsed.priority, current: task.importance)
+            task.priority = parsed.priority
+        }
         if !parsed.tags.isEmpty { task.tags = task.tags + parsed.tags }
+        if let estimate = parsed.estimate { task.estimate = estimate }
+        if parsed.ongoing { task.isOngoing = true }
+        if !parsed.notes.isEmpty { task.notes = task.notes.isEmpty ? parsed.notes : task.notes + "\n" + parsed.notes }
         task.touch()
         save()
+    }
+
+    /// A cheap check before parsing: does the title hold anything `applyInlineShortcuts` reads?
+    private static func mayHaveInlineShortcuts(_ title: String) -> Bool {
+        if title.contains("!") || title.contains("#") || title.contains(" // ") || title.contains("∞") { return true }
+        if title.range(of: #"\d\s*ph\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return true }
+        return title.range(of: #"\b(?:laufend|ongoing|andauernd)\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
     // MARK: - Import
 
     /// Creates groups and tasks from pasted Apple Notes / Markdown checklist text. `#` headings
-    /// are groups, `##` headings subprojects inside the group above, and so on. Estimates
+    /// are groups, `##` headings subgroups inside the group above, and so on. Estimates
     /// ("(0,25PH)"), exact deadlines ("📅 2026-11-04"), priorities and tags are picked up.
     @discardableResult
     func importLines(_ lines: [NotesImport.Line], skipDone: Bool) -> Int {

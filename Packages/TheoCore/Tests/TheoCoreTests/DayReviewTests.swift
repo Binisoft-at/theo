@@ -20,6 +20,36 @@ struct DayReviewTests {
         #expect(DayReview.rank(of: 3, among: [day(1, 2), day(2, 5), day(3, 3)]) == 2)
     }
 
+    private func day(_ offset: Int, _ powerHours: Double, done: Int) -> DayReview.Day {
+        DayReview.Day(start: Date(timeIntervalSince1970: Double(offset) * 86_400), powerHours: powerHours, done: done)
+    }
+
+    @Test func usualDayLeavesOutDaysWithoutAnythingDone() {
+        let days = [day(1, 2, done: 3), day(2, 0, done: 0), day(3, 4, done: 5), day(4, 0, done: 0)]
+        #expect(DayReview.activeAverage(days) == 3)
+        // Something finished without an estimate still makes it a working day.
+        #expect(DayReview.activeAverage([day(1, 0, done: 2), day(2, 3, done: 4)]) == 1.5)
+    }
+
+    @Test func usualDayNeedsEnoughDays() {
+        let one = [day(1, 2, done: 3), day(2, 0, done: 0)]
+        #expect(DayReview.activeAverage(one) == 0)
+        #expect(DayReview.activeAverage(one, minimumDays: 1) == 2)
+        #expect(DayReview.activeAverage([]) == 0)
+        #expect(DayReview.activeAverage([], minimumDays: 0) == 0)
+    }
+
+    @Test func overplannedComparesWithAUsualDay() {
+        #expect(DayReview.isOverplanned(planned: 5, average: 3))
+        #expect(DayReview.isOverplanned(planned: 4, average: 3))
+        // Exactly 1.3 times a usual day is still fine.
+        #expect(!DayReview.isOverplanned(planned: 3.9, average: 3))
+        #expect(!DayReview.isOverplanned(planned: 2, average: 3))
+        #expect(DayReview.isOverplanned(planned: 3.5, average: 3, factor: 1.1))
+        // Nothing to compare with: no hint.
+        #expect(!DayReview.isOverplanned(planned: 5, average: 0))
+    }
+
     @Test func shareOfTasksDone() {
         #expect(DayReview.share(done: 3, open: 1) == 0.75)
         #expect(DayReview.share(done: 0, open: 0) == 0)

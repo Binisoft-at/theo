@@ -1,8 +1,8 @@
 import Foundation
 
-/// Groups can sit inside other groups (subprojects). Helpers that walk that tree.
+/// Groups can sit inside other groups (subgroups). Helpers that walk that tree.
 enum GroupTree {
-    /// Groups in page order, each subproject right after its parent, with its nesting level.
+    /// Groups in page order, each subgroup right after its parent, with its nesting level.
     /// Groups whose parent is gone (or that form a loop) are shown at the top level.
     static func ordered(_ groups: [TaskGroup]) -> [(group: TaskGroup, level: Int)] {
         let ids = Set(groups.map(\.uuid))
@@ -61,7 +61,7 @@ enum GroupTree {
         inactiveIDs(groups).contains(group.uuid)
     }
 
-    /// "haeb tasks › 1. Laufend".
+    /// "Work › Clients".
     static func path(of group: TaskGroup, in groups: [TaskGroup]) -> String {
         var names = [group.displayName]
         var current = group

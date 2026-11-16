@@ -34,7 +34,7 @@ struct TaskMenuItems: View {
         }
 
         Button {
-            withAnimation(.snappy) { app.store.setDone(tasks, !allDone) }
+            withAnimation(.snappy) { app.markDone(tasks, !allDone) }
         } label: {
             Label(allDone ? "Mark as Not Done" : "Mark as Done", systemImage: allDone ? "circle" : "checkmark.circle")
         }
@@ -45,14 +45,14 @@ struct TaskMenuItems: View {
             } label: {
                 Label("Add Subtask", systemImage: "arrow.turn.down.right")
             }
-        }
-
-        if let single, let onEdit {
-            Button(action: onEdit) {
-                Label("Edit Title", systemImage: "pencil")
+            if let onEdit {
+                Button(action: onEdit) {
+                    Label("Edit Title", systemImage: "pencil")
+                }
             }
+            // The inspector on the Mac, the details sheet on iPhone and iPad.
             Button {
-                app.detailTask = single
+                app.showDetails(single)
             } label: {
                 Label("Details…", systemImage: "info.circle")
             }
@@ -97,7 +97,7 @@ struct TaskMenuItems: View {
             }
             if let single {
                 Button {
-                    app.detailTask = single
+                    app.showDetails(single)
                 } label: {
                     Label("Custom…", systemImage: "slider.horizontal.3")
                 }
@@ -198,13 +198,13 @@ struct TaskMenuItems: View {
                 Button {
                     app.deferToTomorrow(tasks)
                 } label: {
-                    Label("Not Today", systemImage: "moon.zzz")
+                    Label("Plan for Tomorrow", systemImage: "moon.zzz.fill")
                 }
             } else {
                 Button {
                     app.plan(tasks, for: app.dayStart)
                 } label: {
-                    Label("Do Today", systemImage: "sun.max")
+                    Label("Do Today", systemImage: "sun.max.fill")
                 }
             }
             Menu {

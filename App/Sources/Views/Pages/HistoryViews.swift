@@ -70,14 +70,11 @@ struct HistoryView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(DateText.pageTitle(day.start))
                                     .font(.headline)
-                                HStack(spacing: 6) {
-                                    Text(day.start.formatted(date: .numeric, time: .omitted))
-                                        .foregroundStyle(.secondary)
-                                    Text(preview(day))
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
-                                }
-                                .font(.subheadline)
+                                // "3 done · 0,75 PH" in grey, then what got done, lighter.
+                                let line = preview(day)
+                                Text("\(Text(line.summary).foregroundStyle(.secondary))\(Text(line.titles).foregroundStyle(.tertiary))")
+                                    .font(.subheadline)
+                                    .lineLimit(2)
                             }
                             .padding(.vertical, 2)
                         }
@@ -88,13 +85,15 @@ struct HistoryView: View {
         .navigationTitle("History")
     }
 
-    private func preview(_ day: DaySummary) -> String {
+    /// "3 done · 0,75 PH" and " · Water plants, Call the garage, …" (or "2 added" on a day
+    /// where nothing got done).
+    private func preview(_ day: DaySummary) -> (summary: String, titles: String) {
         let titles = day.done.sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
             .map(\.trimmedTitle).filter { !$0.isEmpty }
-        if titles.isEmpty { return "\(day.added) added" }
+        if titles.isEmpty { return ("\(day.added) added", "") }
         let powerHours = PageBuilder.estimateTotals(day.done).done
         let effort = powerHours > 0 ? " · " + PowerHours.format(powerHours) : ""
-        return "\(titles.count) done\(effort) · " + titles.prefix(4).joined(separator: ", ")
+        return ("\(titles.count) done\(effort)", " · " + titles.prefix(6).joined(separator: ", "))
     }
 
     private static func bucket(_ days: [DaySummary], today: Date) -> [Bucket] {
@@ -166,8 +165,10 @@ struct StatTile: View {
     }
 }
 
-/// A past day reconstructed like the note looked at the end of that day: what got done,
-/// and what was still open (and rolled over).
+/// A past day: first what got done, group by group in the order it happened; then, folded
+/// away, what was still open when the day ended. Today's plans can't tell what was planned
+/// back then, so that list holds every task open at the day's end in groups that are on, the
+/// ones whose deadline had come by then first.
 struct DayPageView: View {
     let day: DayRef
 
@@ -176,6 +177,7 @@ struct DayPageView: View {
     private var tasks: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
+    @State private var showsOpen = false
 
     var body: some View {
         let start = day.start
@@ -184,37 +186,73 @@ struct DayPageView: View {
             guard task.isDone, let completed = task.completedAt else { return false }
             return completed >= start && completed < end
         }
-        let openAtEnd = tasks.filter { task in
-            guard task.createdAt < end else { return false }
+        let doneSections: [LabeledSection] = Sections.byGroup(doneThatDay, groups: groups)
+            .filter { !$0.tasks.isEmpty }
+            .map { section -> LabeledSection in
+                let byTime = section.tasks.sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
+                return (key: section.key, title: section.title, symbol: section.symbol, color: section.color, tasks: byTime)
+            }
+        // Open when the day ended. An ongoing task never finishes (its logs count as done that
+        // day), so it isn't "still open".
+        let openAtEnd = tasks.activeOnly(groups).filter { task in
+            guard task.createdAt < end, !(task.isOngoing && task.loggedFor == nil) else { return false }
             if let completed = task.completedAt { return completed >= end }
             return !task.isDone
         }
-        let sections = Sections.byGroup(doneThatDay + openAtEnd, groups: groups).filter { !$0.tasks.isEmpty }
+        let open = Self.ordered(openAtEnd, day: start)
+        let overdue = open.filter { Self.wasDue($0, by: start) }
+        let overdueIDs = Set(overdue.map(ObjectIdentifier.init))
+        let openTitle = overdue.isEmpty
+            ? "\(open.count) still open at day's end"
+            : "\(open.count) still open at day's end · \(overdue.count) overdue"
 
         List {
             Section {
                 HStack(spacing: 12) {
                     StatTile(value: "\(doneThatDay.count)", label: "completed", symbol: "checkmark.circle.fill", color: .green)
-                    StatTile(value: "\(openAtEnd.count)", label: "rolled over", symbol: "arrow.uturn.forward.circle.fill", color: .orange)
+                    StatTile(value: "\(open.count)", label: "still open", symbol: "circle.dashed", color: .orange)
                 }
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
-            ForEach(sections, id: \.key) { section in
+            if doneSections.isEmpty {
+                Text("Nothing was checked off that day.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(doneSections, id: \.key) { section in
                 Section {
-                    let done = section.tasks.filter { doneThatDay.contains($0) }
-                    let open = section.tasks.filter { !doneThatDay.contains($0) }
-                    ForEach(open) { task in
-                        HistoryTaskRow(task: task, doneThen: false, dayEnd: end, today: app.dayStart)
-                    }
-                    ForEach(done) { task in
+                    ForEach(section.tasks) { task in
                         HistoryTaskRow(task: task, doneThen: true, dayEnd: end, today: app.dayStart)
                     }
                 } header: {
-                    Label(section.title, systemImage: section.symbol)
-                        .foregroundStyle(section.color)
-                        .font(.headline)
-                        .textCase(nil)
+                    HStack(spacing: 8) {
+                        Label(section.title, systemImage: section.symbol)
+                            .foregroundStyle(section.color)
+                        Spacer(minLength: 8)
+                        let hours = PageBuilder.estimateTotals(section.tasks).done
+                        if hours > 0 {
+                            Text("Σ " + PowerHours.format(hours))
+                                .font(.subheadline.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("\(PowerHours.format(hours)) done")
+                        }
+                    }
+                    .font(.headline)
+                    .textCase(nil)
+                }
+            }
+            if !open.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: $showsOpen) {
+                        ForEach(open) { task in
+                            HistoryTaskRow(task: task, doneThen: false, dayEnd: end, today: app.dayStart,
+                                           dueByThen: overdueIDs.contains(ObjectIdentifier(task)))
+                        }
+                    } label: {
+                        Label(openTitle, systemImage: "circle.dashed")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -228,19 +266,46 @@ struct DayPageView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                ShareLink(item: markdown(sections: sections, done: doneThatDay)) {
+                ShareLink(item: markdown(done: doneSections, overdue: overdue)) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
             }
         }
     }
 
-    private func markdown(sections: [LabeledSection], done: [TaskItem]) -> String {
+    /// Its deadline had come by that day (a task due that day and still open at its end counts).
+    private static func wasDue(_ task: TaskItem, by start: Date) -> Bool {
+        guard let due = task.dueDate else { return false }
+        return DateText.dayDelta(due, today: start) <= 0
+    }
+
+    /// The ones whose deadline had come first (earliest deadline first), then the rest ranked
+    /// as of that day.
+    private static func ordered(_ tasks: [TaskItem], day start: Date) -> [TaskItem] {
+        let keyed = tasks.map { (task: $0, due: wasDue($0, by: start), score: $0.matrixScore(today: start)) }
+        return keyed.sorted { a, b in
+            if a.due != b.due { return a.due }
+            if a.due, let dueA = a.task.dueDate, let dueB = b.task.dueDate, dueA != dueB { return dueA < dueB }
+            if a.score != b.score { return a.score > b.score }
+            return a.task.sortOrder < b.task.sortOrder
+        }
+        .map { $0.task }
+    }
+
+    /// What got done, and what was overdue and still open at the day's end.
+    private func markdown(done: [LabeledSection], overdue: [TaskItem]) -> String {
         var lines = ["# \(DateText.pageTitle(day.start))", ""]
-        for section in sections {
+        for section in done {
             lines.append("## \(section.title)")
             for task in section.tasks {
-                lines.append("- [\(done.contains(task) ? "x" : " ")] \(task.trimmedTitle)")
+                lines.append("- [x] \(task.trimmedTitle)")
+            }
+            lines.append("")
+        }
+        if !overdue.isEmpty {
+            lines.append("## Overdue, still open at the day's end")
+            for task in overdue {
+                lines.append("- [ ] \(task.trimmedTitle)")
             }
             lines.append("")
         }
@@ -253,6 +318,8 @@ struct HistoryTaskRow: View {
     let doneThen: Bool
     let dayEnd: Date
     let today: Date
+    /// Still open then, with a deadline that had come by that day.
+    var dueByThen = false
 
     @Environment(AppModel.self) private var app
 
@@ -262,19 +329,33 @@ struct HistoryTaskRow: View {
                 .font(.title3)
                 .foregroundStyle(doneThen ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.secondary))
             VStack(alignment: .leading, spacing: 2) {
-                Text(task.trimmedTitle.isEmpty ? "Untitled" : task.trimmedTitle)
-                    .strikethrough(doneThen, color: .secondary)
-                    .foregroundStyle(doneThen ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
-                if !doneThen {
-                    if let completed = task.completedAt {
-                        Text("Done later · \(DateText.shortDay(completed))")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                    } else {
-                        Text("Still open")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(task.trimmedTitle.isEmpty ? "Untitled" : task.trimmedTitle)
+                        .strikethrough(doneThen, color: .secondary)
+                        .foregroundStyle(doneThen ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
+                    if task.loggedFor != nil {
+                        // A logged round of an ongoing task.
+                        Image(systemName: "infinity")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.teal)
+                            .accessibilityLabel("Ongoing")
                     }
+                }
+                if !doneThen {
+                    HStack(spacing: 8) {
+                        if let completed = task.completedAt {
+                            Text("Done later · \(DateText.shortDay(completed))")
+                                .foregroundStyle(.green)
+                        } else {
+                            Text("Still open")
+                                .foregroundStyle(.orange)
+                        }
+                        if dueByThen, let due = task.dueDate {
+                            Label("Due \(DateText.shortDay(due))", systemImage: "flag.checkered")
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .font(.caption)
                 }
             }
             Spacer(minLength: 0)
@@ -285,21 +366,85 @@ struct HistoryTaskRow: View {
 }
 
 /// Recently Deleted, like in Notes: restore or remove for good. Items expire after 30 days.
+/// Subtasks deleted together with their parent show under it and come back with it. Logs of
+/// ongoing tasks (taken back when their check was undone) stay out of the list.
 struct TrashView: View {
     @Environment(AppModel.self) private var app
     @Query(filter: #Predicate<TaskItem> { $0.deletedAt != nil })
     private var tasks: [TaskItem]
+    /// The tasks still there, to tell where each deleted line sat in its list.
+    @Query(filter: #Predicate<TaskItem> { $0.deletedAt == nil })
+    private var liveTasks: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt != nil })
     private var groups: [TaskGroup]
     @State private var confirmEmpty = false
 
-    private var visibleTasks: [TaskItem] {
-        tasks.filter { !$0.trimmedTitle.isEmpty }
-            .sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
+    /// A deleted task, how deep it sits under lines deleted with it, and the lines shown under
+    /// it (they come back and go away with it).
+    private struct TrashRow: Identifiable {
+        let task: TaskItem
+        let depth: Int
+        var block: [TaskItem]
+
+        var id: ObjectIdentifier { ObjectIdentifier(task) }
+    }
+
+    /// Newest delete first. Within one delete (same list, same moment) the lines keep their
+    /// list order and a subtask sits under its parent when the parent went with it: what
+    /// `TaskStore.restoreWithBlock` brings back together.
+    private func trashRows() -> [TrashRow] {
+        let visible = tasks.filter { !$0.trimmedTitle.isEmpty && $0.loggedFor == nil }
+        var batches: [[TaskItem]] = []
+        for inList in Dictionary(grouping: visible, by: { $0.group?.uuid }).values {
+            var current: [TaskItem] = []
+            for task in inList.sorted(by: { ($0.deletedAt ?? .distantPast) < ($1.deletedAt ?? .distantPast) }) {
+                if let head = current.first?.deletedAt, let deletedAt = task.deletedAt, deletedAt.timeIntervalSince(head) >= 1 {
+                    batches.append(current)
+                    current = []
+                }
+                current.append(task)
+            }
+            if !current.isEmpty { batches.append(current) }
+        }
+        let live = Dictionary(grouping: liveTasks, by: \.groupID)
+        var deletes: [(deletedAt: Date, list: String, rows: [TrashRow])] = []
+        for batch in batches {
+            guard let first = batch.first else { continue }
+            // The list as it was: what's still there plus what went in this delete.
+            let listIsLive = first.group == nil || first.group?.deletedAt == nil
+            let layout = SectionLayout((listIsLive ? (live[first.groupID] ?? []) : []) + batch)
+            let inBatch = Set(batch.map(ObjectIdentifier.init))
+            var shownDepth: [ObjectIdentifier: Int] = [:]
+            var ancestors: [Int] = []
+            var rows: [TrashRow] = []
+            for index in layout.items.indices {
+                let depth = layout.depths[index]
+                while let last = ancestors.last, layout.depths[last] >= depth { ancestors.removeLast() }
+                let item = layout.items[index]
+                if inBatch.contains(ObjectIdentifier(item)) {
+                    // Under its parent when that went in the same delete, else at the top.
+                    let parentDepth = ancestors.last.flatMap { shownDepth[ObjectIdentifier(layout.items[$0])] }
+                    let shown = parentDepth.map { $0 + 1 } ?? 0
+                    shownDepth[ObjectIdentifier(item)] = shown
+                    rows.append(TrashRow(task: item, depth: shown, block: [item]))
+                }
+                ancestors.append(index)
+            }
+            for i in rows.indices {
+                var j = i + 1
+                while j < rows.count, rows[j].depth > rows[i].depth {
+                    rows[i].block.append(rows[j].task)
+                    j += 1
+                }
+            }
+            deletes.append((deletedAt: first.deletedAt ?? .distantPast, list: first.group?.uuid.uuidString ?? "", rows: rows))
+        }
+        // Deletes at the same moment (a group's lists) keep a fixed order between redraws.
+        return deletes.sorted { ($0.deletedAt, $1.list) > ($1.deletedAt, $0.list) }.flatMap { $0.rows }
     }
 
     var body: some View {
-        let items = visibleTasks
+        let items = trashRows()
         List {
             if !groups.isEmpty {
                 Section("Groups") {
@@ -335,24 +480,34 @@ struct TrashView: View {
                 }
             }
             Section(groups.isEmpty ? "" : "Tasks") {
-                ForEach(items) { task in
-                    HStack {
+                ForEach(items) { row in
+                    let task = row.task
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        if row.depth > 0 {
+                            Image(systemName: "arrow.turn.down.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(task.trimmedTitle)
-                            if let group = task.group {
-                                Text(group.displayName)
+                                .foregroundStyle(row.depth > 0 ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
+                            if row.depth == 0, let line = caption(row) {
+                                Text(line)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         Spacer()
-                        Text(remaining(task.deletedAt))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if row.depth == 0 {
+                            Text(remaining(task.deletedAt))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .padding(.leading, CGFloat(row.depth) * 18)
                     .swipeActions(edge: .leading) {
                         Button {
-                            app.store.restore([task])
+                            app.store.restoreWithBlock([task])
                         } label: {
                             Label("Restore", systemImage: "arrow.uturn.backward")
                         }
@@ -360,14 +515,14 @@ struct TrashView: View {
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
-                            app.store.purge([task])
+                            app.store.purge(row.block)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
                     }
                     .contextMenu {
-                        Button("Restore") { app.store.restore([task]) }
-                        Button("Delete Permanently", role: .destructive) { app.store.purge([task]) }
+                        Button("Restore") { app.store.restoreWithBlock([task]) }
+                        Button("Delete Permanently", role: .destructive) { app.store.purge(row.block) }
                     }
                 }
             }
@@ -391,6 +546,15 @@ struct TrashView: View {
                 app.store.purge(Array(groups))
             }
         }
+    }
+
+    /// "Work · with 3 subtasks" under a top line.
+    private func caption(_ row: TrashRow) -> String? {
+        var parts: [String] = []
+        if let group = row.task.group { parts.append(group.displayName) }
+        let subtasks = row.block.count - 1
+        if subtasks > 0 { parts.append(subtasks == 1 ? "with 1 subtask" : "with \(subtasks) subtasks") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func remaining(_ deletedAt: Date?) -> String {
