@@ -181,7 +181,8 @@ struct MatrixLabel: View {
 struct MatrixDropOverlay: View {
     let drag: MatrixDrag
     @Environment(AppModel.self) private var app
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    // The app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
 
     /// The chosen accent, like every other picked thing on the grid and in its strip.
     private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
@@ -249,7 +250,8 @@ struct MatrixDropOverlay: View {
 struct MatrixPlacementOverlay: View {
     let task: TaskItem
     @Environment(AppModel.self) private var app
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    // The app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
     @State private var cell: MatrixGeometry.Cell?
 
     /// The chosen accent, like every other picked thing on the grid and in its strip.

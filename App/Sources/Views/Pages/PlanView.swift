@@ -894,7 +894,8 @@ struct DayStrip: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.self) private var environment
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    // The app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
     /// Theo's text size on the Mac (1 elsewhere): the day chips grow with their text.
     @Environment(\.textScale) private var textScale
     /// The day a task is dragged over.
