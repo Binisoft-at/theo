@@ -18,6 +18,7 @@ struct OverviewView: View {
     private var groups: [TaskGroup]
     @Query(filter: #Predicate<SavedView> { $0.deletedAt == nil }, sort: \SavedView.sortOrder)
     private var views: [SavedView]
+    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
 
     private let tiles = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
@@ -83,18 +84,19 @@ struct OverviewView: View {
     // MARK: - Pieces
 
     /// Six numbers at a glance, each opening the list behind it. Each keeps the colour of what
-    /// it counts: Power Hours teal, overdue orange (grey while there's none), deadlines blue,
-    /// Today orange, done green.
+    /// it counts, as in a group's figures: open tasks in the chosen accent, Power Hours teal,
+    /// overdue orange (grey while there's none), deadlines blue, Today orange, done green.
     private func statTiles(_ stats: TaskStats, planned: [TaskItem], doneWeek: [TaskItem]) -> some View {
         let plannedHours: Double = PageBuilder.estimateTotals(planned).open
         let doneHours: Double = PageBuilder.estimateTotals(doneWeek).done
+        let accent: Color = (AccentChoice(rawValue: accentRaw) ?? .notes).color
         let overdueTint: Color = stats.overdue > 0 ? Tint.overdue : Color.gray
         let plannedLabel: String = "planned today · \(PowerHours.number(plannedHours)) PH left"
         let doneLabel: String = "done in 7 days · \(PowerHours.format(doneHours))"
         return LazyVGrid(columns: tiles, spacing: 12) {
-            tile("\(stats.open)", number: Double(stats.open), label: "open tasks", symbol: "tray.full.fill", color: Color.gray, opens: .allTasks)
+            tile("\(stats.open)", number: Double(stats.open), label: "open tasks", symbol: "tray.full.fill", color: accent, opens: .allTasks)
             tile(PowerHours.number(stats.openHours), number: stats.openHours, label: "PH left", symbol: "timer", color: Tint.powerHours, opens: .allTasks)
-            tile("\(stats.overdue)", number: Double(stats.overdue), label: "overdue", symbol: "clock.arrow.circlepath", color: overdueTint, opens: .upcoming)
+            tile("\(stats.overdue)", number: Double(stats.overdue), label: "overdue", symbol: "exclamationmark.circle", color: overdueTint, opens: .upcoming)
             tile("\(stats.dueSoon)", number: Double(stats.dueSoon), label: "due in 7 days", symbol: "calendar", color: Tint.deadline, opens: .upcoming)
             tile("\(planned.count)", number: Double(planned.count), label: plannedLabel, symbol: "sun.max.fill", color: Tint.today, opens: .today)
             tile("\(doneWeek.count)", number: Double(doneWeek.count), label: doneLabel, symbol: "checkmark", color: Tint.done, opens: .history)
@@ -518,20 +520,23 @@ private struct PriorityBand: Identifiable {
     var color: Color { priority == .normal ? Color.secondary.opacity(0.4) : priority.color }
 }
 
-/// A symbol on a small disc in its colour with the glyph in white, like the tiles in Reminders
-/// and the icons in Settings. It grows with Theo's text size on the Mac.
+/// A symbol on a small disc in its colour, like the tiles in Reminders and the icons in
+/// Settings: the glyph in white, or near-black on a bright fill (Notes Yellow, a yellow group)
+/// where white would be hard to see. It grows with Theo's text size on the Mac.
 private struct IconDisc: View {
     let symbol: String
     let color: Color
     var size: CGFloat = 30
 
     @Environment(\.textScale) private var textScale
+    @Environment(\.self) private var environment
 
     var body: some View {
         let side: CGFloat = size * max(1, textScale)
+        let glyph: Color = color.onFillForeground(in: environment)
         Image(systemName: symbol)
             .font(.system(size: side * 0.47, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(glyph)
             .frame(width: side, height: side)
             .background {
                 Circle().fill(color.gradient)

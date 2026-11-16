@@ -309,13 +309,13 @@ struct TaskMetaLine: View {
                 }
                 if let planned = plannedToShow {
                     if DateText.dayDelta(planned, today: today) == 0 {
-                        // Planned for today: just the sun, the word would only crowd the line.
+                        // Planned for today: just Today's sun, the word would only crowd the line.
                         Image(systemName: "sun.max.fill")
-                            .foregroundStyle(.indigo)
+                            .foregroundStyle(Tint.today)
                             .accessibilityLabel("Planned for today")
                     } else {
                         Label(DateText.due(planned, hasTime: false, today: today), systemImage: "calendar.badge.checkmark")
-                            .foregroundStyle(.indigo)
+                            .foregroundStyle(Tint.planned)
                             .accessibilityLabel("Planned for " + DateText.due(planned, hasTime: false, today: today))
                     }
                 }

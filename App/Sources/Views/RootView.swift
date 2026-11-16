@@ -328,6 +328,7 @@ struct AppChrome: ViewModifier {
     /// The toast rises from just below the bottom bar with a little spring and settles there;
     /// a newer one takes its place the same way while the old one sinks and fades under it.
     /// Leaving, it sinks back the way it came, a little quicker.
+    @MainActor
     private var toastLayer: some View {
         ZStack {
             if let toast = app.toast {
@@ -345,6 +346,7 @@ struct AppChrome: ViewModifier {
 
     /// A confirmation springs in; a warning comes in smoothly, without the playfulness; going
     /// away is quick.
+    @MainActor
     private var toastAnimation: Animation {
         guard let toast = app.toast else { return Motion.resolved(Motion.tap) }
         return Motion.resolved(toast.isWarning ? Motion.layout : Motion.celebrate)
@@ -352,6 +354,7 @@ struct AppChrome: ViewModifier {
 
     /// In: up from a little below, growing from its bottom edge, fading in. Out: a shorter way
     /// down, fading. With Reduce Motion it only fades.
+    @MainActor
     private static var toastTransition: AnyTransition {
         guard !Motion.reduceMotion else { return .opacity }
         return .asymmetric(
@@ -362,6 +365,7 @@ struct AppChrome: ViewModifier {
 
     /// The composer's + while it's dragged over a list: it fades in under the finger and out
     /// where it's let go. Only its coming and going animate; it follows the finger as is.
+    @MainActor
     private var insertGhostLayer: some View {
         ZStack {
             if let location = app.insertDragLocation {

@@ -26,8 +26,9 @@ struct TaskDetailView: View {
     @State private var picksDay = false
     /// Counts the picks (plan, deadline, priority), for the iPhone's selection tick.
     @State private var pickTick = 0
-    /// The accent chosen in Settings: the subtask ring takes a colour rather than the tint.
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    /// The accent chosen in Settings: the subtask ring takes a colour rather than the tint. The
+    /// app's own defaults, also inside the tour (its practice page has a store of its own).
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
 
     private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
 

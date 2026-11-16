@@ -11,9 +11,33 @@
 | A new note for each day | **Today**: one daily page, titled with the date |
 | Throw things in a "quick entry" area | The **Quick Entry** section on top, plus a floating Liquid Glass entry bar |
 | Higher = more important | Drag to reorder. Position *is* priority (⌥⌘↑/↓ on Mac) |
-| Headings for projects and groups | **Groups** are headings on the page: collapsible, colored, optionally a **project** with a progress bar and deadline |
+| Headings for projects and groups | **Groups** are headings on the page: collapsible, colored, optionally a **project** with a progress ring and deadline |
 | Checked items move down | Checked tasks sink to the bottom after a short beat, like Notes |
 | Duplicate the note, delete what's done | **One tap.** At the start of a new day (4:00 by default) finished tasks move to **History**, and whatever is still open waits at the top of Today with **Bring Over** |
+
+## New in v9
+
+### Smoother
+
+- **Adding between tasks**: a new line makes room for itself in one smooth movement. The tasks above stay where they are and the ones below glide down; on iPhone the keyboard comes up once the gap has opened. A new line you leave empty closes up the same way. While you drag the + the insert line glides from gap to gap, with a light tick at each one.
+- **Subtask progress is a ring**: a line with subtasks shows a small ring next to "2/5" that fills as they get done (it was a thin bar that looked like a divider). Projects show the same ring in their heading, and around their icon on the project's page.
+- **One way of moving**: lines, sections, panels, toasts and pickers all move with the same soft springs; things fade and slide in instead of popping up; numbers roll to their new value; symbols morph into each other. Ticking a task off fills its circle with a little spring, on iPhone, Mac and Watch. With Reduce Motion on (Settings → Accessibility → Motion) Theo cross-fades instead.
+- **Light taps** on iPhone and Watch where they mean something: finishing a task, picking a value, letting go of a drag.
+
+### Calmer and clearer
+
+- **Colour means one thing, everywhere**: Today orange, Tomorrow and anything planned indigo, deadlines blue, Power Hours teal, done green, delete red. A deadline that has passed is a calm orange on every page and device (it was red in places). On a task line the group's colour sits on its icon and tags are grey, so the titles stand out.
+- **Your accent everywhere**: the accent chosen in Settings is now used in every place (some still showed Notes Yellow).
+- **Today**: the header reads as one piece (a ring with a rolling count, the Power Hours line aligned with its icon), and the filter chips scroll edge to edge.
+- **Sidebar and Settings**: icons on coloured tiles like Apple's Settings app, counts that roll.
+- **Overview, History, Day Review**: tiles with big rounded numbers, like Reminders.
+- **Plan**: the selected day glides along the day strip, the usual-day bar grows smoothly, and on the Mac a dragged task lifts off as a small card.
+- **Matrix**: dots glide to their cell; the bubbles that count several tasks are readable in light and dark mode.
+- **Details and quick actions**: the icons sit in one aligned column, coloured by meaning; the round quick actions press in like buttons; menus use the same words and symbols everywhere ("Reopen", "Off Plan").
+- **Bottom bar and Mac Quick Add**: chips resize smoothly, @ and # suggestions rise out of the field, the hold-and-slide arc fans out with a tick per step.
+- **Tour**: steps blur into place and "Step 6 of 31" rolls.
+- **Watch**: today's progress as a ring, round coloured list icons like the watch's own Settings.
+- **Widgets**: the same colours, and rounded numbers that roll when the widget updates.
 
 ## New in v8
 
@@ -119,7 +143,7 @@
 - **All Tasks**: every task, filtered by status, group, tag, importance, deadline, planned day, size or ongoing, grouped by group, top group, priority, deadline, tag, size or planned day, and sorted by priority and deadline, rank, deadline, Power Hours, newest or title. Ready-made views (Due This Week, Important, Quick Wins, Ongoing, Not Planned, Done) and saved ones switch in one tap. **Save as View** keeps a combination in the sidebar (synced, with its open count), and views and groups can be **favourites** at the top of the sidebar.
 - **Overview tab**: totals, today, the deadlines of the next two weeks, a card per group (open, Power Hours, overdue, next deadline, subgroups, switched-off ones dimmed), priorities, ongoing work and the biggest open blocks. Every card opens the list behind it.
 - **Plan browser**: Browse All Tasks by group, priority, deadline or size, sections that open on tap, search, top-level tasks with their subtasks counted and their Power Hours added up.
-- **Tasks with subtasks**: the parent shows the open Power Hours of everything under it (Σ) and a progress bar; subtasks are simply indented, with no guide lines, and don't repeat their parent's group. A subtask planned without its parent shows on its own instead of under another task. On the Mac, two fingers swipe right to indent and left to outdent, and hovering between lines shows a + to add a task there. Crowded Matrix cells become one bubble with a count.
+- **Tasks with subtasks**: the parent shows the open Power Hours of everything under it (Σ) and a progress ring; subtasks are simply indented, with no guide lines, and don't repeat their parent's group. A subtask planned without its parent shows on its own instead of under another task. On the Mac, two fingers swipe right to indent and left to outdent, and hovering between lines shows a + to add a task there. Crowded Matrix cells become one bubble with a count.
 - **Stats on every list**: groups and All Tasks show what's open, the Power Hours left, overdue, due within a week and done today. Headings of computed lists (Upcoming, Priority, tags, search) show their Σ PH too.
 - **Backups**: besides iCloud, a full JSON copy every day (the last 30 kept), Back Up Now, export, and restore (Settings → Backups; on iPhone also in Files → On My iPhone → Theo).
 - **Descriptions in passing**: `Call bank // ask about the fee` puts everything after ` // ` into the description (the Description chip adds the separator); while editing a line its description field sits right under the title (⇧Return or the ≡ keyboard button jumps there). Settings → Show description under the title.
