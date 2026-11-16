@@ -341,7 +341,7 @@ struct TodayHeader: View {
                     ZStack {
                         ProgressRing(progress: total == 0 ? 0 : Double(done) / Double(total))
                         Text("\(done)")
-                            .font(.caption.weight(.bold))
+                            .theoFont(.caption, weight: .bold)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
@@ -353,9 +353,9 @@ struct TodayHeader: View {
                 .accessibilityHint("Shows what got done today")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateText.pageTitle(date))
-                        .font(.headline)
+                        .theoFont(.headline)
                     Text(summary)
-                        .font(.subheadline)
+                        .theoFont(.subheadline)
                         .foregroundStyle(.secondary)
                     if openEstimate > 0 || doneEstimate > 0 {
                         estimateLine
@@ -401,7 +401,7 @@ struct TodayHeader: View {
     private var estimateLine: some View {
         let line = Label(estimateText, systemImage: "timer")
             .labelStyle(CompactLabelStyle())
-            .font(.caption.weight(.medium))
+            .theoFont(.caption, weight: .medium)
             .multilineTextAlignment(.leading)
         if isOverplanned {
             Button {
@@ -468,7 +468,7 @@ struct CarryOverStrip: View {
             Spacer(minLength: 0)
             Button(action: onHide) {
                 Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
+                    .theoFont(.caption, weight: .bold)
                     .foregroundStyle(.secondary)
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
@@ -505,7 +505,7 @@ private struct CarryOverCapsule: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -514,7 +514,7 @@ private struct CarryOverCapsule: View {
                 withAnimation(.snappy) { perform() }
             } label: {
                 Text(buttonTitle)
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
                     .foregroundStyle(color.onFillForeground(in: environment))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
@@ -548,9 +548,9 @@ struct PlanPrompt: View {
                 .font(.system(size: 40))
                 .foregroundStyle(.tint)
             Text("Pick what today is for")
-                .font(.headline)
+                .theoFont(.headline)
             Text("Today only shows the tasks you plan for it. Choose them in Plan, or add one below.")
-                .font(.subheadline)
+                .theoFont(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button {
@@ -584,7 +584,7 @@ struct PlanPrompt: View {
                 } label: {
                     Label("Yesterday: \(doneYesterday.count) done" + (powerHours > 0 ? " · " + PowerHours.format(powerHours) : "") + " · Review",
                           systemImage: "chart.bar.xaxis")
-                        .font(.footnote.weight(.medium))
+                        .theoFont(.footnote, weight: .medium)
                 }
                 .buttonStyle(.borderless)
                 .padding(.top, 4)
@@ -649,7 +649,7 @@ struct SearchResultsView: View {
                 Text(finishedText)
             }
         }
-        .font(.subheadline)
+        .theoFont(.subheadline)
         .foregroundStyle(.secondary)
     }
 }

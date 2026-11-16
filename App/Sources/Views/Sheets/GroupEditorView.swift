@@ -48,12 +48,12 @@ struct GroupEditorView: View {
                 Section {
                     HStack(spacing: 14) {
                         Image(systemName: symbol)
-                            .font(.title2)
+                            .theoFont(.title2)
                             .foregroundStyle(.white)
                             .frame(width: 52, height: 52)
                             .background(Circle().fill(color.color.gradient))
                         TextField("Group name", text: $name)
-                            .font(.title3.weight(.semibold))
+                            .theoFont(.title3, weight: .semibold)
                             .textFieldStyle(.plain)
                             .focused($nameFocused)
                             .onSubmit(save)
@@ -163,6 +163,7 @@ struct GroupEditorView: View {
                 }
             }
             .formStyle(.grouped)
+            .theoBodyFont()
             .navigationTitle(existing != nil ? "Edit Group" : (parentID == nil ? "New Group" : "New Subgroup"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -226,7 +227,7 @@ struct GroupEditorView: View {
                 let inherited = app.store.traits(of: parent)
                 if !inherited.isEmpty {
                     Label("Inherits from \(parent.displayName): " + inherited.summary.joined(separator: " · "), systemImage: "arrow.turn.down.right")
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.secondary)
                 }
             }

@@ -53,7 +53,7 @@ struct SettingsView: View {
                 }
                 #if os(macOS)
                 Text("⌘+ and ⌘− change it from anywhere, ⌘0 goes back to Large.")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
                 #endif
 
@@ -70,7 +70,7 @@ struct SettingsView: View {
                                     .overlay {
                                         if accentRaw == choice.rawValue {
                                             Image(systemName: "checkmark")
-                                                .font(.caption.weight(.bold))
+                                                .theoFont(.caption, weight: .bold)
                                                 .foregroundStyle(.white)
                                         }
                                     }
@@ -147,7 +147,7 @@ struct SettingsView: View {
                 }
                 if badgeBlocked {
                     Text("Notifications are off for Theo, so the badge can't show. Turn them on in the Settings app → Notifications → Theo.")
-                        .font(.footnote)
+                        .theoFont(.footnote)
                         .foregroundStyle(.orange)
                 }
             } footer: {
@@ -212,7 +212,7 @@ struct SettingsView: View {
                 }
                 if let error = app.sync.lastError {
                     Text(error)
-                        .font(.footnote)
+                        .theoFont(.footnote)
                         .foregroundStyle(.red)
                         .textSelection(.enabled)
                 }
@@ -299,7 +299,7 @@ struct SettingsView: View {
                 #endif
                 if let error = app.backups.lastError {
                     Text(error)
-                        .font(.footnote)
+                        .theoFont(.footnote)
                         .foregroundStyle(.red)
                 }
             } header: {

@@ -114,7 +114,7 @@ struct TutorialStage: View {
     /// Steps about groups need headings on the page; the others read best ranked.
     private static let groupSteps: Set<String> = ["group", "subproject"]
     /// Steps that happen in Plan: their card has a button that opens it.
-    private static let planSteps: Set<String> = ["plan", "plan-actions"]
+    private static let planSteps: Set<String> = ["plan", "plan-actions", "plan-panes"]
 
     var body: some View {
         let snapshot = currentSnapshot
@@ -312,15 +312,15 @@ struct TutorialCoach: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: isMet ? "checkmark.circle.fill" : step.symbol)
-                    .font(.title2)
+                    .theoFont(.title2)
                     .foregroundStyle(isMet ? Color.green : Color.accentColor)
                     .contentTransition(.symbolEffect(.replace))
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(isMet ? "Nice, that's it!" : step.title)
-                        .font(.headline)
+                        .theoFont(.headline)
                     Text("Step \(index + 1) of \(count)")
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
@@ -341,13 +341,13 @@ struct TutorialCoach: View {
             }
             if !isFolded {
                 Text(instructions)
-                    .font(.subheadline)
+                    .theoFont(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
                 if let link {
                     Button(action: link.action) {
                         Label(link.title, systemImage: link.symbol)
-                            .font(.subheadline.weight(.semibold))
+                            .theoFont(.subheadline, weight: .semibold)
                     }
                     .buttonStyle(.borderless)
                     .transition(.opacity)

@@ -50,7 +50,7 @@ struct ImportView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Replace everything")
                             Text("All current tasks and groups go to Recently Deleted first (kept for 30 days).")
-                                .font(.caption)
+                                .theoFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -61,11 +61,11 @@ struct ImportView: View {
                         ForEach(parsed.prefix(60)) { line in
                             if line.isHeading {
                                 Label(line.title, systemImage: line.level > 1 ? "folder.badge.plus" : "folder")
-                                    .font(line.level > 1 ? .subheadline.weight(.semibold) : .headline)
+                                    .theoFont(line.level > 1 ? .subheadline : .headline, weight: .semibold)
                                     .padding(.leading, CGFloat(max(0, line.level - 1)) * 16)
                             } else if line.isNote {
                                 Text(line.title)
-                                    .font(.caption)
+                                    .theoFont(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
                                     .padding(.leading, CGFloat(line.indent) * 20 + 26)

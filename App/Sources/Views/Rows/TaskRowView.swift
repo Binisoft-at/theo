@@ -81,7 +81,7 @@ struct TaskRowView: View {
             if isEditing {
                 Button(action: onInfo) {
                     Image(systemName: "info.circle")
-                        .font(.title3)
+                        .theoFont(.title3)
                         .foregroundStyle(.tint)
                 }
                 .buttonStyle(.borderless)
@@ -422,7 +422,7 @@ struct SubtaskBadge: View {
                     .imageScale(.small)
                     .rotationEffect(.degrees(folded ? 0 : 90))
             }
-            .font(.caption.weight(.semibold))
+            .theoFont(.caption, weight: .semibold)
             .foregroundStyle(done == total ? Color.accentColor : Color.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)

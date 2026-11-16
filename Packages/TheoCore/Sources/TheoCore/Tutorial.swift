@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 9
+    public static let version = 10
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -303,6 +303,13 @@ public enum TutorialCatalog {
             goal: .none
         ),
         TutorialStep(
+            id: "plan-panes", since: 10, symbol: "rectangle.split.2x1",
+            title: "Plan side by side",
+            body: "On a wide iPad, Plan shows what to plan on the left and the day's plan on the right. Drag a task across to plan it, onto a day in the strip for that day, or back to the left to take it off. Every drop has Undo.",
+            macBody: "In a wide window, Plan shows what to plan on the left and the day's plan on the right. Drag a task across to plan it, onto a day in the strip for that day, or back to the left to take it off. Every drop has Undo.",
+            goal: .none
+        ),
+        TutorialStep(
             id: "carry-over", since: 9, symbol: "arrow.uturn.forward",
             title: "Nothing slips overnight",
             body: "If something you planned stays open, Today shows “↪ N unfinished from earlier” at the top: Bring Over puts it back on today. Tasks due by today that aren't planned get an Add. Tap the hint to open Plan; × hides it for the day.",
@@ -388,7 +395,21 @@ public enum TutorialCatalog {
             id: "capture-anywhere", since: 9, symbol: "mic",
             title: "Add from anywhere",
             body: "Say “Add a task to Theo” to Siri, or put Theo's Quick Entry on the Action button (Settings → Action Button → Shortcut → Theo). The Shortcuts app has Add Task, What's Left Today and Quick Entry, and Add Task understands the same shortcuts as the bottom bar. Ask Siri “What's left in Theo” for the rest of your day.",
-            macBody: "Press ⌃⌥⌘N in any app to jump into Theo's bottom bar (change it in Settings → Quick Add). Spotlight adds one without switching: ⌘Space, type “Add Task”, then the task, then Return. ⌘F searches every task from any page.",
+            macBody: "Press ⌃⌥⌘N in any app: a small panel opens right there and Theo stays in the background. Type the task as in the bottom bar (“Report bis Freitag !! #work”); the line underneath shows what Theo understood. Return adds it, ⇧Return adds it and keeps the panel open for the next one, Esc closes it. Paste a list for one task per line. Settings → Quick Add changes the key, or opens Theo's window instead. Spotlight adds one too: ⌘Space, type “Add Task”, then the task, then Return. ⌘F searches every task from any page.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "widgets", since: 10, symbol: "square.grid.2x2",
+            title: "Today at a glance",
+            body: "Put Theo's Today widget on your Home Screen: touch and hold the Home Screen → Edit → Add Widget → Theo. Small shows how many tasks are open and the Power Hours left, medium and large list what's next. Tap a task to open it. It also fits the Lock Screen and the watch face, and Control Center has Add to Theo (Edit → Add a Control → Theo).",
+            macBody: "Put Theo's Today widget on your desktop: right-click the desktop → Edit Widgets → Theo. It shows what's open, the Power Hours left and what's next; click a task to open it in Theo.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "bar-and-mac", since: 10, symbol: "at",
+            title: "New on the Mac and in the bottom bar",
+            body: "Type @ or # in the bottom bar and Theo offers your groups and tags; tap one to put it in. “@Work/Admin” files into a subgroup. On an iPad with the sidebar showing, drag tasks onto it: onto a group or Quick Entry to move them there, onto Today or Plan to plan them for today or tomorrow.",
+            macBody: "Type @ or # in the bottom bar and Theo offers your groups and tags: ↓ ↑ to choose, Tab or Return to take one, Esc to hide them. “@Work/Admin” files into a subgroup. Drag tasks onto the sidebar: onto a group or Quick Entry to move them there, onto Today or Plan to plan them for today or tomorrow. ⌃⌥⌘N opens a small Quick Add panel in any app while Theo stays in the background. ⌘+ and ⌘− change the size of all of Theo's text, the details, sheets and menu bar included.",
             goal: .none
         ),
         TutorialStep(

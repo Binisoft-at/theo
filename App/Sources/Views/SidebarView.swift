@@ -116,7 +116,7 @@ struct SidebarView: View {
                         .overlay(alignment: .trailing) {
                             if !group.isActive {
                                 Image(systemName: "pause.circle")
-                                    .font(.caption)
+                                    .theoFont(.caption)
                                     .foregroundStyle(.secondary)
                                     .padding(.trailing, 28)
                                     .accessibilityLabel("Off")
@@ -226,7 +226,7 @@ struct SidebarView: View {
                     ShortcutLegend()
                 } label: {
                     Text("Keyboard Shortcuts")
-                        .font(.caption.weight(.semibold))
+                        .theoFont(.caption, weight: .semibold)
                         .foregroundStyle(.secondary)
                 }
                 SyncFooter()
@@ -444,7 +444,7 @@ struct ShortcutLegend: View {
                 }
             }
         }
-        .font(.caption2)
+        .theoFont(.caption2)
         .foregroundStyle(.tertiary)
         .padding(.horizontal, 16)
         .accessibilityElement(children: .combine)
@@ -464,7 +464,7 @@ struct SyncFooter: View {
                 .lineLimit(1)
             Spacer()
         }
-        .font(.caption)
+        .theoFont(.caption)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

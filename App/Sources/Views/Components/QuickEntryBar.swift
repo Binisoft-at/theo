@@ -283,7 +283,7 @@ struct QuickEntryBar: View {
                     pickEstimate(index)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
+                        .theoFont(.title2)
                         .foregroundStyle(.tint)
                 }
                 .transition(.scale.combined(with: .opacity))
@@ -478,7 +478,7 @@ struct QuickEntryBar: View {
                 }
                 if text.isEmpty {
                     Text(liveParent == nil ? "Try “tomorrow 9am !! #home”" : "Start with “- ” for a subtask")
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 6)
                 }
@@ -551,7 +551,7 @@ struct QuickEntryBar: View {
     /// starts typing.
     private var insertHandle: some View {
         Image(systemName: subtaskParent != nil ? "arrow.turn.down.right" : "plus.circle.fill")
-            .font(.title2)
+            .theoFont(.title2)
             .foregroundStyle(.tint)
             .contentTransition(.symbolEffect(.replace))
             .symbolEffect(.bounce, value: addedCount)
@@ -769,7 +769,7 @@ struct QuickEntryBar: View {
     /// Drag it onto the full-screen grid; tapping only explains it, so it never gets in the way.
     private var matrixHandle: some View {
         Image(systemName: "square.grid.3x3")
-            .font(.body.weight(.medium))
+            .theoFont(.body, weight: .medium)
             .foregroundStyle(matrixChoice == nil ? Color.secondary.opacity(0.7) : Color.accentColor)
             .frame(width: 30, height: 30)
             .contentShape(Rectangle())
@@ -814,7 +814,7 @@ struct QuickEntryBar: View {
                 .lineLimit(1)
             if removable { Image(systemName: "xmark").imageScale(.small).opacity(0.6) }
         }
-        .font(.caption.weight(.semibold))
+        .theoFont(.caption, weight: .semibold)
         .foregroundStyle(active ? color : Color.secondary)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -826,7 +826,7 @@ struct QuickEntryBar: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.tint)
             Text(confirmation.message)
-                .font(.footnote.weight(.medium))
+                .theoFont(.footnote, weight: .medium)
                 .lineLimit(2)
             Spacer(minLength: 4)
             HStack(spacing: 12) {
@@ -847,7 +847,7 @@ struct QuickEntryBar: View {
                     undo(confirmation)
                 }
             }
-            .font(.footnote.weight(.semibold))
+            .theoFont(.footnote, weight: .semibold)
             .buttonStyle(.borderless)
             .fixedSize()
         }
@@ -1103,7 +1103,7 @@ private struct ComposerSuggestionLabel: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .font(.caption.weight(.semibold))
+        .theoFont(.caption, weight: .semibold)
         .opacity(item.dimmed ? 0.5 : 1)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

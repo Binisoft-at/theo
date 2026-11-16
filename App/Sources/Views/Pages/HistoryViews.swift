@@ -69,11 +69,11 @@ struct HistoryView: View {
                         NavigationLink(value: DayRef(start: day.start)) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(DateText.pageTitle(day.start))
-                                    .font(.headline)
+                                    .theoFont(.headline)
                                 // "3 done · 0,75 PH" in grey, then what got done, lighter.
                                 let line = preview(day)
                                 Text("\(Text(line.summary).foregroundStyle(.secondary))\(Text(line.titles).foregroundStyle(.tertiary))")
-                                    .font(.subheadline)
+                                    .theoFont(.subheadline)
                                     .lineLimit(2)
                             }
                             .padding(.vertical, 2)
@@ -147,14 +147,14 @@ struct StatTile: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
-                .font(.title2)
+                .theoFont(.title2)
                 .foregroundStyle(color)
             VStack(alignment: .leading, spacing: 0) {
                 Text(value)
-                    .font(.title2.weight(.bold))
+                    .theoFont(.title2, weight: .bold)
                     .monospacedDigit()
                 Text(label)
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -232,13 +232,13 @@ struct DayPageView: View {
                         let hours = PageBuilder.estimateTotals(section.tasks).done
                         if hours > 0 {
                             Text("Σ " + PowerHours.format(hours))
-                                .font(.subheadline.weight(.semibold))
+                                .theoFont(.subheadline, weight: .semibold)
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                                 .accessibilityLabel("\(PowerHours.format(hours)) done")
                         }
                     }
-                    .font(.headline)
+                    .theoFont(.headline)
                     .textCase(nil)
                 }
             }
@@ -326,17 +326,18 @@ struct HistoryTaskRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: doneThen ? "checkmark.circle.fill" : "circle")
-                .font(.title3)
+                .theoFont(.title3)
                 .foregroundStyle(doneThen ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.secondary))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(task.trimmedTitle.isEmpty ? "Untitled" : task.trimmedTitle)
+                        .theoBodyFont()
                         .strikethrough(doneThen, color: .secondary)
                         .foregroundStyle(doneThen ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                     if task.loggedFor != nil {
                         // A logged round of an ongoing task.
                         Image(systemName: "infinity")
-                            .font(.caption.weight(.semibold))
+                            .theoFont(.caption, weight: .semibold)
                             .foregroundStyle(.teal)
                             .accessibilityLabel("Ongoing")
                     }
@@ -355,7 +356,7 @@ struct HistoryTaskRow: View {
                                 .foregroundStyle(.red)
                         }
                     }
-                    .font(.caption)
+                    .theoFont(.caption)
                 }
             }
             Spacer(minLength: 0)
@@ -454,7 +455,7 @@ struct TrashView: View {
                                 .foregroundStyle(group.color.color)
                             Spacer()
                             Text(remaining(group.deletedAt))
-                                .font(.caption)
+                                .theoFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .swipeActions(edge: .leading) {
@@ -485,7 +486,7 @@ struct TrashView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if row.depth > 0 {
                             Image(systemName: "arrow.turn.down.right")
-                                .font(.caption)
+                                .theoFont(.caption)
                                 .foregroundStyle(.tertiary)
                         }
                         VStack(alignment: .leading, spacing: 2) {
@@ -493,14 +494,14 @@ struct TrashView: View {
                                 .foregroundStyle(row.depth > 0 ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                             if row.depth == 0, let line = caption(row) {
                                 Text(line)
-                                    .font(.caption)
+                                    .theoFont(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         Spacer()
                         if row.depth == 0 {
                             Text(remaining(task.deletedAt))
-                                .font(.caption)
+                                .theoFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }

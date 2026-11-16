@@ -131,7 +131,7 @@ struct TaskPlanningSections: View {
                 }
             } else {
                 Text("Give the deadline a time to get reminders.")
-                    .font(.footnote)
+                    .theoFont(.footnote)
                     .foregroundStyle(.secondary)
             }
         } header: {

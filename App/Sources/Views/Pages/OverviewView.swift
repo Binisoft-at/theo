@@ -93,11 +93,11 @@ struct OverviewView: View {
                                             .lineLimit(1)
                                         Spacer()
                                         Text("\(block.count) open · \(PowerHours.format(block.hours))")
-                                            .font(.caption.weight(.medium))
+                                            .theoFont(.caption, weight: .medium)
                                             .monospacedDigit()
                                             .foregroundStyle(.secondary)
                                     }
-                                    .font(.subheadline)
+                                    .theoFont(.subheadline)
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
@@ -127,15 +127,15 @@ struct OverviewView: View {
         DrillDown(page) {
             VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.title3)
+                    .theoFont(.title3)
                     .foregroundStyle(color)
                 Text(value)
-                    .font(.title2.weight(.bold))
+                    .theoFont(.title2, weight: .bold)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(label)
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -149,7 +149,7 @@ struct OverviewView: View {
     private func card<Content: View>(_ title: String, symbol: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: symbol)
-                .font(.headline)
+                .theoFont(.headline)
             content()
         }
         .padding(16)
@@ -188,7 +188,7 @@ struct OverviewView: View {
                 }
                 .frame(height: 120)
                 Text("\(days.reduce(0) { $0 + $1.count }) due in the next two weeks · \(PowerHours.format(days.reduce(0) { $0 + $1.hours }))")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
@@ -216,28 +216,28 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Image(systemName: group.symbol)
-                        .font(.title3)
+                        .theoFont(.title3)
                         .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
                         .background(Circle().fill(group.color.color.gradient))
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 4) {
                             Text(group.displayName)
-                                .font(.subheadline.weight(.semibold))
+                                .theoFont(.subheadline, weight: .semibold)
                             if group.isFavorite {
                                 Image(systemName: "star.fill")
-                                    .font(.caption2)
+                                    .theoFont(.caption2)
                                     .foregroundStyle(.yellow)
                             }
                         }
                         Text(Self.groupLine(stats, nextDue: nextDue, today: today))
-                            .font(.caption)
+                            .theoFont(.caption)
                             .foregroundStyle(stats.overdue > 0 ? Color.red : Color.secondary)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
+                        .theoFont(.caption, weight: .semibold)
                         .foregroundStyle(.tertiary)
                 }
                 // Each group's share of all the open Power Hours.
@@ -261,7 +261,7 @@ struct OverviewView: View {
                                 }
                                 Text("\(sub.displayName) \(count)")
                             }
-                            .font(.caption2.weight(.medium))
+                            .theoFont(.caption2, weight: .medium)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(sub.color.color.opacity(sub.isActive ? 0.15 : 0.05)))
@@ -308,10 +308,10 @@ struct OverviewView: View {
                     .lineLimit(1)
                 Spacer()
                 Text(lastDone.map { "last " + DateText.dueInline($0, hasTime: false, today: today) } ?? "not done yet")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(stale ? Color.orange : Color.secondary)
             }
-            .font(.subheadline)
+            .theoFont(.subheadline)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -325,14 +325,14 @@ struct OverviewView: View {
         DrillDown(.quickEntry) {
             HStack {
                 Label("Quick Entry", systemImage: "tray.and.arrow.down.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
                     .foregroundStyle(.teal)
                 Spacer()
                 Text("\(quick.count) to sort in")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
@@ -364,10 +364,10 @@ struct OverviewView: View {
                     ForEach(bands) { band in
                         HStack(spacing: 4) {
                             Text(band.priority == .normal ? "none" : band.priority.marks)
-                                .font(.caption.weight(.heavy))
+                                .theoFont(.caption, weight: .heavy)
                                 .foregroundStyle(band.color)
                             Text("\(band.count)")
-                                .font(.caption.weight(.medium))
+                                .theoFont(.caption, weight: .medium)
                                 .monospacedDigit()
                         }
                     }
@@ -410,7 +410,7 @@ private struct FlowLinks: View {
                 ForEach(views, id: \.uuid) { view in
                     DrillDown(.view(view.uuid)) {
                         Label(view.displayName, systemImage: view.isFavorite ? "star.fill" : view.symbol)
-                            .font(.caption.weight(.semibold))
+                            .theoFont(.caption, weight: .semibold)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(Capsule().fill(view.color.color.opacity(0.14)))

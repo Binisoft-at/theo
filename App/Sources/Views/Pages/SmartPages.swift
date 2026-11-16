@@ -135,14 +135,14 @@ struct GroupPageHeader: View {
                 // The counts live in the stats bar; next to the icon only what it doesn't say.
                 HStack(spacing: 10) {
                     Image(systemName: group.symbol)
-                        .font(.title2)
+                        .theoFont(.title2)
                         .foregroundStyle(group.color.color)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(group.color.color.opacity(0.15)))
                     VStack(alignment: .leading, spacing: 6) {
                         if let due = group.dueDate {
                             Label("Deadline \(DateText.due(due, hasTime: false, today: today))", systemImage: "flag.checkered")
-                                .font(.caption.weight(.semibold))
+                                .theoFont(.caption, weight: .semibold)
                                 .foregroundStyle(DateText.dayDelta(due, today: today) < 0 ? Color.red : Color.orange)
                         }
                         if let stats {
@@ -158,7 +158,7 @@ struct GroupPageHeader: View {
                 }
                 if !group.notes.isEmpty {
                     Text(group.notes)
-                        .font(.callout)
+                        .theoFont(.callout)
                         .foregroundStyle(.secondary)
                 }
                 let traits = app.store.traits(of: group)
@@ -175,7 +175,7 @@ struct GroupPageHeader: View {
                                 .imageScale(.small)
                                 .foregroundStyle(.tertiary)
                         }
-                        .font(.caption.weight(.medium))
+                        .theoFont(.caption, weight: .medium)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -192,7 +192,7 @@ struct GroupPageHeader: View {
                     TaskStatsBar(stats: stats)
                 }
                 Text("Everything you threw in quickly. Drag tasks onto a group, or swipe left → Move.")
-                    .font(.callout)
+                    .theoFont(.callout)
                     .foregroundStyle(.secondary)
             }
         }
@@ -337,12 +337,12 @@ struct OffBanner: View {
         let switchedOff: TaskGroup? = group.isActive ? offAncestor : group
         HStack(spacing: 10) {
             Image(systemName: "pause.circle.fill")
-                .font(.title3)
+                .theoFont(.title3)
                 .foregroundStyle(.secondary)
             Text(switchedOff === group
                  ? "Off: these tasks stay out of Today, Plan and the other lists."
                  : "Off with “\(switchedOff?.displayName ?? "its group")”: these tasks stay out of the other lists.")
-                .font(.footnote)
+                .theoFont(.footnote)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
             if let switchedOff {
@@ -381,7 +381,7 @@ struct SubgroupSwitches: View {
                                 Text(child.displayName)
                                     .lineLimit(1)
                             }
-                            .font(.caption.weight(.semibold))
+                            .theoFont(.caption, weight: .semibold)
                             .foregroundStyle(child.isActive ? child.color.color : Color.secondary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)

@@ -67,7 +67,7 @@ struct MoveSheet: View {
                         Text(title).foregroundStyle(.primary)
                         if !adds.isEmpty && !current {
                             Text("Adds: " + adds.joined(separator: " · "))
-                                .font(.caption)
+                                .theoFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }

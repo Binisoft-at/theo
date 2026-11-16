@@ -51,10 +51,10 @@ struct FocusView: View {
         return VStack(spacing: 22) {
             VStack(spacing: 4) {
                 Text(isRest ? "Break" : (session.isPaused && session.rounds > 0 ? "Ready for the next round" : "Focus"))
-                    .font(.headline)
+                    .theoFont(.headline)
                     .foregroundStyle(isRest ? Color.green : Color.accentColor)
                 Text(session.title)
-                    .font(.title3.weight(.semibold))
+                    .theoFont(.title3, weight: .semibold)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
             }
@@ -69,7 +69,7 @@ struct FocusView: View {
                         .contentTransition(.numericText(countsDown: true))
                     if session.isPaused {
                         Text("Paused")
-                            .font(.subheadline.weight(.medium))
+                            .theoFont(.subheadline, weight: .medium)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -145,9 +145,9 @@ struct FocusView: View {
                 .font(.system(size: 54))
                 .foregroundStyle(.tint)
             Text("Focus for one Power Hour")
-                .font(.title3.weight(.semibold))
+                .theoFont(.title3, weight: .semibold)
             Text("\(Int(app.focusMinutes)) minutes of focus, then a \(Int(app.breakMinutes))-minute break. Start it from a task to book the time on it.")
-                .font(.subheadline)
+                .theoFont(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button {
@@ -168,13 +168,13 @@ struct FocusView: View {
         let today = FocusLog.seconds(on: now) * phPerSecond
         return VStack(spacing: 4) {
             Text("Today: \(PowerHours.format(today)) focused")
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
             if let task {
                 let spent = task.focusSeconds * phPerSecond
                 Text(task.estimate > 0
                      ? "On this task: \(PowerHours.number(spent)) of \(PowerHours.format(task.estimate))"
                      : "On this task: \(PowerHours.format(spent))")
-                    .font(.footnote)
+                    .theoFont(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
@@ -203,7 +203,7 @@ struct FocusPill: View {
                     Text(FocusView.clockText(session.remaining(at: context.date)))
                         .monospacedDigit()
                 }
-                .font(.caption.weight(.semibold))
+                .theoFont(.caption, weight: .semibold)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)

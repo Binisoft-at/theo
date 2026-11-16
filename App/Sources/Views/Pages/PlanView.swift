@@ -172,7 +172,7 @@ struct PlanView: View {
                 Section {
                     if lists.plannedBlocks.isEmpty {
                         Text(Self.emptyHint)
-                            .font(.subheadline)
+                            .theoFont(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     ForEach(lists.plannedBlocks) { block in
@@ -317,12 +317,12 @@ struct PlanView: View {
     private func dropHint(day: Date) -> some View {
         VStack(spacing: 6) {
             Image(systemName: "tray.and.arrow.down")
-                .font(.title2)
+                .theoFont(.title2)
                 .foregroundStyle(Color.indigo)
             Text("Drag tasks here to plan them for \(shortDay(day)).")
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
             Text(Self.dropHintDetail)
-                .font(.caption)
+                .theoFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
@@ -352,7 +352,7 @@ struct PlanView: View {
                         .foregroundStyle(Color.orange)
                 }
             }
-            .font(.caption.weight(.medium))
+            .theoFont(.caption, weight: .medium)
             .foregroundStyle(.secondary)
             ProgressView(value: min(hours, typical), total: typical)
                 .tint(tint)
@@ -371,7 +371,7 @@ struct PlanView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(accent.opacity(0.7), lineWidth: 2)
                 Label(text, systemImage: symbol)
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(.regularMaterial, in: Capsule())
@@ -466,9 +466,9 @@ struct PlanView: View {
         return HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(DateText.pageTitle(day))
-                    .font(.headline)
+                    .theoFont(.headline)
                 Text(planned.isEmpty ? "Nothing planned" : count + (estimate > 0 ? " · " + PowerHours.format(estimate) : ""))
-                    .font(.subheadline)
+                    .theoFont(.subheadline)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -500,7 +500,7 @@ struct PlanView: View {
                 Button("Add All") {
                     withAnimation(.snappy) { app.plan(blocks.map(\.task), for: day) }
                 }
-                .font(.caption.weight(.semibold))
+                .theoFont(.caption, weight: .semibold)
                 .buttonStyle(.borderless)
             }
         }
@@ -633,7 +633,7 @@ struct PlanView: View {
                             .rotationEffect(.degrees(isOpen ? 90 : 0))
                             .foregroundStyle(.tertiary)
                     }
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
                     .textCase(nil)
                     .contentShape(Rectangle())
                 }
@@ -751,6 +751,8 @@ struct DayStrip: View {
     @Environment(AppModel.self) private var app
     @Environment(\.self) private var environment
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+    /// Theo's text size on the Mac (1 elsewhere): the day chips grow with their text.
+    @Environment(\.textScale) private var textScale
     /// The day a task is dragged over.
     @State private var dropDay: Date?
 
@@ -778,23 +780,26 @@ struct DayStrip: View {
         let estimate = PageBuilder.estimateTotals(planned).open
         let dueCount = byDay.due[key] ?? 0
         let isSelected = Calendar.current.isDate(day, inSameDayAs: selected)
+        let grow: CGFloat = max(1, textScale)
+        let chipWidth: CGFloat = 54 * grow
+        let chipHeight: CGFloat = 64 * grow
         return Button {
             withAnimation(.snappy) { onSelect(day) }
         } label: {
             VStack(spacing: 2) {
                 Text(offset == 0 ? "Today" : day.formatted(.dateTime.weekday(.abbreviated)))
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
                 Text(day.formatted(.dateTime.day()))
-                    .font(.title3.weight(.bold))
+                    .theoFont(.title3, weight: .bold)
                     .monospacedDigit()
                 Text(planned.isEmpty ? " " : (estimate > 0 ? PowerHours.format(estimate) : "\(planned.count)"))
-                    .font(.caption2.weight(.medium))
+                    .theoFont(.caption2, weight: .medium)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .foregroundStyle(isSelected ? onFill.opacity(0.9) : Color.secondary)
             }
-            .frame(width: 54, height: 64)
+            .frame(width: chipWidth, height: chipHeight)
             .foregroundStyle(isSelected ? onFill : Color.primary)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -989,7 +994,7 @@ struct PlanRow: View {
 
     private var icon: some View {
         Image(systemName: symbol)
-            .font(.title3)
+            .theoFont(.title3)
             .foregroundStyle(isPlanned && !hovering ? Color.indigo : Color.secondary)
             .frame(width: 26)
             .contentTransition(.symbolEffect(.replace))
@@ -1001,24 +1006,25 @@ struct PlanRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     if task.priority != .normal {
                         Text(task.priority.marks)
-                            .font(.body.weight(.heavy))
+                            .theoFont(.body, weight: .heavy)
                             .foregroundStyle(task.priority.color)
                             .accessibilityLabel("\(task.priority.title) priority")
                     }
                     Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
+                        .theoBodyFont()
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
                 }
                 if let parentTitle {
                     Text("in: " + parentTitle)
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 TaskMetaLine(task: task, style: rowStyle, today: app.dayStart, showAge: false)
                 if let style, style.subtaskCount > 0 {
                     Text("\(style.subtaskCount - style.subtasksDone) of \(style.subtaskCount) subtasks open")
-                        .font(.caption2)
+                        .theoFont(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -1026,7 +1032,7 @@ struct PlanRow: View {
             if let plannedDay = task.plannedDay, !isPlanned {
                 // The day it's planned for now: indigo while that's still ahead.
                 Text(DateText.due(plannedDay, hasTime: false, today: app.dayStart))
-                    .font(.caption2.weight(.semibold))
+                    .theoFont(.caption2, weight: .semibold)
                     .foregroundStyle(plannedDay >= app.todayKey ? Color.indigo : Color.secondary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)

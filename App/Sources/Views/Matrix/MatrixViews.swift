@@ -66,7 +66,7 @@ struct MatrixBoard<Content: View>: View {
                         Spacer()
                         Text("1")
                     }
-                    .font(.caption2.weight(.medium))
+                    .theoFont(.caption2, weight: .medium)
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
                 }
@@ -107,7 +107,7 @@ struct MatrixBoard<Content: View>: View {
                     Spacer()
                     Text("No date")
                 }
-                .font(.caption2.weight(.medium))
+                .theoFont(.caption2, weight: .medium)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 20)
             }
@@ -144,7 +144,7 @@ struct MatrixLabel: View {
     var body: some View {
         let gap = (isSelected ? dotSize + 8 : dotSize) / 2 + 4
         Text(title)
-            .font(.caption2.weight(isSelected ? .bold : .medium))
+            .theoFont(.caption2, weight: isSelected ? .bold : .medium)
             .lineLimit(1)
             .frame(maxWidth: 130)
             .padding(.horizontal, 6)
@@ -169,7 +169,7 @@ struct MatrixDropOverlay: View {
                 .ignoresSafeArea()
             VStack(spacing: 12) {
                 Text(drag.title.isEmpty ? "Drop to set when it's due and how important it is" : drag.title)
-                    .font(.headline)
+                    .theoFont(.headline)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                 MatrixBoard { size in
@@ -183,7 +183,7 @@ struct MatrixDropOverlay: View {
                                 MatrixDot(point: center, color: Color.accentColor, isSelected: true, size: 18)
                                     .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
                                 Text(MatrixGeometry.describe(cell))
-                                    .font(.caption.weight(.semibold))
+                                    .theoFont(.caption, weight: .semibold)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(.regularMaterial, in: Capsule())
@@ -199,7 +199,7 @@ struct MatrixDropOverlay: View {
                 .aspectRatio(1.1, contentMode: .fit)
                 .frame(maxWidth: 620)
                 Text("Let go outside to cancel")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding(20)
@@ -224,10 +224,10 @@ struct MatrixPlacementOverlay: View {
             VStack(spacing: 12) {
                 VStack(spacing: 2) {
                     Text(task.trimmedTitle.isEmpty ? "Task" : task.trimmedTitle)
-                        .font(.headline)
+                        .theoFont(.headline)
                         .lineLimit(2)
                     Text(MatrixGeometry.describe(cell ?? MatrixGeometry.cell(of: task, today: app.dayStart)))
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())
                 }
@@ -567,7 +567,7 @@ struct MatrixPageView: View {
                                 .lineLimit(1)
                                 .frame(maxWidth: 160)
                         }
-                        .font(.caption.weight(.medium))
+                        .theoFont(.caption, weight: .medium)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(Capsule().fill(selectedID == task.uuid ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12)))
@@ -596,7 +596,7 @@ struct MatrixClusterBubble: View {
 
     var body: some View {
         Text("\(count)")
-            .font(.caption.weight(.bold))
+            .theoFont(.caption, weight: .bold)
             .monospacedDigit()
             .foregroundStyle(.white)
             .frame(width: 26, height: 26)

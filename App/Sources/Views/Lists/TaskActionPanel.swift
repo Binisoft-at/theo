@@ -43,7 +43,7 @@ struct TaskActionPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(single.map { $0.trimmedTitle.isEmpty ? "New Task" : $0.trimmedTitle } ?? "\(tasks.count) tasks")
-                .font(.headline)
+                .theoFont(.headline)
                 .lineLimit(2)
 
             TaskQuickActions(tasks: tasks, showsDetails: true, onClose: onClose)
@@ -105,7 +105,7 @@ struct TaskActionPanel: View {
     private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .theoFont(.caption, weight: .semibold)
                 .foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -123,7 +123,7 @@ struct TaskActionPanel: View {
             feedbackTick += 1
         } label: {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .theoFont(.caption, weight: .semibold)
                 .lineLimit(1)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -243,7 +243,7 @@ struct TaskQuickActions: View {
     @ViewBuilder
     private func caption(_ title: String, compact: Bool) -> some View {
         let text = Text(title)
-            .font(.caption2.weight(.medium))
+            .theoFont(.caption2, weight: .medium)
             .foregroundStyle(.primary)
             .lineLimit(1)
         if compact {

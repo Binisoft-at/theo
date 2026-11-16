@@ -55,12 +55,16 @@ struct TheoApp: App {
                 .environment(app)
                 .modelContainer(app.container)
                 .tint((AccentChoice(rawValue: UserDefaults.standard.string(forKey: Prefs.accent) ?? "") ?? .notes).color)
+                // The rows at Theo's text size too (inside the size, which they read).
+                .theoBodyFont()
+                .theoStoredTextSize()
         }
 
         MenuBarExtra {
             MenuBarView()
                 .environment(app)
                 .modelContainer(app.container)
+                .theoStoredTextSize()
         } label: {
             MenuBarLabel()
         }

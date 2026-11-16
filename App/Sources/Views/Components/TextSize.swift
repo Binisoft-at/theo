@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Theo's own text size (Settings → Appearance, or ⌘+ / ⌘− / ⌘0 on the Mac). On iPhone and iPad
 /// it overrides Dynamic Type unless left on "System"; on the Mac, where SwiftUI's text styles
-/// don't grow with Dynamic Type, the lists, rows, headers, sidebar and entry bar scale with it.
+/// don't grow with Dynamic Type, every text set with `theoFont` scales with it: the pages, rows,
+/// sidebar, entry bar, details, sheets, toasts, Settings, the menu bar panel and Quick Add.
 enum TextSizeChoice: String, CaseIterable, Identifiable {
     case system, small, standard, large, xLarge, huge
 
@@ -135,5 +136,31 @@ extension View {
             }
         }
         #endif
+    }
+
+    /// The text size setting as it's stored, following changes: for what isn't inside the main
+    /// window's view (Settings, the menu bar panel, sheets).
+    func theoStoredTextSize() -> some View {
+        modifier(StoredTextSize())
+    }
+
+    /// The Mac's body text at Theo's size for everything below that doesn't pick a font of its
+    /// own (the rows of a form). iPhone and iPad keep the system's, which Dynamic Type sizes.
+    func theoBodyFont() -> some View {
+        #if os(macOS)
+        theoFont(.body)
+        #else
+        self
+        #endif
+    }
+}
+
+/// Reads the setting from the app's own defaults, also inside the tour, whose practice page has
+/// a defaults store of its own.
+private struct StoredTextSize: ViewModifier {
+    @AppStorage(Prefs.textSize, store: UserDefaults.standard) private var raw = TextSizeChoice.platformDefault.rawValue
+
+    func body(content: Content) -> some View {
+        content.theoTextSize(TextSizeChoice(rawValue: raw) ?? .platformDefault)
     }
 }

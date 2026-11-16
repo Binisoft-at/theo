@@ -52,7 +52,7 @@ struct SectionHeaderRow: View {
                     .lineLimit(1)
                 if let project, let due = project.dueDate {
                     Text(DateText.due(due, hasTime: false, today: today))
-                        .font(.caption.weight(.semibold))
+                        .theoFont(.caption, weight: .semibold)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(color.opacity(0.15)))
@@ -80,7 +80,7 @@ struct SectionHeaderRow: View {
                 if let onAdd {
                     Button(action: onAdd) {
                         Image(systemName: "plus")
-                            .font(.subheadline.weight(.semibold))
+                            .theoFont(.subheadline, weight: .semibold)
                             .foregroundStyle(.tint)
                             .frame(width: 28, height: 28)
                             .contentShape(Rectangle())
@@ -90,7 +90,7 @@ struct SectionHeaderRow: View {
                 }
                 if info.collapsible {
                     Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
+                        .theoFont(.caption, weight: .bold)
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(info.isCollapsed ? 0 : 90))
                         .animation(.snappy, value: info.isCollapsed)

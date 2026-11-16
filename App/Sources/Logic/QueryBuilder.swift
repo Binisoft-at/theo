@@ -216,13 +216,13 @@ struct TaskStatsBar: View {
     private func figure(_ value: String, _ label: String, symbol: String, color: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: symbol)
-                .font(.caption.weight(.semibold))
+                .theoFont(.caption, weight: .semibold)
                 .foregroundStyle(color)
             Text(value)
-                .font(.subheadline.weight(.bold))
+                .theoFont(.subheadline, weight: .bold)
                 .monospacedDigit()
             Text(label)
-                .font(.caption)
+                .theoFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 10)

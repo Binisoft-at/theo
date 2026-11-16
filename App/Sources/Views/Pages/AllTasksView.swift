@@ -54,7 +54,7 @@ struct AllTasksView: View {
                 }
                 if result.rows.isEmpty {
                     Text(query.filterCount > 0 ? "Nothing matches these filters." : "No tasks yet.")
-                        .font(.subheadline)
+                        .theoFont(.subheadline)
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 20)
                         .frame(maxWidth: .infinity)
@@ -128,7 +128,7 @@ struct AllTasksView: View {
                 showFilters = true
             } label: {
                 Label(query.filterCount > 0 ? "Filters · \(query.filterCount)" : "Filters", systemImage: "line.3.horizontal.decrease")
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
             }
             .buttonStyle(.glass)
             Menu {
@@ -141,7 +141,7 @@ struct AllTasksView: View {
                 }
             } label: {
                 Label(query.grouping.shortTitle, systemImage: "rectangle.3.group")
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
                     .lineLimit(1)
             }
             .menuStyle(.button)
@@ -156,7 +156,7 @@ struct AllTasksView: View {
                 }
             } label: {
                 Label(query.sort.shortTitle, systemImage: "arrow.up.arrow.down")
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
                     .lineLimit(1)
             }
             .menuStyle(.button)
@@ -171,7 +171,7 @@ struct AllTasksView: View {
             Image(systemName: "pencil.circle.fill")
                 .foregroundStyle(.tint)
             Text("Changed")
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
             Spacer()
             Button("Revert") { withAnimation(.snappy) { draft = nil } }
                 .buttonStyle(.glass)
@@ -363,6 +363,7 @@ struct QueryEditor: View {
             }
         }
         .formStyle(.grouped)
+        .theoBodyFont()
         .navigationTitle("Filters")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

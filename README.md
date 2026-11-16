@@ -15,6 +15,26 @@
 | Checked items move down | Checked tasks sink to the bottom after a short beat, like Notes |
 | Duplicate the note, delete what's done | **One tap.** At the start of a new day (4:00 by default) finished tasks move to **History**, and whatever is still open waits at the top of Today with **Bring Over** |
 
+## New in v8
+
+### Today at a glance
+
+- **Widgets**: Today on the Home Screen. Small shows the open count in a ring that fills as the day gets done, the Power Hours left and the next task; medium the next 4 tasks; large the next 8 with the day's numbers. On the Lock Screen there's a ring, the next task, and a line above the clock ("3 open · 2,5 PH left"). Also on the Mac desktop and as Apple Watch complications, corners included. Tasks are ranked like Today, with priority marks, the group's colour and the deadline (red overdue, orange today). What earlier days left open or is due without a plan follows under "Not on today's plan". Tap a task to open it, anywhere else for Today. At your day start they switch to the new day by themselves. Checking tasks off from a widget isn't possible yet: widgets only see a summary Theo writes, not the tasks themselves. Open Theo once after updating so the widgets have something to show.
+  - To add one on iPhone or iPad: touch and hold the Home Screen → Edit → Add Widget → Theo. On the Mac: right-click the desktop → Edit Widgets → Theo.
+- **Control Center → Add to Theo** (iPhone and iPad; also on the Lock Screen and the Action button): opens Theo with the cursor in the bottom bar. Control Center → Edit → Add a Control → Theo.
+- **Links**: `theo://today`, `theo://task/<id>` and `theo://quick-entry` open Theo, e.g. from a Shortcuts "Open URL" action.
+
+### Typing and planning
+
+- **@ and # suggestions**: typing `@` or `#` in the bottom bar offers matching groups (with their path, switched-off ones dimmed) or tags (with how many open tasks use them); tap one to put it in. `@Work/Admin` files into the subgroup Admin inside Work, a unique name alone (`@Admin`) still works, and case and accents don't matter (`@buro` finds Büro). On the Mac, ↓ ↑ choose, Tab or Return take one, Esc hides them.
+- **Plan side by side** (Mac, and a wide iPad): when the window is wide enough, Plan shows two panes. Suggestions and Browse All Tasks stay on the left; the right has the day strip and "Planned for <day>", with a bar comparing the day's Power Hours with a usual day (orange when it's clearly more). Drag a task from the left onto the plan to put it on that day, or onto a day in the strip to plan it for that day. Drag a planned task back to the left to take it off. Every drop has Undo. The circle, double-click, right-click menu and Quick Edit work as before, and a narrow window shows the one list as before.
+- **Drag to the sidebar** (Mac and iPad): drag a task, or several selected ones, onto a group or subgroup in the sidebar to move it there (with its subtasks, taking on the group's traits), onto Quick Entry to file it there, onto Today to plan it for today, or onto Plan for tomorrow. The row lights up while you hover, and the toast offers Undo. Dragging within the list still reorders.
+
+### On the Mac
+
+- **Quick Add from any app**: ⌃⌥⌘N opens a small floating panel in front of whatever you're working in; Theo stays in the background (it works with Theo's window closed too). Type the task as in the bottom bar (“Report bis Freitag !! #work”); the line underneath shows what Theo understood. Return adds it and closes the panel, ⇧Return adds it and keeps the panel open for the next one, Esc closes it, and a click elsewhere puts it away with your text kept. Paste several lines for one task per line. Settings → Quick Add changes the key (⌃⌥⌘T or ⌥⇧Space), turns it off, or makes it open Theo's window with the cursor in the bottom bar instead. No extra permission needed. Right-click Theo's Dock icon for New Task (in Theo's window) and Today.
+- **Text size everywhere**: Settings → Appearance → Text Size and ⌘+ / ⌘− / ⌘0 now size all of Theo's text, not just the lists: page headers, Plan and its day strip, Overview, Day Review, History, All Tasks and its filters, the details column and sheets, the group editor, the quick actions, toasts, the Matrix, the focus timer, Settings, the menu bar panel and the Quick Add panel. On iPhone and iPad, sheets and toasts now follow Settings → Text Size too (System keeps following Dynamic Type).
+
 ## New in v7
 
 ### Every morning
@@ -39,7 +59,7 @@
   - Action button: Settings → Action Button → Shortcut → Theo → Quick Entry (or Add Task).
   - Mac Spotlight: ⌘Space, type "Add Task", type the task, Return. Theo doesn't need to be in front.
   - Share sheet: make a one-step shortcut with Theo's Add Task and switch on "Show in Share Sheet". With several lines of text, the first becomes the task and the rest its description.
-- **Quick Add from any app (Mac)**: ⌃⌥⌘N brings Theo to the front with the cursor in the bottom bar (and opens a window if none is open). Change it or turn it off in Settings → Quick Add (⌃⌥⌘T or ⌥⇧Space instead); no extra permission needed. Right-click Theo's Dock icon for New Task and Today.
+- **Quick Add from any app (Mac)**: ⌃⌥⌘N from any app; since v8 it opens a small floating panel and Theo stays in the background (see New in v8). Settings → Quick Add changes the key (⌃⌥⌘T or ⌥⇧Space), turns it off, or makes it bring Theo's window forward with the cursor in the bottom bar instead; no extra permission needed. Right-click Theo's Dock icon for New Task (in Theo's window) and Today.
 - **The add confirmation tells you what Theo understood**: "Added to Work · due Friday · !! · 0,5 PH · ↻ Every Week", with **Show** to jump to the task. On Today, a task due on a later day adds "· on today" and offers **Off Plan**.
 
 ### Finding and changing
@@ -79,7 +99,7 @@
 
 ## What's extra
 
-- **Natural-language entry**: `Call mom tomorrow 5pm !! #family @home` sets a deadline, priority, tag and group, in English or German (`Mama anrufen morgen 17 Uhr`). Live chips show what Theo understood; tap a chip to undo that part.
+- **Natural-language entry**: `Call mom tomorrow 5pm !! #family @home` sets a deadline, priority, tag and group, in English or German (`Mama anrufen morgen 17 Uhr`). Live chips show what Theo understood; tap a chip to undo that part. Typing `@` or `#` offers your groups and tags; `@Work/Admin` files into a subgroup.
 - **One-tap composer**: buttons above the entry bar set priority (tap to raise, hold to pick), deadline and group. Start a line with `- ` to add it as a subtask of the task you just added. Pasting an indented list keeps the nesting (ticked lines like `- [x]` are skipped, and the chips show only what applies to every line). Every add can be undone from the confirmation line.
 - **Subtasks**: Add Subtask from the menu, the keyboard bar or the details sheet. Return creates the next line, and Return on an empty subtask steps back out (like Notes). Tab / Shift-Tab indent and outdent. Parents show a `2/5` badge that folds their subtasks away.
 - **Priority in one tap**: a `! !! !!!` row in the context menu and the Quick Edit panel, the keyboard-bar button, `!!` typed at the end of a line, or ⌥⌘1–3 / ⌥⌘P on the Mac.
@@ -103,7 +123,7 @@
 - **Stats on every list**: groups and All Tasks show what's open, the Power Hours left, overdue, due within a week and done today. Headings of computed lists (Upcoming, Priority, tags, search) show their Σ PH too.
 - **Backups**: besides iCloud, a full JSON copy every day (the last 30 kept), Back Up Now, export, and restore (Settings → Backups; on iPhone also in Files → On My iPhone → Theo).
 - **Descriptions in passing**: `Call bank // ask about the fee` puts everything after ` // ` into the description (the Description chip adds the separator); while editing a line its description field sits right under the title (⇧Return or the ≡ keyboard button jumps there). Settings → Show description under the title.
-- **Text size**: Settings → Appearance → Text Size (Small to Huge; System follows Dynamic Type on iPhone). On the Mac, where text styles don't follow Dynamic Type, lists, rows, headers, the sidebar and the entry bar scale with it; ⌘+ / ⌘− / ⌘0. The Mac starts at Large.
+- **Text size**: Settings → Appearance → Text Size (Small to Huge; System follows Dynamic Type on iPhone). On the Mac, where text styles don't follow Dynamic Type, all of Theo's text scales with it (pages, details, sheets, toasts, Settings, the menu bar panel and Quick Add); ⌘+ / ⌘− / ⌘0. The Mac starts at Large.
 - **Precise insert line**: rows sit flush, so the divider is the row edge; the insert line (drag on iPhone, hover on the Mac) lights up exactly that divider, from where the text starts, with a small + tab.
 - **Quick actions in colour**: right-click a task on the Mac (Quick Edit from the long-press menu on iPhone) and a panel opens right above it: done, Today (Off Plan when it's already on today) and Tomorrow, subtask, ongoing, focus, details, delete, plus one-tap priority, deadline, Power Hours and group. With several selected it acts on all of them.
 - **Mac layout**: lists and the entry bar keep a readable width; the space to the right holds an inspector with the selected task's quick actions and full details, editable in place (⌥⌘I), or the day at a glance when nothing is selected.
@@ -118,12 +138,12 @@
   - swipe left → Delete, Today or Tomorrow, +1 Day (overdue) or Deadline; a full swipe deletes on iPhone, never on the Mac
   - tap the circle → done (with Undo when it does more than tick the line)
   - long-press → full menu (Quick Edit, priority, deadline, move, tags, arrange, duplicate, details)
-  - drag → re-rank (on Today's Ranked layout) or move across groups (on group headings)
+  - drag → re-rank (on Today's Ranked layout), move across groups (on group headings), or onto the sidebar to move or plan it (Mac and iPad)
   - Select (iPhone) or ⌘-click (Mac) → bulk actions
 - **Views**: Today (ranked or grouped, filter chips), Upcoming (day by day), Priority, Quick Entry, every group as its own page, Tags, History (per-day pages with a streak), Recently Deleted (30 days), and full-text search across everything.
 - **Tomorrow** moves a task onto tomorrow's plan. A small badge shows for how many days a task has been on the plan without getting done.
 - **Import from Notes**: paste a daily note and Theo turns its checklists into tasks and its headings into groups.
-- **Mac**: keyboard-first (⌘N, ⌘1–9, ⇧⌘O Overview, ⇧⌘A All Tasks, ⌘F, Space to complete, Return to edit, Esc to finish, ← / → to fold, ⌘[ / ⌘], ⌥⌘1–3 priority, ⌥⌘D Today, ⌥⌘L Tomorrow), ⌃⌥⌘N from any app, a menu-bar list in Today's order with quick entry, a Dock menu and a Settings window.
+- **Mac**: keyboard-first (⌘N, ⌘1–9, ⇧⌘O Overview, ⇧⌘A All Tasks, ⌘F, Space to complete, Return to edit, Esc to finish, ← / → to fold, ⌘[ / ⌘], ⌥⌘1–3 priority, ⌥⌘D Today, ⌥⌘L Tomorrow), ⌃⌥⌘N Quick Add panel from any app, a menu-bar list in Today's order with quick entry, a Dock menu and a Settings window.
 - **Apple Watch**: Today on your wrist. Tap a task to check it off, swipe for Tomorrow (Today on tasks that aren't on today) / details / delete, add tasks by voice (understands the same `morgen 17 Uhr !! @group` shortcuts, counted from Theo's day), plus Upcoming, Priority and every group. Ongoing tasks show "✓ logged today". Change priority, deadline, group or position from the task's details. It syncs straight through iCloud, so it works without the phone nearby.
 - Light / Dark / System appearance, accent colors (Notes Yellow by default), Liquid Glass on iOS 26 and macOS 26.
 
@@ -132,6 +152,7 @@
 - SwiftUI + SwiftData, iOS 26 / macOS 26 / watchOS 26, Swift 5 language mode. `Theo` (iPhone/iPad) and `TheoMac` build one source tree; `TheoWatch` is embedded in the iOS app and shares the model and store code in `Shared/`.
 - Sync: SwiftData's CloudKit mirroring into the user's private database (`.private("iCloud.at.binisoft.theo")`). It's free and needs no server. The schema is in `cloudkit/schema.ckdb`.
 - Siri, Shortcuts and Spotlight use App Intents in the app itself (`App/Sources/Application/TheoIntents.swift`), on the same store as the app: no extension, entitlement or schema change.
+- Widgets: the `TheoWidgets` (iOS, with the Control Center button), `TheoMacWidgets` and `TheoWatchWidgets` extensions read `Theo/widget-snapshot.json` in the shared App Group. The app and the watch write it after every save, sync and at the day start. The task store stays in Theo's own container. `-TheoWidgetGallery` draws every widget size inside the app for screenshots.
 - Binisoft conventions: every identifier lives in [`Config/Base.xcconfig`](Config/Base.xcconfig). Setup steps for the portal, App Store Connect and GitHub are in [`docs/setup.md`](docs/setup.md).
 
 ### Repo layout
@@ -143,6 +164,8 @@
 | `Packages/TheoCore` | Platform-independent logic (quick-entry parser, day boundaries, checklist ordering, Notes import) with unit tests |
 | `App/Sources`, `App/Resources` | The app (iOS + macOS) |
 | `Watch/Sources`, `Watch/Resources` | The Apple Watch app |
+| `Widgets/` | Home Screen, Lock Screen, Mac desktop widgets and the Control Center button (`Sources/Views` is shared with the app and the watch complications) |
+| `WatchWidgets/` | The Apple Watch complications |
 | `Shared/` | Models, store, sync setup and section logic shared by every target |
 | `docs/` | Setup guide, app icon sources |
 | `scripts/ci/` | CI helpers |

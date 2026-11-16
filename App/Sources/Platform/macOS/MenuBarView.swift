@@ -51,9 +51,9 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(DateText.pageTitle(app.dayStart))
-                    .font(.headline)
+                    .theoFont(.headline)
                 summary(today)
-                    .font(.subheadline)
+                    .theoFont(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
@@ -77,8 +77,10 @@ struct MenuBarView: View {
                 Button("Quit") { NSApplication.shared.terminate(nil) }
             }
             .buttonStyle(.borderless)
-            .font(.subheadline)
+            .theoFont(.subheadline)
         }
+        // The field and the lines without a font of their own follow Theo's text size too.
+        .theoFont(.body)
         .padding(14)
         .frame(width: 340)
         .onAppear {
@@ -112,7 +114,7 @@ struct MenuBarView: View {
             .glassEffect(.regular, in: .capsule)
             if let confirmation {
                 Label(confirmation, systemImage: "checkmark.circle.fill")
-                    .font(.caption)
+                    .theoFont(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .padding(.horizontal, 10)
@@ -134,7 +136,7 @@ struct MenuBarView: View {
                         app.go(.today)
                     } label: {
                         Text("+\(open.count - Self.shownBlocks) more · Open Theo")
-                            .font(.caption)
+                            .theoFont(.caption)
                             .foregroundStyle(.tint)
                             .padding(.leading, 28)
                     }
@@ -199,7 +201,7 @@ struct MenuBarView: View {
                                 .foregroundStyle(task.isDone ? Color.secondary : task.priority.color)
                         }
                         Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
-                            .font(line.depth > 0 ? .callout : .body)
+                            .theoFont(line.depth > 0 ? .callout : .body)
                             .strikethrough(task.isDone, color: .secondary)
                             .foregroundStyle(task.isDone ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                             .lineLimit(2)
@@ -211,7 +213,7 @@ struct MenuBarView: View {
                 .help("Show in Theo")
                 if let metaLine = meta(line) {
                     metaLine
-                        .font(.caption)
+                        .theoFont(.caption)
                         .lineLimit(1)
                 }
             }

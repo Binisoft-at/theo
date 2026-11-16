@@ -144,10 +144,11 @@ struct RootView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             StorageWarningBanner()
         }
-        .theoTextSize(TextSizeChoice(rawValue: textSizeRaw) ?? .platformDefault)
         .tint(accent.color)
         .preferredColorScheme(appearance.colorScheme)
         .modifier(AppChrome(app: app, accent: accent.color))
+        // Outside the toasts and sheets, so they follow the text size too.
+        .theoTextSize(TextSizeChoice(rawValue: textSizeRaw) ?? .platformDefault)
         #if os(iOS)
         .sheet(isPresented: $app.showSettings) {
             NavigationStack {
@@ -163,6 +164,7 @@ struct RootView: View {
         .sheet(item: $app.tour) { request in
             TutorialView(steps: request.steps) { app.finishTour() }
                 .frame(minWidth: 760, idealWidth: 900, minHeight: 600, idealHeight: 780)
+                .theoStoredTextSize()
         }
         #endif
         .onAppear {
@@ -255,36 +257,44 @@ struct AppChrome: ViewModifier {
             .sheet(item: $app.detailTask) { task in
                 TaskDetailView(task: task)
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(item: $app.moveBatch) { batch in
                 MoveSheet(batch: batch)
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(item: $app.dateBatch) { batch in
                 DateSheet(batch: batch)
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(item: $app.tagBatch) { batch in
                 TagSheet(batch: batch)
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(item: $app.groupEditor) { target in
                 GroupEditorView(target: target)
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(isPresented: $app.showImport) {
                 ImportView()
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(isPresented: $app.showFocus) {
                 FocusView()
                     .tint(accent)
+                    .theoStoredTextSize()
             }
             .sheet(item: $app.reviewDay) { day in
                 NavigationStack {
                     DayReviewView(day: day.start)
                 }
                 .tint(accent)
+                .theoStoredTextSize()
                 #if os(macOS)
                 .frame(minWidth: 520, minHeight: 620)
                 #endif
@@ -333,7 +343,7 @@ struct InsertGhost: View {
         GeometryReader { geo in
             let origin = geo.frame(in: .global).origin
             Label(title.isEmpty ? "New Task" : title, systemImage: "plus.circle.fill")
-                .font(.subheadline.weight(.semibold))
+                .theoFont(.subheadline, weight: .semibold)
                 .lineLimit(1)
                 .frame(maxWidth: 240)
                 .padding(.horizontal, 12)

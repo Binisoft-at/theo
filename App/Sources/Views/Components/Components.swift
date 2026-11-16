@@ -93,7 +93,7 @@ struct TagChip: View {
 
     var body: some View {
         Text("#" + tag)
-            .font(compact ? .caption.weight(.medium) : .subheadline.weight(.medium))
+            .theoFont(compact ? .caption : .subheadline, weight: .medium)
             .foregroundStyle(TheoColor.forTag(tag).color)
     }
 }
@@ -129,7 +129,7 @@ struct ChipButton: View {
                 if let symbol { Image(systemName: symbol).imageScale(.small) }
                 Text(title)
             }
-            .font(.subheadline.weight(.medium))
+            .theoFont(.subheadline, weight: .medium)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .foregroundStyle(isOn ? fill.onFillForeground(in: environment) : Color.primary)
@@ -172,14 +172,14 @@ struct ToastView: View {
             Image(systemName: toast.symbol)
                 .foregroundStyle(.tint)
             Text(toast.message)
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
                 .lineLimit(1)
             if let undo = toast.undo {
                 Button("Undo") {
                     undo()
                     dismiss()
                 }
-                .font(.subheadline.weight(.semibold))
+                .theoFont(.subheadline, weight: .semibold)
                 .buttonStyle(.borderless)
             }
         }
@@ -201,9 +201,9 @@ struct EmptyHint: View {
             Image(systemName: symbol)
                 .font(.system(size: 38, weight: .regular))
                 .foregroundStyle(.tint)
-            Text(title).font(.headline)
+            Text(title).theoFont(.headline)
             Text(message)
-                .font(.subheadline)
+                .theoFont(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }

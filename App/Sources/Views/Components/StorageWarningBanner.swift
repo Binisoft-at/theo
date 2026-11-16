@@ -51,16 +51,16 @@ struct StorageWarningBanner: View {
     private func banner(symbol: String, title: String, message: String, detail: String?, color: Color, canHide: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
-                .font(.title3)
+                .theoFont(.title3)
                 .foregroundStyle(canHide ? color : Color.white)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
                 Text(message)
-                    .font(.footnote)
+                    .theoFont(.footnote)
                 if let detail, !detail.isEmpty {
                     Text(detail)
-                        .font(.caption)
+                        .theoFont(.caption)
                         .opacity(0.8)
                         .lineLimit(3)
                         .textSelection(.enabled)
@@ -73,7 +73,7 @@ struct StorageWarningBanner: View {
                     withAnimation(.snappy) { hidden = true }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.caption.weight(.bold))
+                        .theoFont(.caption, weight: .bold)
                         .foregroundStyle(.secondary)
                         .padding(4)
                         .contentShape(Rectangle())

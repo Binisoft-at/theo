@@ -90,7 +90,7 @@ struct TaskDetailView: View {
                         withAnimation(.snappy) { app.check(task) }
                     }
                     TextField("Title", text: $task.title, axis: .vertical)
-                        .font(.title3.weight(.semibold))
+                        .theoFont(.title3, weight: .semibold)
                         .textFieldStyle(.plain)
                 }
                 TextField("Description", text: $task.notes, axis: .vertical)
@@ -102,7 +102,7 @@ struct TaskDetailView: View {
             if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
                 Section {
                     Text(proposal.traits.summary.joined(separator: " · "))
-                        .font(.subheadline)
+                        .theoFont(.subheadline)
                     HStack {
                         Button("Apply") {
                             withAnimation(.snappy) { app.store.acceptProposal(task, proposal.traits) }
@@ -207,6 +207,8 @@ struct TaskDetailView: View {
             recordSections
         }
         .formStyle(.grouped)
+        // The Mac's rows follow Theo's text size (the inspector and the sheet).
+        .theoBodyFont()
     }
 
     /// When it was created, finished or first planned, and Delete.
@@ -473,7 +475,7 @@ struct FlowTags: View {
                                 .imageScale(.small)
                                 .opacity(0.6)
                         }
-                        .font(.subheadline.weight(.medium))
+                        .theoFont(.subheadline, weight: .medium)
                         .foregroundStyle(TheoColor.forTag(tag).color)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)

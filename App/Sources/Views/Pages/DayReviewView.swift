@@ -128,20 +128,20 @@ struct DayReviewView: View {
                 if showPowerHours {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(PowerHours.format(powerHours))
-                            .font(.largeTitle.weight(.bold))
+                            .theoFont(.largeTitle, weight: .bold)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                         Text(isToday ? "worked so far" : "worked")
-                            .font(.caption)
+                            .theoFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     Text("\(done)")
-                        .font(showPowerHours ? .title2.weight(.semibold) : .largeTitle.weight(.bold))
+                        .theoFont(showPowerHours ? .title2 : .largeTitle, weight: showPowerHours ? .semibold : .bold)
                         .monospacedDigit()
                     Text(done == 1 ? "task done" : "tasks done")
-                        .font(.caption)
+                        .theoFont(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -152,13 +152,13 @@ struct DayReviewView: View {
                         ZStack {
                             ProgressRing(progress: share)
                             Text(share.formatted(.percent.precision(.fractionLength(0))))
-                                .font(.caption2.weight(.semibold))
+                                .theoFont(.caption2, weight: .semibold)
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                         .frame(width: 40, height: 40)
                         Text("of the page")
-                            .font(.caption2)
+                            .theoFont(.caption2)
                             .foregroundStyle(.tertiary)
                     }
                     .accessibilityElement(children: .combine)
@@ -172,11 +172,11 @@ struct DayReviewView: View {
                 } icon: {
                     Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
                 }
-                .font(.subheadline.weight(.medium))
+                .theoFont(.subheadline, weight: .medium)
                 .foregroundStyle(delta >= 0 ? Color.green : Color.orange)
                 if rank == 1, powerHours > 0, let ratio, ratio > 1.05 {
                     Label("Your best day in \(compareDays + 1) days", systemImage: "star.fill")
-                        .font(.caption.weight(.semibold))
+                        .theoFont(.caption, weight: .semibold)
                         .foregroundStyle(.yellow)
                 }
             }
@@ -237,10 +237,10 @@ struct DayReviewView: View {
                 HStack {
                     Label(row.title, systemImage: row.symbol)
                         .foregroundStyle(row.color)
-                        .font(.subheadline.weight(.semibold))
+                        .theoFont(.subheadline, weight: .semibold)
                     Spacer()
                     Text((showPowerHours ? PowerHours.format(row.powerHours) + " · " : "") + "\(row.count) done")
-                        .font(.caption.weight(.medium))
+                        .theoFont(.caption, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
@@ -325,6 +325,7 @@ private struct FinishedRow: View {
                 .foregroundStyle(.green)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.trimmedTitle.isEmpty ? "Untitled" : task.trimmedTitle)
+                    .theoBodyFont()
                 HStack(spacing: 8) {
                     if let completed = task.completedAt {
                         Text(completed.formatted(date: .omitted, time: .shortened))
@@ -336,13 +337,13 @@ private struct FinishedRow: View {
                             .lineLimit(1)
                     }
                 }
-                .font(.caption)
+                .theoFont(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if task.estimate > 0 {
                 Text(PowerHours.format(task.estimate))
-                    .font(.caption.weight(.semibold))
+                    .theoFont(.caption, weight: .semibold)
                     .monospacedDigit()
                     .foregroundStyle(.teal)
             }

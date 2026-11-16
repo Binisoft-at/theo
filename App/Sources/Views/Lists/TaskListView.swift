@@ -397,7 +397,7 @@ struct TaskListView<Header: View>: View {
 
         case .placeholder(_, let text):
             Text(text)
-                .font(.callout)
+                .theoFont(.callout)
                 .foregroundStyle(.tertiary)
                 .padding(.leading, 30)
                 .listRowSeparator(.hidden)
@@ -554,7 +554,7 @@ struct TaskListView<Header: View>: View {
         } label: {
             if task.estimate > 0 {
                 Text(PowerHours.number(task.estimate))
-                    .font(.subheadline.weight(.semibold))
+                    .theoFont(.subheadline, weight: .semibold)
             } else {
                 Image(systemName: "timer")
             }
@@ -1321,7 +1321,7 @@ struct SelectionBar: View {
         let tasks = rows.compactMap(\.task).filter { selected.contains($0.rowID) }
         VStack(spacing: 8) {
             Text(tasks.isEmpty ? "Tap tasks to select them" : "\(tasks.count) selected")
-                .font(.footnote.weight(.semibold))
+                .theoFont(.footnote, weight: .semibold)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             ScrollView(.horizontal, showsIndicators: false) {
@@ -1431,7 +1431,7 @@ struct SelectionBar: View {
                 .frame(width: 36, height: 36)
                 .background(Circle().fill(color.gradient))
             Text(title)
-                .font(.caption2.weight(.medium))
+                .theoFont(.caption2, weight: .medium)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .fixedSize()

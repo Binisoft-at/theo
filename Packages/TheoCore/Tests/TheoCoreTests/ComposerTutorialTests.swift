@@ -99,6 +99,31 @@ struct TutorialTests {
         #expect(steps.filter { $0.since == 9 }.map(\.id) == ["dates-de", "swipe-today", "plan-actions", "carry-over", "capture-anywhere"])
     }
 
+    /// Plan side by side, the widgets, and one step for the @/# suggestions, dragging onto the
+    /// sidebar, the Mac's Quick Add panel and its text size.
+    @Test func whatsNewInVersion10() {
+        let steps = TutorialCatalog.steps(newerThan: 9)
+        #expect(steps.first?.id == "whats-new")
+        #expect(steps.last?.id == "finish")
+        #expect(steps.dropFirst().dropLast().map(\.id) == ["plan-panes", "widgets", "bar-and-mac"])
+        // Right after the other Plan steps, so the tour keeps Plan open for it.
+        let ids = TutorialCatalog.steps.map(\.id)
+        let plan = ids.firstIndex(of: "plan-panes")
+        let tools = ids.firstIndex(of: "plan-actions")
+        #expect(plan != nil)
+        #expect(tools != nil)
+        if let plan, let tools {
+            #expect(plan == tools + 1)
+        }
+    }
+
+    /// The Mac's shortcut opens the floating panel now, not the main window's bottom bar.
+    @Test func macQuickAddDescribesThePanel() {
+        let capture = TutorialCatalog.steps.first { $0.id == "capture-anywhere" }
+        #expect(capture?.macBody.contains("small panel") == true)
+        #expect(capture?.macBody.contains("jump into Theo's bottom bar") == false)
+    }
+
     /// The labels the app shows: "Tomorrow" and "Off Plan" (never "Not Today"), "Subgroup"
     /// (never "Subproject"), "Description" for a task's text.
     @Test func tourUsesTheAppsWords() {
