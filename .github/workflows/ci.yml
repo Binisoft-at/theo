@@ -133,6 +133,9 @@ jobs:
           REC=$!
           sleep 8
           kill -INT "$REC" || true
+          # Give it ten seconds to finish the file, then make sure it can't hold up the job.
+          for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$REC" 2>/dev/null || break; sleep 1; done
+          kill -9 "$REC" 2>/dev/null || true
           wait "$REC" || true
           xcrun simctl ui "$UDID" appearance dark
           shoot today-dark -TheoScreen today
