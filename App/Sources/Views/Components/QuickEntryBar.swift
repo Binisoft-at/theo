@@ -894,7 +894,8 @@ struct QuickEntryBar: View {
     /// Drag it onto the full-screen grid; tapping only explains it, so it never gets in the way.
     /// Once a cell is picked it fills in the accent.
     private var matrixHandle: some View {
-        matrixGlyph
+        let lifted: Bool = app.matrixDrag != nil
+        return matrixGlyph
             .frame(width: Self.handleSide, height: Self.handleSide)
             .modifier(ComposerHoverFill(shape: Circle()))
             .contentShape(Rectangle())
@@ -903,7 +904,7 @@ struct QuickEntryBar: View {
                 app.show("Drag the grid handle to set when it's due and how important it is", symbol: "square.grid.3x3")
             }
             // A light tap as the task is picked up onto the grid, like the +.
-            .sensoryFeedback(.impact(weight: .light), trigger: app.matrixDrag != nil) { _, new in new }
+            .sensoryFeedback(.impact(weight: .light), trigger: lifted) { _, new in new }
             .accessibilityLabel("Urgency and importance")
             .accessibilityHint("Drag onto the grid to set the deadline and importance")
             .help("Drag onto the grid to set when it's due and how important it is")

@@ -177,7 +177,7 @@ struct TaskListView<Header: View>: View {
             }
         }
         // A light tick for every gap the dragged + passes, like a picker's detents.
-        .sensoryFeedback(.selection, trigger: insertAfterID) { _, new in new != nil }
+        .sensoryFeedback(.selection, trigger: insertAfterID) { (_: String?, new: String?) -> Bool in new != nil }
         .onChange(of: app.indentRequest) { _, request in
             guard isVisible, let request, let task = lookupTask("t-" + request.taskID.uuidString) else { return }
             app.indentRequest = nil
