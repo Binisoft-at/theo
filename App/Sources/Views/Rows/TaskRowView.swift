@@ -445,11 +445,8 @@ struct SubtaskBadge: View {
             .background(Capsule().fill(Color.secondary.opacity(0.1)))
             .contentShape(Capsule())
         }
-        #if os(macOS)
+        // Borderless: inside a list row a custom button style can make the whole row the button.
         .buttonStyle(.borderless)
-        #else
-        .buttonStyle(.pressable)
-        #endif
         .padding(.top, 1)
         .animation(Motion.resolved(Motion.tap), value: folded)
         .accessibilityLabel(folded ? "Show \(total) subtasks" : "Hide \(total) subtasks")

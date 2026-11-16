@@ -145,7 +145,7 @@ struct GroupEditorView: View {
             .frame(width: 40, height: 40)
             .contentShape(Circle())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .accessibilityLabel(option.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -186,7 +186,7 @@ struct GroupEditorView: View {
                 }
                 .contentShape(Circle())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

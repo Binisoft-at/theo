@@ -71,7 +71,9 @@ enum Tint {
 }
 
 /// A tile, chip or card that gives way a little under the finger and springs back, like
-/// Apple's own. Use it for custom tappable surfaces; standard buttons keep their own styles.
+/// Apple's own. Use it for custom tappable surfaces outside lists: never inside a `List` or
+/// `Form` row, where a custom button style can make the whole row act as the button (use
+/// `.plain` or `.borderless` there). Standard buttons keep their own styles.
 struct PressableStyle: ButtonStyle {
     var scale: CGFloat = 0.96
 

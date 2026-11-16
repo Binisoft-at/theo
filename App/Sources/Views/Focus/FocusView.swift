@@ -321,7 +321,7 @@ struct FocusPill: View {
             .contentShape(Capsule())
             .tint(isRest ? Color.green : nil)
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .accessibilityLabel(isRest ? "Break running" : "Focus running")
     }
 }

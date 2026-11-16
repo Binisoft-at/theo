@@ -250,7 +250,7 @@ struct GroupPageHeader: View {
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.secondary.opacity(0.1)))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.pressable)
+            .buttonStyle(.plain)
             .help("New and moved tasks take these unless they have their own")
             .accessibilityHint("Opens the group's settings")
         }
@@ -485,7 +485,7 @@ struct SubgroupSwitches: View {
             .overlay(Capsule().strokeBorder(Color.secondary.opacity(isOn ? 0 : 0.3), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
             .contentShape(Capsule())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in app.go(.group(child.uuid)) })
         .sensoryFeedback(.selection, trigger: isOn)
         .accessibilityLabel(child.displayName)

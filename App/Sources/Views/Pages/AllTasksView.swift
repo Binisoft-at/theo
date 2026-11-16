@@ -155,7 +155,7 @@ struct AllTasksView: View {
             } label: {
                 controlChip(filtered ? "Filters · \(query.filterCount)" : "Filters", symbol: "line.3.horizontal.decrease", active: filtered)
             }
-            .buttonStyle(.pressable)
+            .buttonStyle(.plain)
             Menu {
                 Picker("Group By", selection: groupingBinding(query).animation(motion)) {
                     ForEach(TaskQuery.Grouping.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -165,7 +165,7 @@ struct AllTasksView: View {
             }
             .menuStyle(.button)
             .menuIndicator(.hidden)
-            .buttonStyle(.pressable)
+            .buttonStyle(.plain)
             Menu {
                 Picker("Sort By", selection: sortBinding(query).animation(motion)) {
                     ForEach(TaskQuery.Sort.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -175,7 +175,7 @@ struct AllTasksView: View {
             }
             .menuStyle(.button)
             .menuIndicator(.hidden)
-            .buttonStyle(.pressable)
+            .buttonStyle(.plain)
             Spacer(minLength: 0)
         }
     }

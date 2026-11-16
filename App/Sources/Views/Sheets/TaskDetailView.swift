@@ -632,7 +632,7 @@ private struct RemovableTagChip: View {
             .background(Capsule().fill(color.opacity(hovering ? 0.2 : 0.12)))
             .contentShape(Capsule())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(Motion.hover, value: hovering)
         .help("Remove #" + tag)

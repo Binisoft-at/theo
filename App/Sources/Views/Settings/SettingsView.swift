@@ -185,7 +185,7 @@ struct SettingsView: View {
                 #endif
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .accessibilityLabel(choice.title)
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }

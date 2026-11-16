@@ -409,7 +409,7 @@ struct TodayHeader: View {
             }
             .contentShape(Circle())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .onHover { inside in
             hoversRing = inside
         }
@@ -605,7 +605,7 @@ private struct CarryOverCapsule: View {
                     .background(Capsule().fill(color.gradient))
                     .contentShape(Capsule())
             }
-            .buttonStyle(.pressable)
+            .buttonStyle(.plain)
         }
         .padding(.leading, 12)
         .padding(.trailing, 4)

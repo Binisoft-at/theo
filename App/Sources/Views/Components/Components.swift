@@ -36,13 +36,9 @@ struct CheckCircle: View {
             .padding(4)
             .contentShape(Rectangle())
         }
-        // The Mac keeps its borderless button inside list rows (clicks and row selection stay as
-        // they were); on touch screens the circle gives way under the finger.
-        #if os(macOS)
+        // Borderless inside list rows: a custom button style there can make the whole row act
+        // as the button. The fill's spring is the feedback.
         .buttonStyle(.borderless)
-        #else
-        .buttonStyle(PressableStyle(scale: 0.86))
-        #endif
         .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
         .sensoryFeedback(.success, trigger: done) { old, new in new && !old }
     }
@@ -188,7 +184,7 @@ struct ChipButton: View {
             }
             .contentShape(Capsule())
         }
-        .buttonStyle(.pressable)
+        .buttonStyle(.plain)
         .accessibilityAddTraits(isOn ? .isSelected : [])
         .animation(Motion.resolved(Motion.tap), value: isOn)
     }
