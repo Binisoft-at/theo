@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import TheoCore
+#if os(macOS)
+import AppKit
+#endif
 
 /// Pick what each day is for: choose a day, then plan tasks for it. Unfinished tasks from
 /// earlier days, tasks due by then and the most important ones come first; everything else
@@ -22,7 +25,6 @@ struct PlanView: View {
     @State private var selected: Date?
     /// How "Browse All Tasks" is sorted into sections, which are open, and what's searched.
     @AppStorage("plan.browse") private var browseRaw = PlanBrowse.group.rawValue
-    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
     @State private var expanded: Set<String> = []
     @State private var browseSearch = ""
     /// The task whose colourful quick-action panel is open (Quick Edit in a line's menu).
@@ -31,6 +33,10 @@ struct PlanView: View {
     @State private var dropTarget: PlanPane?
     /// Two panes: where the current drag started.
     @State private var dragOrigin = DragOrigin()
+    /// A light tick for every task planned or taken off with a tap, a click or "Add All".
+    @State private var planTicks = 0
+    /// A soft knock for every drop that planned tasks or took them off.
+    @State private var dropTicks = 0
 
     /// The pane a drag started in. A plain box: setting it as a drag starts redraws nothing.
     final class DragOrigin {
@@ -62,6 +68,11 @@ struct PlanView: View {
     /// From this width on, the page shows two panes (Mac, and iPad at regular width).
     private static let twoPaneWidth: CGFloat = 880
 
+    /// Something small that comes and goes in place (the Today button).
+    private static let popIn: AnyTransition = .scale(scale: 0.92).combined(with: .opacity)
+    /// A note that slides in from the edge it's pinned to ("More than a usual day").
+    private static let fromTrailing: AnyTransition = .scale(scale: 0.92, anchor: .trailing).combined(with: .opacity)
+
     #if os(macOS)
     private static let emptyHint = "Nothing planned yet. Click a task's circle below to add it."
     private static let browseHint = "Click a section to open it, then a task's circle to plan it (its subtasks come along). Click a task to see its details."
@@ -82,6 +93,8 @@ struct PlanView: View {
             .safeAreaInset(edge: .bottom) {
                 QuickEntryBar(defaultGroupID: nil, placeholder: "Add a task for \(shortDay(lists.day))", plansFor: lists.day)
             }
+            .sensoryFeedback(.selection, trigger: planTicks)
+            .sensoryFeedback(.impact(weight: .light), trigger: dropTicks)
     }
 
     /// Two panes are offered on the Mac and on an iPad at regular width, never on an iPhone.
@@ -247,7 +260,7 @@ struct PlanView: View {
         .listStyle(.insetGrouped)
         #endif
         .overlay {
-            dropHighlight(shown, text: "Off Plan", symbol: "calendar.badge.minus")
+            dropHighlight(shown, text: "Off Plan", symbol: "calendar.badge.minus", tint: Tint.offPlan)
         }
         .dropDestination(for: String.self) { items, _ in
             dropOffPlan(items, day: lists.day)
@@ -286,7 +299,7 @@ struct PlanView: View {
         .listStyle(.insetGrouped)
         #endif
         .overlay {
-            dropHighlight(shown, text: "Plan for " + shortDay(lists.day), symbol: planSymbol(lists.day))
+            dropHighlight(shown, text: "Plan for " + shortDay(lists.day), symbol: planSymbol(lists.day), tint: dayTint(lists.day))
         }
         .dropDestination(for: String.self) { items, _ in
             dropOnPlan(items, day: lists.day)
@@ -313,82 +326,105 @@ struct PlanView: View {
         }
     }
 
-    /// Nothing planned yet: where to drop.
+    /// Nothing planned yet: where to drop, in the colour of planning for that day.
     private func dropHint(day: Date) -> some View {
-        VStack(spacing: 6) {
+        let tint = dayTint(day)
+        return VStack(spacing: 6) {
             Image(systemName: "tray.and.arrow.down")
                 .theoFont(.title2)
-                .foregroundStyle(Color.indigo)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(tint)
             Text("Drag tasks here to plan them for \(shortDay(day)).")
-                .theoFont(.subheadline, weight: .medium)
+                .theoFont(.headline)
             Text(Self.dropHintDetail)
-                .theoFont(.caption)
+                .theoFont(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 22)
-        .padding(.horizontal, 8)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 12)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .strokeBorder(tint.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
         }
         .padding(.vertical, 4)
     }
 
     /// The day's Power Hours (planned, plus what's already done today) against a usual day, the
-    /// way Today's header compares them: orange when it's clearly more.
+    /// way Today's header compares them: orange when it's clearly more. The bar grows and the
+    /// note slides in as tasks come and go.
     private func usualMeter(hours: Double, usual: Double) -> some View {
         let quarter = (usual * 4).rounded() / 4
-        let typical = quarter > 0 ? quarter : usual
-        let over = DayReview.isOverplanned(planned: hours, average: usual)
-        let tint: Color = over ? .orange : .teal
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        let typical: Double = quarter > 0 ? quarter : usual
+        let over: Bool = DayReview.isOverplanned(planned: hours, average: usual)
+        let fraction: Double = typical > 0 ? hours / typical : 0
+        let barTint: Color = over ? Color.orange : Tint.powerHours
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
                 Text("A usual day: ~" + PowerHours.format(typical))
-                Spacer()
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: typical))
+                Spacer(minLength: 0)
                 if over {
                     Text("More than a usual day")
                         .foregroundStyle(Color.orange)
+                        .transition(Self.fromTrailing)
                 }
             }
             .theoFont(.caption, weight: .medium)
             .foregroundStyle(.secondary)
-            ProgressView(value: min(hours, typical), total: typical)
-                .tint(tint)
+            UsualDayBar(fraction: fraction, tint: barTint)
         }
+        .animation(Motion.resolved(Motion.layout), value: hours)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(PowerHours.format(hours) + " on the day")
     }
 
-    /// A pane a task is dragged over: tinted in the accent colour, saying what letting go does.
+    /// A pane a task is dragged over: washed in the colour of what letting go does (the day's
+    /// orange or indigo to plan, grey to take off), with a floating label that says it.
     @ViewBuilder
-    private func dropHighlight(_ shown: Bool, text: String, symbol: String) -> some View {
+    private func dropHighlight(_ shown: Bool, text: String, symbol: String, tint: Color) -> some View {
         if shown {
-            let accent = (AccentChoice(rawValue: accentRaw) ?? .notes).color
             ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(accent.opacity(0.12))
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(accent.opacity(0.7), lineWidth: 2)
-                Label(text, systemImage: symbol)
-                    .theoFont(.subheadline, weight: .semibold)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.regularMaterial, in: Capsule())
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(tint.opacity(0.08))
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(tint.opacity(0.6), lineWidth: 2)
+                dropLabel(text, symbol: symbol, tint: tint)
                     .padding(.top, 12)
             }
             .padding(6)
             .allowsHitTesting(false)
+            .transition(.opacity)
         }
     }
 
+    private func dropLabel(_ text: String, symbol: String, tint: Color) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(tint)
+        }
+        .theoFont(.subheadline, weight: .semibold)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .glassEffect(.regular, in: .capsule)
+    }
+
+    /// The drop highlight follows the pointer from pane to pane with a quick fade.
     private func setTarget(_ pane: PlanPane, _ over: Bool) {
-        withAnimation(.easeOut(duration: 0.15)) {
-            if over {
-                dropTarget = pane
-            } else if dropTarget == pane {
-                dropTarget = nil
-            }
+        Motion.animate(Motion.hover) {
+            updateTarget(pane, over)
+        }
+    }
+
+    private func updateTarget(_ pane: PlanPane, _ over: Bool) {
+        if over {
+            dropTarget = pane
+        } else if dropTarget == pane {
+            dropTarget = nil
         }
     }
 
@@ -412,7 +448,8 @@ struct PlanView: View {
         dragOrigin.pane = nil
         let tasks = droppedTasks(items).filter { !$0.isPlanned(for: day) }
         guard !tasks.isEmpty else { return false }
-        withAnimation(.snappy) { app.plan(tasks, for: day) }
+        Motion.animate(Motion.list) { app.plan(tasks, for: day) }
+        dropTicks += 1
         return true
     }
 
@@ -421,7 +458,8 @@ struct PlanView: View {
         dragOrigin.pane = nil
         let tasks = droppedTasks(items).filter { $0.isPlanned(for: day) }
         guard !tasks.isEmpty else { return false }
-        withAnimation(.snappy) { app.plan(tasks, for: nil) }
+        Motion.animate(Motion.list) { app.plan(tasks, for: nil) }
+        dropTicks += 1
         return true
     }
 
@@ -448,7 +486,7 @@ struct PlanView: View {
         return PageBuilder.estimateTotals(finished).done
     }
 
-    /// Today's sun, tomorrow's moon, a calendar for later days.
+    /// Today's sun, tomorrow's moon, a calendar for later days: what dropping a task does.
     private func planSymbol(_ day: Date) -> String {
         switch DateText.dayDelta(day, today: app.dayStart) {
         case 0: "sun.max.fill"
@@ -457,26 +495,77 @@ struct PlanView: View {
         }
     }
 
+    /// The day itself: Today's sun, Tomorrow's moon, a calendar with a check for a later day.
+    private func daySymbol(_ day: Date) -> String {
+        switch DateText.dayDelta(day, today: app.dayStart) {
+        case 0: "sun.max.fill"
+        case 1: "moon.zzz.fill"
+        default: "calendar.badge.checkmark"
+        }
+    }
+
+    /// The colour of planning for a day: Today's orange, the planned indigo for any later day.
+    private func dayTint(_ day: Date) -> Color {
+        DateText.dayDelta(day, today: app.dayStart) == 0 ? Tint.today : Tint.planned
+    }
+
     // MARK: - Pieces
 
-    /// "3 planned (8 with subtasks) · 5 PH": the lines shown, and every task they stand for.
+    /// The chosen day at the top of its plan: its symbol on a tile in the day's colour, the
+    /// date, and "3 planned (8 with subtasks) · 5 PH". The date and the numbers roll when the
+    /// day or its plan changes.
     private func summary(planned: [TaskItem], lines: Int, day: Date) -> some View {
-        let estimate = PageBuilder.estimateTotals(planned).open
-        let count = lines < planned.count ? "\(lines) planned (\(planned.count) with subtasks)" : "\(planned.count) planned"
-        return HStack(spacing: 14) {
+        let estimate: Double = PageBuilder.estimateTotals(planned).open
+        let count: String = lines < planned.count ? "\(lines) planned (\(planned.count) with subtasks)" : "\(planned.count) planned"
+        let detail: String = planned.isEmpty ? "Nothing planned" : count + (estimate > 0 ? " · " + PowerHours.format(estimate) : "")
+        let isToday: Bool = Calendar.current.isDate(day, inSameDayAs: app.dayStart)
+        return HStack(spacing: 12) {
+            dayBadge(day)
             VStack(alignment: .leading, spacing: 2) {
                 Text(DateText.pageTitle(day))
                     .theoFont(.headline)
-                Text(planned.isEmpty ? "Nothing planned" : count + (estimate > 0 ? " · " + PowerHours.format(estimate) : ""))
+                    .contentTransition(.numericText(value: day.timeIntervalSinceReferenceDate))
+                Text(detail)
+                    .monospacedDigit()
                     .theoFont(.subheadline)
                     .foregroundStyle(.secondary)
+                    .contentTransition(.numericText(value: estimate))
             }
-            Spacer()
-            if !Calendar.current.isDate(day, inSameDayAs: app.dayStart) {
-                Button("Today") { selected = nil }
-                    .buttonStyle(.glass)
+            .animation(Motion.resolved(Motion.tap), value: detail)
+            Spacer(minLength: 8)
+            if !isToday {
+                todayButton
+                    .transition(Self.popIn)
             }
         }
+    }
+
+    /// The day's symbol on a small tile in its colour: Today's sun in orange, Tomorrow's moon
+    /// and a later day's calendar in the planned indigo. The symbol morphs as the day changes.
+    private func dayBadge(_ day: Date) -> some View {
+        Image(systemName: daySymbol(day))
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+            .contentTransition(.symbolEffect(.replace))
+            .frame(width: 34, height: 34)
+            .background {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(dayTint(day).gradient)
+            }
+            .accessibilityHidden(true)
+    }
+
+    /// Back to today's plan from a later day.
+    private var todayButton: some View {
+        Button("Today") {
+            Motion.animate(Motion.tap) { selected = nil }
+        }
+        .theoFont(.subheadline, weight: .semibold)
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .controlSize(.small)
+        .tint(Tint.today)
+        .help("Show today's plan")
     }
 
     /// `pane`: with two panes, the pane the line sits in (it can be dragged to the other).
@@ -484,7 +573,7 @@ struct PlanView: View {
         let origin = dragOrigin
         return PlanRow(
             task: block.task, isPlanned: isPlanned, day: day, style: block.style, parentTitle: block.parentTitle,
-            actionTaskID: $actionTaskID, pane: pane, onDragStart: { origin.pane = $0 }
+            actionTaskID: $actionTaskID, pane: pane, onDragStart: { origin.pane = $0 }, onToggle: { planTicks += 1 }
         )
     }
 
@@ -498,7 +587,8 @@ struct PlanView: View {
                 Text(title)
                 Spacer()
                 Button("Add All") {
-                    withAnimation(.snappy) { app.plan(blocks.map(\.task), for: day) }
+                    Motion.animate(Motion.list) { app.plan(blocks.map(\.task), for: day) }
+                    planTicks += 1
                 }
                 .theoFont(.caption, weight: .semibold)
                 .buttonStyle(.borderless)
@@ -519,21 +609,35 @@ struct PlanView: View {
             }
         } header: {
             Button {
-                withAnimation(.snappy) {
-                    if isOpen { expanded.remove(Self.earlierKey) } else { expanded.insert(Self.earlierKey) }
-                }
+                Motion.animate(Motion.list) { toggleExpanded(Self.earlierKey) }
             } label: {
                 HStack(spacing: 8) {
                     Text("Already planned earlier · \(blocks.count)")
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .rotationEffect(.degrees(isOpen ? 90 : 0))
-                        .foregroundStyle(.tertiary)
+                    chevron(isOpen)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityHint(isOpen ? "Folds them away" : "Shows them")
+        }
+    }
+
+    /// A section's fold chevron: right while folded, down while open, turning as it opens.
+    private func chevron(_ isOpen: Bool) -> some View {
+        Image(systemName: "chevron.right")
+            .foregroundStyle(.tertiary)
+            .rotationEffect(.degrees(isOpen ? 90 : 0))
+    }
+
+    /// Opens a folded section, or folds an open one.
+    private func toggleExpanded(_ key: String) {
+        if expanded.contains(key) {
+            expanded.remove(key)
+        } else {
+            expanded.insert(key)
         }
     }
 
@@ -602,44 +706,59 @@ struct PlanView: View {
             TextField("Search all tasks", text: $browseSearch)
         } header: {
             Text("Browse All Tasks · \(data.shown.count)")
+                .monospacedDigit()
+                .contentTransition(.numericText())
         } footer: {
             Text(hint)
         }
         ForEach(sections, id: \.key) { section in
-            let isOpen = !needle.isEmpty || expanded.contains(section.key)
-            let hours = section.tasks.reduce(0) { $0 + Self.hours($1, data.styles) }
-            Section {
-                if isOpen {
-                    ForEach(rankedTop(section.tasks, day: day), id: \.uuid) { task in
-                        browseRow(task, style: data.styles[task.uuid], day: day, pane: pane)
-                    }
-                }
-            } header: {
-                Button {
-                    withAnimation(.snappy) {
-                        if expanded.contains(section.key) { expanded.remove(section.key) } else { expanded.insert(section.key) }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: section.symbol)
-                            .foregroundStyle(section.color)
-                        Text(section.title)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(hours > 0 ? "\(section.tasks.count) · \(PowerHours.format(hours))" : "\(section.tasks.count)")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                        Image(systemName: "chevron.right")
-                            .rotationEffect(.degrees(isOpen ? 90 : 0))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .theoFont(.subheadline, weight: .semibold)
-                    .textCase(nil)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
+            browseSection(section, needle: needle, styles: data.styles, day: day, pane: pane)
         }
+    }
+
+    /// One section of Browse All Tasks: a header that opens it, then its lines.
+    private func browseSection(_ section: LabeledSection, needle: String, styles: [UUID: RowStyle], day: Date, pane: PlanPane?) -> some View {
+        let isOpen: Bool = !needle.isEmpty || expanded.contains(section.key)
+        let hours: Double = section.tasks.reduce(0) { $0 + Self.hours($1, styles) }
+        return Section {
+            if isOpen {
+                ForEach(rankedTop(section.tasks, day: day), id: \.uuid) { task in
+                    browseRow(task, style: styles[task.uuid], day: day, pane: pane)
+                }
+            }
+        } header: {
+            browseHeader(section, isOpen: isOpen, hours: hours)
+        }
+    }
+
+    /// The group's (or priority's, deadline's, size's) icon in its colour in a column of its
+    /// own, its name, and "3 · 1,5 PH", rolling as tasks are planned from it.
+    private func browseHeader(_ section: LabeledSection, isOpen: Bool, hours: Double) -> some View {
+        let count: Int = section.tasks.count
+        let figure: String = hours > 0 ? "\(count) · \(PowerHours.format(hours))" : "\(count)"
+        return Button {
+            Motion.animate(Motion.list) { toggleExpanded(section.key) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: section.symbol)
+                    .foregroundStyle(section.color)
+                    .frame(width: 22)
+                Text(section.title)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer()
+                Text(figure)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText(value: Double(count)))
+                chevron(isOpen)
+            }
+            .theoFont(.subheadline, weight: .semibold)
+            .textCase(nil)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(isOpen ? "Folds them away" : "Shows them")
     }
 
     /// Highest score first.
@@ -661,6 +780,29 @@ struct PlanView: View {
         case 1: "tomorrow"
         default: day.formatted(.dateTime.weekday(.wide))
         }
+    }
+}
+
+/// The usual-day meter's bar: a soft track, and the day's Power Hours in teal (orange once it's
+/// clearly more than a usual day) that grows smoothly as tasks come and go.
+private struct UsualDayBar: View {
+    let fraction: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            let filled: CGFloat = proxy.size.width * CGFloat(min(max(fraction, 0), 1))
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.14))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: fraction > 0 ? max(filled, proxy.size.height) : 0)
+            }
+        }
+        .frame(height: 6)
+        .animation(Motion.resolved(Motion.layout), value: fraction)
+        .accessibilityHidden(true)
     }
 }
 
@@ -739,8 +881,10 @@ enum PlanBlocks {
     }
 }
 
-/// The next two weeks: each day shows its planned Power Hours, and a red dot when something
-/// open is due that day. With two panes, a task dropped on a day is planned for it.
+/// The next two weeks: each day shows its planned Power Hours, and a dot in the deadline blue
+/// when something open is due that day. The selected day's fill glides from day to day instead
+/// of jumping. With two panes, a task dropped on a day is planned for it; the day rises a
+/// little to meet the task dragged over it.
 struct DayStrip: View {
     let selected: Date
     let tasks: [TaskItem]
@@ -755,6 +899,16 @@ struct DayStrip: View {
     @Environment(\.textScale) private var textScale
     /// The day a task is dragged over.
     @State private var dropDay: Date?
+    /// The day under the pointer (Mac, iPad with a pointer), for its deeper fill.
+    @State private var hoveredDay: Date?
+    /// Where the selected day's fill glides between the days.
+    @Namespace private var selection
+
+    /// Today and the fourteen days after it.
+    private static let length = 15
+
+    /// Open tasks by the calendar day they're planned for, and how many fall due on each day.
+    private typealias DayIndex = (planned: [Date: [TaskItem]], due: [Date: Int])
 
     var body: some View {
         let byDay = Self.index(tasks)
@@ -762,93 +916,161 @@ struct DayStrip: View {
         // (dark on Notes Yellow).
         let accentFill = (AccentChoice(rawValue: accentRaw) ?? .notes).color
         let onFill = accentFill.onFillForeground(in: environment)
+        let chosen = offsetOfSelection()
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(0..<15, id: \.self) { offset in
-                    let day = DayBoundary.current.dayStart(byAdding: offset, to: app.dayStart)
-                    droppable(chip(offset: offset, day: day, byDay: byDay, accentFill: accentFill, onFill: onFill), day: day)
+                ForEach(0..<Self.length, id: \.self) { offset in
+                    let day = date(at: offset)
+                    droppable(chip(offset: offset, day: day, byDay: byDay, onFill: onFill), day: day)
+                        .matchedGeometryEffect(id: offset, in: selection)
                 }
+            }
+            .background {
+                selectionFill(chosen, fill: accentFill)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
+        .sensoryFeedback(.selection, trigger: selected)
     }
 
-    private func chip(offset: Int, day: Date, byDay: (planned: [Date: [TaskItem]], due: [Date: Int]), accentFill: Color, onFill: Color) -> some View {
-        let key = Calendar.current.startOfDay(for: day)
-        let planned = byDay.planned[key] ?? []
-        let estimate = PageBuilder.estimateTotals(planned).open
-        let dueCount = byDay.due[key] ?? 0
-        let isSelected = Calendar.current.isDate(day, inSameDayAs: selected)
-        let grow: CGFloat = max(1, textScale)
-        let chipWidth: CGFloat = 54 * grow
-        let chipHeight: CGFloat = 64 * grow
-        return Button {
-            withAnimation(.snappy) { onSelect(day) }
-        } label: {
-            VStack(spacing: 2) {
-                Text(offset == 0 ? "Today" : day.formatted(.dateTime.weekday(.abbreviated)))
-                    .theoFont(.caption, weight: .semibold)
-                Text(day.formatted(.dateTime.day()))
-                    .theoFont(.title3, weight: .bold)
-                    .monospacedDigit()
-                Text(planned.isEmpty ? " " : (estimate > 0 ? PowerHours.format(estimate) : "\(planned.count)"))
-                    .theoFont(.caption2, weight: .medium)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .foregroundStyle(isSelected ? onFill.opacity(0.9) : Color.secondary)
-            }
-            .frame(width: chipWidth, height: chipHeight)
-            .foregroundStyle(isSelected ? onFill : Color.primary)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? AnyShapeStyle(accentFill) : AnyShapeStyle(Color.secondary.opacity(0.1)))
-            }
-            .overlay(alignment: .topTrailing) {
-                // Something open is due that day.
-                if dueCount > 0 {
-                    Circle()
-                        .fill(isSelected ? onFill : Color.red)
-                        .frame(width: 5, height: 5)
-                        .padding(6)
-                }
-            }
+    /// The selected day's fill, drawn once behind all the days so it can glide from one to the
+    /// next (over the days in between, never across their text).
+    @ViewBuilder
+    private func selectionFill(_ offset: Int?, fill: Color) -> some View {
+        if let offset {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(fill)
+                .matchedGeometryEffect(id: offset, in: selection, isSource: false)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func date(at offset: Int) -> Date {
+        DayBoundary.current.dayStart(byAdding: offset, to: app.dayStart)
+    }
+
+    /// Which of the days is selected (nil when it's none of them).
+    private func offsetOfSelection() -> Int? {
+        (0..<Self.length).first { Calendar.current.isDate(date(at: $0), inSameDayAs: selected) }
+    }
+
+    private func chip(offset: Int, day: Date, byDay: DayIndex, onFill: Color) -> some View {
+        let key = Calendar.current.startOfDay(for: day)
+        let planned: [TaskItem] = byDay.planned[key] ?? []
+        let estimate: Double = PageBuilder.estimateTotals(planned).open
+        let dueCount: Int = byDay.due[key] ?? 0
+        let isSelected: Bool = Calendar.current.isDate(day, inSameDayAs: selected)
+        // Unselected days sit on a soft fill, a little deeper under the pointer; the selected
+        // one shows the accent fill behind it.
+        let wash: Double = isSelected ? 0 : (hoveredDay == day ? 0.16 : 0.1)
+        let grow: CGFloat = max(1, textScale)
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button {
+            Motion.animate(Motion.tap) { onSelect(day) }
+        } label: {
+            chipLabel(offset: offset, day: day, planned: planned.count, estimate: estimate, isSelected: isSelected, onFill: onFill)
+                .frame(width: 54 * grow, height: 64 * grow)
+                .background {
+                    shape.fill(Color.secondary.opacity(wash))
+                }
+                .overlay(alignment: .topTrailing) {
+                    // Something open is due that day.
+                    if dueCount > 0 {
+                        Circle()
+                            .fill(isSelected ? onFill : Tint.deadline)
+                            .frame(width: 5, height: 5)
+                            .padding(6)
+                    }
+                }
+                .contentShape(shape)
+        }
+        .buttonStyle(.pressable)
+        .onHover { inside in
+            hover(day, inside)
+        }
         .accessibilityLabel(day.formatted(date: .complete, time: .omitted))
         .accessibilityValue(Self.spokenSummary(planned: planned.count, estimate: estimate, due: dueCount))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    /// Two panes: the day takes a dragged task and plans it for that day.
+    /// "Today" (in Today's orange until it's selected), the date in rounded figures, and the
+    /// day's planned Power Hours, which roll as tasks are planned.
+    private func chipLabel(offset: Int, day: Date, planned: Int, estimate: Double, isSelected: Bool, onFill: Color) -> some View {
+        let weekday: String = offset == 0 ? "Today" : day.formatted(.dateTime.weekday(.abbreviated))
+        let figure: String = planned == 0 ? " " : (estimate > 0 ? PowerHours.format(estimate) : "\(planned)")
+        let weekdayColor: Color = isSelected ? onFill : (offset == 0 ? Tint.today : Color.primary)
+        let dateColor: Color = isSelected ? onFill : Color.primary
+        let figureColor: Color = isSelected ? onFill.opacity(0.9) : Color.secondary
+        return VStack(spacing: 2) {
+            Text(weekday)
+                .theoFont(.caption, weight: .semibold)
+                .foregroundStyle(weekdayColor)
+            Text(day.formatted(.dateTime.day()))
+                .monospacedDigit()
+                .theoFont(.title3, weight: .bold, design: .rounded)
+                .foregroundStyle(dateColor)
+            Text(figure)
+                .monospacedDigit()
+                .theoFont(.caption2, weight: .medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(figureColor)
+                .contentTransition(.numericText(value: estimate))
+                .animation(Motion.resolved(Motion.tap), value: figure)
+        }
+    }
+
+    /// Two panes: the day takes a dragged task and plans it for that day. While a task is over
+    /// it, it rises a little and outlines itself in the colour of planning for it.
     @ViewBuilder
     private func droppable<Content: View>(_ chip: Content, day: Date) -> some View {
         if let onDrop {
+            let isTarget: Bool = dropDay == day
             chip
                 .overlay {
-                    if dropDay == day {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.7), lineWidth: 2)
-                            .allowsHitTesting(false)
-                    }
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(dropTint(day), lineWidth: 2)
+                        .opacity(isTarget ? 1 : 0)
+                        .allowsHitTesting(false)
                 }
+                .scaleEffect(isTarget ? 1.06 : 1)
                 .dropDestination(for: String.self) { items, _ in
                     onDrop(day, items)
                 } isTargeted: { over in
-                    if over {
-                        dropDay = day
-                    } else if dropDay == day {
-                        dropDay = nil
-                    }
+                    target(day, over)
                 }
         } else {
             chip
         }
     }
 
+    /// Today's orange, the planned indigo for any later day.
+    private func dropTint(_ day: Date) -> Color {
+        DateText.dayDelta(day, today: app.dayStart) == 0 ? Tint.today : Tint.planned
+    }
+
+    private func hover(_ day: Date, _ inside: Bool) {
+        Motion.animate(Motion.hover) {
+            if inside {
+                hoveredDay = day
+            } else if hoveredDay == day {
+                hoveredDay = nil
+            }
+        }
+    }
+
+    private func target(_ day: Date, _ over: Bool) {
+        Motion.animate(Motion.hover) {
+            if over {
+                dropDay = day
+            } else if dropDay == day {
+                dropDay = nil
+            }
+        }
+    }
+
     /// Open tasks by the calendar day they're planned for, and how many fall due on each day.
-    private static func index(_ tasks: [TaskItem]) -> (planned: [Date: [TaskItem]], due: [Date: Int]) {
+    private static func index(_ tasks: [TaskItem]) -> DayIndex {
         let calendar = Calendar.current
         var planned: [Date: [TaskItem]] = [:]
         var due: [Date: Int] = [:]
@@ -876,7 +1098,7 @@ struct DayStrip: View {
 /// on iPhone and iPad the whole line does. Long-press (right-click on the Mac) for everything
 /// else, and Quick Edit there for the colourful panel. On the Mac a click on the line shows it
 /// in the details column and a double-click plans it. With two panes the line (not its circle)
-/// can be dragged to the other pane.
+/// can be dragged to the other pane; it lifts off the page as a small card.
 struct PlanRow: View {
     let task: TaskItem
     let isPlanned: Bool
@@ -891,6 +1113,9 @@ struct PlanRow: View {
     var pane: PlanPane?
     /// Called as a drag of the line starts, with the pane it starts in.
     var onDragStart: (PlanPane) -> Void = { _ in }
+    /// Called once a tap, a click on the circle or a double-click planned the line or took it
+    /// off (the page gives a light tick for it).
+    var onToggle: () -> Void = {}
 
     @Environment(AppModel.self) private var app
     @State private var hovering = false
@@ -901,13 +1126,33 @@ struct PlanRow: View {
         return value
     }
 
-    /// Planned: the sun for today, the calendar check for another day, in indigo (the planned
-    /// colour; a filled check would look finished). Pointing at a planned line shows that a
-    /// click takes it off.
+    private var title: String {
+        task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle
+    }
+
+    private var isToday: Bool {
+        DateText.dayDelta(day, today: app.dayStart) == 0
+    }
+
+    /// The colour of planning for this day: Today's orange, the planned indigo for a later day.
+    private var dayTint: Color {
+        isToday ? Tint.today : Tint.planned
+    }
+
+    /// Planned: Today's sun in orange, or the calendar check in the planned indigo for a later
+    /// day (a filled check would look finished). Pointing at the circle shows what a click does:
+    /// a grey minus takes the line off the day, a plus in the day's colour plans it.
     private var symbol: String {
-        guard isPlanned else { return "plus.circle" }
-        if hovering { return "minus.circle" }
-        return DateText.dayDelta(day, today: app.dayStart) == 0 ? "sun.max.fill" : "calendar.badge.checkmark"
+        if isPlanned {
+            if hovering { return "minus.circle.fill" }
+            return isToday ? "sun.max.fill" : "calendar.badge.checkmark"
+        }
+        return hovering ? "plus.circle.fill" : "plus.circle"
+    }
+
+    private var iconColor: Color {
+        if isPlanned { return hovering ? Tint.offPlan : dayTint }
+        return hovering ? dayTint : Color.secondary
     }
 
     var body: some View {
@@ -919,7 +1164,6 @@ struct PlanRow: View {
                 TaskActionPanel(tasks: [task]) { actionTaskID = nil }
                     .presentationCompactAdaptation(.popover)
             }
-            .sensoryFeedback(.selection, trigger: isPlanned)
     }
 
     @ViewBuilder
@@ -930,7 +1174,9 @@ struct PlanRow: View {
                 icon
             }
             .buttonStyle(.plain)
-            .onHover { hovering = $0 }
+            .onHover { inside in
+                hover(inside)
+            }
             .help(isPlanned ? "Take it off this day" : "Plan it for this day")
             .accessibilityLabel(isPlanned ? "Take off this day" : "Plan for this day")
             dragSource(clickableContent)
@@ -938,7 +1184,7 @@ struct PlanRow: View {
         .background {
             if app.selectedRowIDs.contains(task.rowID) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.15))
+                    .fill(TintShapeStyle.tint.opacity(0.15))
                     .padding(.horizontal, -8)
                     .padding(.vertical, -4)
             }
@@ -969,18 +1215,28 @@ struct PlanRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            hover(inside)
+        }
         .accessibilityHint(isPlanned ? "Takes it off this day" : "Plans it for this day")
     }
     #endif
 
-    /// Two panes: the line can be dragged to the other pane, carrying its task's ID.
+    /// Two panes: the line can be dragged to the other pane, carrying its task's ID. On the Mac
+    /// it lifts off as a small card with a soft shadow; on the iPad the system lifts the line
+    /// itself, on rounded corners.
     @ViewBuilder
     private func dragSource<Content: View>(_ view: Content) -> some View {
         if let pane {
             let text = PlanDragPayload.text(for: task)
             let notify = onDragStart
-            view.draggable(Self.payload(text, from: pane, notify: notify))
+            #if os(macOS)
+            view.draggable(Self.payload(text, from: pane, notify: notify), preview: { dragPreview })
+            #else
+            view
+                .contentShape(.dragPreview, RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .draggable(Self.payload(text, from: pane, notify: notify))
+            #endif
         } else {
             view
         }
@@ -992,10 +1248,39 @@ struct PlanRow: View {
         return text
     }
 
+    #if os(macOS)
+    /// What follows the pointer while the line is dragged: the task lifted off the page as a
+    /// small card, with room around it for its soft shadow.
+    private var dragPreview: some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        return HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if task.priority != .normal {
+                Text(task.priority.marks)
+                    .theoFont(.body, weight: .heavy)
+                    .foregroundStyle(task.priority.color)
+            }
+            Text(title)
+                .theoFont(.body, weight: .medium)
+                .lineLimit(2)
+        }
+        .frame(width: 260, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background {
+            shape.fill(Color(nsColor: .controlBackgroundColor))
+        }
+        .overlay {
+            shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.2), radius: 12, y: 5)
+        .padding(16)
+    }
+    #endif
+
     private var icon: some View {
         Image(systemName: symbol)
             .theoFont(.title3)
-            .foregroundStyle(isPlanned && !hovering ? Color.indigo : Color.secondary)
+            .foregroundStyle(iconColor)
             .frame(width: 26)
             .contentTransition(.symbolEffect(.replace))
     }
@@ -1010,39 +1295,71 @@ struct PlanRow: View {
                             .foregroundStyle(task.priority.color)
                             .accessibilityLabel("\(task.priority.title) priority")
                     }
-                    Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
+                    Text(title)
                         .theoBodyFont()
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.leading)
                 }
                 if let parentTitle {
-                    Text("in: " + parentTitle)
-                        .theoFont(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    parentLine(parentTitle)
                 }
                 TaskMetaLine(task: task, style: rowStyle, today: app.dayStart, showAge: false)
                 if let style, style.subtaskCount > 0 {
-                    Text("\(style.subtaskCount - style.subtasksDone) of \(style.subtaskCount) subtasks open")
-                        .theoFont(.caption2)
-                        .foregroundStyle(.secondary)
+                    subtaskLine(style)
                 }
             }
             Spacer(minLength: 0)
             if let plannedDay = task.plannedDay, !isPlanned {
-                // The day it's planned for now: indigo while that's still ahead.
-                Text(DateText.due(plannedDay, hasTime: false, today: app.dayStart))
-                    .theoFont(.caption2, weight: .semibold)
-                    .foregroundStyle(plannedDay >= app.todayKey ? Color.indigo : Color.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                plannedDayTag(plannedDay)
             }
         }
     }
 
+    /// A subtask listed without its parent: which line it belongs to.
+    private func parentLine(_ parentTitle: String) -> some View {
+        Label(parentTitle, systemImage: "arrow.turn.down.right")
+            .labelStyle(CompactLabelStyle())
+            .theoFont(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .accessibilityLabel("Subtask of \(parentTitle)")
+    }
+
+    /// "2 of 3 subtasks open", beside the small ring that fills as they get done.
+    private func subtaskLine(_ style: RowStyle) -> some View {
+        let total: Int = style.subtaskCount
+        let done: Int = style.subtasksDone
+        let fraction: Double = total > 0 ? Double(done) / Double(total) : 0
+        return HStack(spacing: 4) {
+            MiniRing(fraction: fraction, lineWidth: 1.5)
+                .frame(width: 10, height: 10)
+            Text("\(total - done) of \(total) subtasks open")
+                .monospacedDigit()
+        }
+        .theoFont(.caption2)
+        .foregroundStyle(.secondary)
+    }
+
+    /// The day it's planned for now: Today's orange or the planned indigo while that's still
+    /// ahead, grey once it has passed.
+    private func plannedDayTag(_ plannedDay: Date) -> some View {
+        let delta = DateText.dayDelta(plannedDay, today: app.dayStart)
+        let color: Color = delta == 0 ? Tint.today : (delta > 0 ? Tint.planned : Color.secondary)
+        return Text(DateText.due(plannedDay, hasTime: false, today: app.dayStart))
+            .theoFont(.caption2, weight: .semibold)
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.secondary.opacity(0.12)))
+    }
+
+    private func hover(_ inside: Bool) {
+        Motion.animate(Motion.hover) { hovering = inside }
+    }
+
     private func togglePlan() {
-        withAnimation(.snappy) { app.plan([task], for: isPlanned ? nil : day) }
+        Motion.animate(Motion.list) { app.plan([task], for: isPlanned ? nil : day) }
+        onToggle()
     }
 }
 
