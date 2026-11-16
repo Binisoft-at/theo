@@ -314,14 +314,14 @@ final class AppModel {
 
     func show(_ message: String, symbol: String = "checkmark.circle.fill", undo: (() -> Void)? = nil) {
         let toast = Toast(message: message, symbol: symbol, undo: undo)
-        withAnimation(.snappy) { self.toast = toast }
+        Motion.animate(Motion.layout) { self.toast = toast }
         let id = toast.id
         // Undo and warnings stay long enough to be read and reached.
         let seconds = undo == nil && !toast.isWarning ? 2.2 : 4.5
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(seconds))
             if self.toast?.id == id {
-                withAnimation(.snappy) { self.toast = nil }
+                Motion.animate(Motion.layout) { self.toast = nil }
             }
         }
     }

@@ -52,18 +52,17 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(DateText.pageTitle(app.dayStart))
                     .theoFont(.headline)
+                // The numbers roll as tasks are ticked off here.
                 summary(today)
                     .theoFont(.subheadline)
                     .foregroundStyle(.secondary)
+                    .rollingNumber(today.count)
             }
 
             field
 
             if all.isEmpty {
-                Text("Nothing open today 🎉")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                emptyToday
             } else {
                 list(open: all.filter { !$0.isDone }, done: all.filter(\.isDone))
             }
@@ -75,13 +74,14 @@ struct MenuBarView: View {
                 }
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
             .theoFont(.subheadline)
         }
         // The field and the lines without a font of their own follow Theo's text size too.
         .theoFont(.body)
-        .padding(14)
+        .padding(16)
         .frame(width: 340)
         .onAppear {
             ticked = []
@@ -105,20 +105,28 @@ struct MenuBarView: View {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
                     .foregroundStyle(.tint)
+                    // Each task added gets a small bounce, like the bar at the bottom of the window.
+                    .symbolEffect(.bounce, value: confirmationID)
                 TextField("Quick entry — e.g. “Call Ana tomorrow 5pm !!”", text: $text)
                     .textFieldStyle(.plain)
                     .focused($focused)
                     .onSubmit(add)
             }
-            .padding(10)
+            .padding(12)
             .glassEffect(.regular, in: .capsule)
             if let confirmation {
-                Label(confirmation, systemImage: "checkmark.circle.fill")
-                    .theoFont(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .padding(.horizontal, 10)
-                    .transition(.opacity)
+                // What was understood slides out from under the field.
+                Label {
+                    Text(confirmation)
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Tint.done)
+                }
+                .theoFont(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .padding(.horizontal, 12)
+                .transition(.asymmetric(insertion: .push(from: .top), removal: .opacity))
             }
         }
     }
@@ -126,7 +134,8 @@ struct MenuBarView: View {
     /// The first open blocks, "+N more", then what was ticked off here.
     private func list(open: [MenuBarBlock], done: [MenuBarBlock]) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 6) {
+            // A task and its subtasks sit closer together than one task to the next.
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(open.prefix(Self.shownBlocks)) { block in
                     blockView(block)
                 }
@@ -135,23 +144,44 @@ struct MenuBarView: View {
                         MainWindow.reopen()
                         app.go(.today)
                     } label: {
+                        // Lined up with the titles (the lines' hover inset, the circle, the gap).
                         Text("+\(open.count - Self.shownBlocks) more · Open Theo")
-                            .theoFont(.caption)
+                            .theoFont(.caption, weight: .medium)
                             .foregroundStyle(.tint)
-                            .padding(.leading, 28)
+                            .padding(.leading, 38)
+                            .padding(.vertical, 4)
                     }
                     .buttonStyle(.plain)
                 }
                 if !done.isEmpty {
                     Divider()
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 6)
                     ForEach(done) { block in
                         blockView(block)
                     }
                 }
             }
         }
+        // The lines' hover fill reaches a little past the column the header and field stand in.
+        .padding(.horizontal, -6)
         .frame(maxHeight: 360)
+    }
+
+    /// Nothing left on today's page: Today's sun and a quiet line.
+    private var emptyToday: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "sun.max.fill")
+                .theoFont(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Tint.today)
+            Text("Nothing open today")
+                .theoFont(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Rows
@@ -177,9 +207,10 @@ struct MenuBarView: View {
     }
 
     private func blockView(_ block: MenuBarBlock) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(block.lines) { line in
                 lineView(line)
+                    .modifier(MenuLineHover())
             }
         }
     }
@@ -190,10 +221,11 @@ struct MenuBarView: View {
             CheckCircle(done: task.isDone, priority: task.priority, size: line.depth > 0 ? 14 : 16) {
                 tick(task)
             }
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Button {
                     show(task)
                 } label: {
+                    // The marks and the title in one font, so a subtask's marks are its size.
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         if task.priority != .normal {
                             Text(task.priority.marks)
@@ -201,11 +233,11 @@ struct MenuBarView: View {
                                 .foregroundStyle(task.isDone ? Color.secondary : task.priority.color)
                         }
                         Text(task.trimmedTitle.isEmpty ? "New Task" : task.trimmedTitle)
-                            .theoFont(line.depth > 0 ? .callout : .body)
                             .strikethrough(task.isDone, color: .secondary)
                             .foregroundStyle(task.isDone ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                             .lineLimit(2)
                     }
+                    .theoFont(line.depth > 0 ? .callout : .body)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
@@ -222,19 +254,20 @@ struct MenuBarView: View {
         .padding(.leading, CGFloat(line.depth) * 14)
     }
 
-    /// Deadline (red when overdue, orange today), Power Hours, ∞ and the group, in its colour.
+    /// Deadline (orange when it's today or has passed: calm, it's at the top anyway), Power
+    /// Hours, ∞ and the group with its icon in the group's colour.
     private func meta(_ line: MenuBarLine) -> Text? {
         let task = line.task
         let today = app.dayStart
         var parts: [Text] = []
         if let due = task.dueDate {
             let delta = DateText.dayDelta(due, today: today)
-            let color: Color = task.isDone ? .secondary : (delta < 0 ? .red : (delta == 0 ? .orange : .secondary))
+            let color: Color = task.isDone ? .secondary : (delta < 0 ? Tint.overdue : (delta == 0 ? Tint.today : .secondary))
             let label = DateText.due(due, hasTime: task.dueHasTime, today: today)
             parts.append(Text("\(Image(systemName: "calendar")) \(label)").foregroundStyle(color))
         }
         if task.isOngoing && !task.isDone {
-            parts.append(Text("\(Image(systemName: "infinity"))").foregroundStyle(Color.teal))
+            parts.append(Text("\(Image(systemName: "infinity"))").foregroundStyle(Tint.ongoing))
         }
         if !task.isDone {
             let hours = line.style.blockEstimate > 0 ? line.style.blockEstimate : task.estimate
@@ -248,7 +281,8 @@ struct MenuBarView: View {
             parts.append(Text("\(Image(systemName: "chevron.right")) \(line.style.subtaskCount) folded").foregroundStyle(Color.secondary))
         }
         if line.depth == 0, let group = task.group, group.deletedAt == nil {
-            parts.append(Text(group.displayName).foregroundStyle(group.color.color))
+            let icon = Text(Image(systemName: group.symbol)).foregroundStyle(group.color.color)
+            parts.append(Text("\(icon) \(group.displayName)").foregroundStyle(Color.secondary))
         }
         guard var result = parts.first else { return nil }
         for part in parts.dropFirst() {
@@ -268,7 +302,7 @@ struct MenuBarView: View {
             task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) < 0 } ?? false
         }.count
         if overdue > 0 {
-            let late = Text("\(overdue) overdue").foregroundStyle(Color.red)
+            let late = Text("\(overdue) overdue").foregroundStyle(Tint.overdue)
             line = Text("\(line) · \(late)")
         }
         return line
@@ -280,13 +314,13 @@ struct MenuBarView: View {
     private func tick(_ task: TaskItem) {
         if task.isDone {
             // Reopens it; for an ongoing task's logged copy, the log goes away again.
-            withAnimation(.snappy) {
+            Motion.animate(Motion.list) {
                 app.toggle(task)
                 ticked.removeAll { $0 === task }
             }
             return
         }
-        withAnimation(.snappy) { app.toggle(task) }
+        Motion.animate(Motion.list) { app.toggle(task) }
         if task.isDone {
             ticked.append(task)
         } else if task.isOngoing, let log = latestLog(of: task) {
@@ -332,7 +366,7 @@ struct MenuBarView: View {
         let entry = QuickParser.parse(raw, groups: refs, now: app.dayStart)
         guard !entry.title.isEmpty else { return }
         let placement = NewTaskPlacement(rawValue: UserDefaults.standard.string(forKey: Prefs.newTaskPlacement) ?? "") ?? .bottom
-        let task = withAnimation(.snappy) { app.store.addTask(entry, defaultGroupID: nil, placement: placement) }
+        let task = Motion.animate(Motion.list) { app.store.addTask(entry, defaultGroupID: nil, placement: placement) }
         // A global capture field: on today's plan unless the deadline is on a later day (read
         // from the task, so a repeat's first date counts).
         let planned = task.dueDate.map { DateText.dayDelta($0, today: app.dayStart) <= 0 } ?? true
@@ -359,12 +393,31 @@ struct MenuBarView: View {
         let message = "Added to " + understood + (planned ? " · on today" : "")
         let id = UUID()
         confirmationID = id
-        withAnimation(.snappy) { confirmation = message }
+        Motion.animate(Motion.layout) { confirmation = message }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(3))
             guard confirmationID == id else { return }
-            withAnimation(.snappy) { confirmation = nil }
+            Motion.animate(Motion.layout) { confirmation = nil }
         }
+    }
+}
+
+/// A soft fill under a line while the pointer is over it, the way a menu marks the item it's
+/// on, so the line reads as something to click.
+private struct MenuLineHover: ViewModifier {
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.secondary.opacity(isHovered ? 0.12 : 0))
+            }
+            .onHover { inside in
+                Motion.animate(Motion.hover) { isHovered = inside }
+            }
     }
 }
 #endif

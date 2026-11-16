@@ -52,37 +52,46 @@ struct HistoryView: View {
 
         List {
             Section {
-                HStack(spacing: 12) {
-                    StatTile(value: "\(streak)", label: "day streak", symbol: "flame.fill", color: .orange)
-                    StatTile(value: "\(weekDone)", label: "done in 7 days", symbol: "checkmark.seal.fill", color: .green)
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                StatPair(
+                    leading: StatTile(value: "\(streak)", label: "day streak", symbol: "flame.fill", color: .orange),
+                    trailing: StatTile(value: "\(weekDone)", label: "done in 7 days", symbol: "checkmark", color: Tint.done)
+                )
             }
             if buckets.isEmpty {
-                Text("Completed tasks are kept here day by day, like your old daily notes.")
-                    .foregroundStyle(.secondary)
+                EmptyHint(symbol: "clock.arrow.circlepath", title: "No History Yet",
+                          message: "Completed tasks are kept here day by day, like your old daily notes.")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             ForEach(buckets) { bucket in
-                Section(bucket.title) {
+                Section {
                     ForEach(bucket.days) { day in
                         NavigationLink(value: DayRef(start: day.start)) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(DateText.pageTitle(day.start))
-                                    .theoFont(.headline)
-                                // "3 done · 0,75 PH" in grey, then what got done, lighter.
-                                let line = preview(day)
-                                Text("\(Text(line.summary).foregroundStyle(.secondary))\(Text(line.titles).foregroundStyle(.tertiary))")
-                                    .theoFont(.subheadline)
-                                    .lineLimit(2)
-                            }
-                            .padding(.vertical, 2)
+                            dayRow(day)
                         }
                     }
+                } header: {
+                    Text(bucket.title)
+                        .theoFont(.headline)
+                        .foregroundStyle(.primary)
+                        .textCase(nil)
                 }
             }
         }
         .navigationTitle("History")
+    }
+
+    /// The day's date, then "3 done · 0,75 PH" in grey and what got done, lighter.
+    private func dayRow(_ day: DaySummary) -> some View {
+        let line = preview(day)
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(DateText.pageTitle(day.start))
+                .theoFont(.headline)
+            Text("\(Text(line.summary).foregroundStyle(.secondary))\(Text(line.titles).foregroundStyle(.tertiary))")
+                .theoFont(.subheadline)
+                .lineLimit(2)
+        }
+        .padding(.vertical, 2)
     }
 
     /// "3 done · 0,75 PH" and " · Water plants, Call the garage, …" (or "2 added" on a day
@@ -138,6 +147,23 @@ struct HistoryView: View {
     }
 }
 
+/// Two figures side by side on one card, split by a hairline.
+struct StatPair: View {
+    let leading: StatTile
+    let trailing: StatTile
+
+    var body: some View {
+        HStack(spacing: 16) {
+            leading
+            Divider()
+            trailing
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// A figure with its label, and its symbol on a disc of its colour, like a smart list in
+/// Reminders. The number is rounded and rolls when it changes.
 struct StatTile: View {
     let value: String
     let label: String
@@ -145,23 +171,27 @@ struct StatTile: View {
     let color: Color
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: symbol)
-                .theoFont(.title2)
-                .foregroundStyle(color)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(color.gradient))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(value)
-                    .theoFont(.title2, weight: .bold)
-                    .monospacedDigit()
+                    .theoFont(.title2, weight: .bold, design: .rounded)
+                    .modifier(RollingFigures(text: value))
                 Text(label)
                     .theoFont(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(color.opacity(0.1)))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -208,15 +238,14 @@ struct DayPageView: View {
 
         List {
             Section {
-                HStack(spacing: 12) {
-                    StatTile(value: "\(doneThatDay.count)", label: "completed", symbol: "checkmark.circle.fill", color: .green)
-                    StatTile(value: "\(open.count)", label: "still open", symbol: "circle.dashed", color: .orange)
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                StatPair(
+                    leading: StatTile(value: "\(doneThatDay.count)", label: "completed", symbol: "checkmark", color: Tint.done),
+                    trailing: StatTile(value: "\(open.count)", label: "still open", symbol: "circle.dashed", color: Tint.today)
+                )
             }
             if doneSections.isEmpty {
                 Text("Nothing was checked off that day.")
+                    .theoFont(.subheadline)
                     .foregroundStyle(.secondary)
             }
             ForEach(doneSections, id: \.key) { section in
@@ -225,32 +254,19 @@ struct DayPageView: View {
                         HistoryTaskRow(task: task, doneThen: true, dayEnd: end, today: app.dayStart)
                     }
                 } header: {
-                    HStack(spacing: 8) {
-                        Label(section.title, systemImage: section.symbol)
-                            .foregroundStyle(section.color)
-                        Spacer(minLength: 8)
-                        let hours = PageBuilder.estimateTotals(section.tasks).done
-                        if hours > 0 {
-                            Text("Σ " + PowerHours.format(hours))
-                                .theoFont(.subheadline, weight: .semibold)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                .accessibilityLabel("\(PowerHours.format(hours)) done")
-                        }
-                    }
-                    .theoFont(.headline)
-                    .textCase(nil)
+                    sectionHeader(section)
                 }
             }
             if !open.isEmpty {
                 Section {
-                    DisclosureGroup(isExpanded: $showsOpen) {
+                    DisclosureGroup(isExpanded: $showsOpen.animation(Motion.resolved(Motion.list))) {
                         ForEach(open) { task in
                             HistoryTaskRow(task: task, doneThen: false, dayEnd: end, today: app.dayStart,
                                            dueByThen: overdueIDs.contains(ObjectIdentifier(task)))
                         }
                     } label: {
                         Label(openTitle, systemImage: "circle.dashed")
+                            .theoFont(.body)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -271,6 +287,31 @@ struct DayPageView: View {
                 }
             }
         }
+    }
+
+    /// A group's name in the text colour with its icon in the group's colour, and the Power
+    /// Hours it got done that day.
+    private func sectionHeader(_ section: LabeledSection) -> some View {
+        let hours = PageBuilder.estimateTotals(section.tasks).done
+        return HStack(spacing: 8) {
+            Label {
+                Text(section.title)
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: section.symbol)
+                    .foregroundStyle(section.color)
+            }
+            Spacer(minLength: 8)
+            if hours > 0 {
+                Text("Σ " + PowerHours.format(hours))
+                    .theoFont(.subheadline, weight: .semibold, design: .rounded)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("\(PowerHours.format(hours)) done")
+            }
+        }
+        .theoFont(.headline)
+        .textCase(nil)
     }
 
     /// Its deadline had come by that day (a task due that day and still open at its end counts).
@@ -338,31 +379,42 @@ struct HistoryTaskRow: View {
                         // A logged round of an ongoing task.
                         Image(systemName: "infinity")
                             .theoFont(.caption, weight: .semibold)
-                            .foregroundStyle(.teal)
+                            .foregroundStyle(Tint.ongoing)
                             .accessibilityLabel("Ongoing")
                     }
                 }
                 if !doneThen {
-                    HStack(spacing: 8) {
-                        if let completed = task.completedAt {
-                            Text("Done later · \(DateText.shortDay(completed))")
-                                .foregroundStyle(.green)
-                        } else {
-                            Text("Still open")
-                                .foregroundStyle(.orange)
-                        }
-                        if dueByThen, let due = task.dueDate {
-                            Label("Due \(DateText.shortDay(due))", systemImage: "flag.checkered")
-                                .foregroundStyle(.red)
-                        }
-                    }
-                    .theoFont(.caption)
+                    statusLine
                 }
             }
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
         .onTapGesture { app.detailTask = task }
+    }
+
+    /// What became of it, quietly: green once done later, the calm overdue orange for a
+    /// deadline that had come by then, grey for still open.
+    private var statusLine: some View {
+        HStack(spacing: 8) {
+            if let completed = task.completedAt {
+                Text("Done later · \(DateText.shortDay(completed))")
+                    .foregroundStyle(Tint.done)
+            } else {
+                Text("Still open")
+                    .foregroundStyle(.secondary)
+            }
+            if dueByThen, let due = task.dueDate {
+                HStack(spacing: 3) {
+                    Image(systemName: "calendar")
+                        .imageScale(.small)
+                        .accessibilityHidden(true)
+                    Text("Due \(DateText.shortDay(due))")
+                }
+                .foregroundStyle(Tint.overdue)
+            }
+        }
+        .theoFont(.caption)
     }
 }
 
@@ -451,11 +503,17 @@ struct TrashView: View {
                 Section("Groups") {
                     ForEach(groups) { group in
                         HStack {
-                            Label(group.displayName, systemImage: group.symbol)
-                                .foregroundStyle(group.color.color)
+                            Label {
+                                Text(group.displayName)
+                            } icon: {
+                                Image(systemName: group.symbol)
+                                    .foregroundStyle(group.color.color)
+                            }
+                            .theoFont(.body)
                             Spacer()
                             Text(remaining(group.deletedAt))
                                 .theoFont(.caption)
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                         .swipeActions(edge: .leading) {
@@ -491,6 +549,7 @@ struct TrashView: View {
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(task.trimmedTitle)
+                                .theoFont(.body)
                                 .foregroundStyle(row.depth > 0 ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
                             if row.depth == 0, let line = caption(row) {
                                 Text(line)
@@ -502,6 +561,7 @@ struct TrashView: View {
                         if row.depth == 0 {
                             Text(remaining(task.deletedAt))
                                 .theoFont(.caption)
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -530,8 +590,8 @@ struct TrashView: View {
         }
         .overlay {
             if items.isEmpty && groups.isEmpty {
-                ContentUnavailableView("No Recently Deleted Items", systemImage: "trash",
-                                       description: Text("Deleted tasks stay here for 30 days."))
+                PageEmptyState(title: "No Recently Deleted Items", symbol: "trash", color: Color.secondary,
+                               message: "Deleted tasks stay here for 30 days.")
             }
         }
         .navigationTitle("Recently Deleted")
@@ -541,6 +601,8 @@ struct TrashView: View {
                     .disabled(items.isEmpty && groups.isEmpty)
             }
         }
+        // A warning tap as the destructive question comes up.
+        .sensoryFeedback(.warning, trigger: confirmEmpty) { _, asking in asking }
         .confirmationDialog("Delete all items permanently?", isPresented: $confirmEmpty, titleVisibility: .visible) {
             Button("Delete All", role: .destructive) {
                 app.store.purge(Array(tasks))

@@ -1,7 +1,9 @@
 import SwiftUI
 import TheoCore
 
-/// Context-menu content for one or more tasks (long press on iOS, right click on macOS).
+/// Context-menu content for one or more tasks (long press on iOS, right click on macOS). The
+/// items keep the words and symbols they have everywhere else, grouped by what they're about,
+/// with Delete last.
 struct TaskMenuItems: View {
     let tasks: [TaskItem]
     var onEdit: (() -> Void)?
@@ -24,24 +26,26 @@ struct TaskMenuItems: View {
             ForEach([Priority.low, .medium, .high]) { level in
                 Button {
                     let all = tasks.allSatisfy { $0.priority == level }
-                    app.store.setPriority(tasks, all ? .normal : level)
+                    Motion.animate(Motion.list) { app.store.setPriority(tasks, all ? .normal : level) }
                 } label: {
                     Label(level.title, systemImage: tasks.allSatisfy { $0.priority == level } ? "checkmark" : level.symbol)
                 }
             }
         } label: {
-            Label("Priority", systemImage: "exclamationmark.circle")
+            Label("Priority", systemImage: "exclamationmark")
         }
 
+        Divider()
+
         Button {
-            withAnimation(.snappy) { app.markDone(tasks, !allDone) }
+            Motion.animate(Motion.list) { app.markDone(tasks, !allDone) }
         } label: {
-            Label(allDone ? "Mark as Not Done" : "Mark as Done", systemImage: allDone ? "circle" : "checkmark.circle")
+            Label(allDone ? "Reopen" : "Mark as Done", systemImage: allDone ? "arrow.uturn.backward" : "checkmark.circle")
         }
 
         if let single {
             Button {
-                withAnimation(.snappy) { app.addSubtask(to: single) }
+                Motion.animate(Motion.list) { app.addSubtask(to: single) }
             } label: {
                 Label("Add Subtask", systemImage: "arrow.turn.down.right")
             }
@@ -58,10 +62,12 @@ struct TaskMenuItems: View {
             }
         }
 
+        Divider()
+
         Menu {
             ForEach(QuickDate.allCases) { quick in
                 Button {
-                    app.store.setDue(tasks, quick.date(from: app.dayStart))
+                    Motion.animate(Motion.list) { app.store.setDue(tasks, quick.date(from: app.dayStart)) }
                 } label: {
                     Label(quick.title, systemImage: quick.symbol)
                 }
@@ -74,7 +80,7 @@ struct TaskMenuItems: View {
             if tasks.contains(where: { $0.dueDate != nil }) {
                 Divider()
                 Button(role: .destructive) {
-                    app.store.setDue(tasks, nil)
+                    Motion.animate(Motion.list) { app.store.setDue(tasks, nil) }
                 } label: {
                     Label("Remove Deadline", systemImage: "calendar.badge.minus")
                 }
@@ -86,7 +92,7 @@ struct TaskMenuItems: View {
         Menu {
             ForEach(PowerHours.presets, id: \.self) { value in
                 Button {
-                    app.store.setEstimate(tasks, value)
+                    Motion.animate(Motion.list) { app.store.setEstimate(tasks, value) }
                 } label: {
                     if single?.estimate == value {
                         Label(PowerHours.format(value), systemImage: "checkmark")
@@ -105,7 +111,7 @@ struct TaskMenuItems: View {
             if tasks.contains(where: { $0.estimate > 0 }) {
                 Divider()
                 Button(role: .destructive) {
-                    app.store.setEstimate(tasks, 0)
+                    Motion.animate(Motion.list) { app.store.setEstimate(tasks, 0) }
                 } label: {
                     Label("No Estimate", systemImage: "xmark.circle")
                 }
@@ -143,36 +149,38 @@ struct TaskMenuItems: View {
         // Ongoing: never finished, each check-off is logged for the day.
         let allOngoing = tasks.allSatisfy(\.isOngoing)
         Button {
-            withAnimation(.snappy) { app.store.setOngoing(tasks, !allOngoing) }
+            Motion.animate(Motion.list) { app.store.setOngoing(tasks, !allOngoing) }
         } label: {
             Label(allOngoing ? "Not Ongoing" : "Ongoing (Never Finished)", systemImage: allOngoing ? "infinity.circle" : "infinity")
         }
 
         if let single {
             Button {
-                withAnimation(.snappy) { app.matrixTask = single }
+                Motion.animate(Motion.layout) { app.matrixTask = single }
             } label: {
-                Label("Place in Matrix…", systemImage: "square.grid.2x2")
+                Label("Place in Matrix…", systemImage: "square.grid.3x3")
             }
             if !single.isDone {
                 Button {
                     app.startFocus(on: single)
                 } label: {
-                    Label("Start Focus", systemImage: "timer")
+                    Label("Start Focus", systemImage: "scope")
                 }
             }
         }
 
+        Divider()
+
         Menu {
             Button {
-                app.move(tasks, toGroup: nil)
+                Motion.animate(Motion.list) { app.move(tasks, toGroup: nil) }
             } label: {
                 Label("Quick Entry", systemImage: "tray.and.arrow.down")
             }
             let allGroups = app.store.liveGroups()
             ForEach(GroupTree.ordered(allGroups), id: \.group.uuid) { item in
                 Button {
-                    app.move(tasks, toGroup: item.group.uuid)
+                    Motion.animate(Motion.list) { app.move(tasks, toGroup: item.group.uuid) }
                 } label: {
                     Label(GroupTree.path(of: item.group, in: allGroups), systemImage: item.group.symbol)
                 }
@@ -194,15 +202,16 @@ struct TaskMenuItems: View {
         }
 
         if !allDone {
+            Divider()
             if tasks.allSatisfy({ $0.isPlanned(for: app.dayStart) }) {
                 Button {
-                    app.deferToTomorrow(tasks)
+                    Motion.animate(Motion.list) { app.deferToTomorrow(tasks) }
                 } label: {
                     Label("Plan for Tomorrow", systemImage: "moon.zzz.fill")
                 }
             } else {
                 Button {
-                    app.plan(tasks, for: app.dayStart)
+                    Motion.animate(Motion.list) { app.plan(tasks, for: app.dayStart) }
                 } label: {
                     Label("Do Today", systemImage: "sun.max.fill")
                 }
@@ -211,15 +220,15 @@ struct TaskMenuItems: View {
                 ForEach(1..<8, id: \.self) { offset in
                     let day = DayBoundary.current.dayStart(byAdding: offset, to: app.dayStart)
                     Button(offset == 1 ? "Tomorrow" : day.formatted(.dateTime.weekday(.wide).day().month())) {
-                        app.plan(tasks, for: day)
+                        Motion.animate(Motion.list) { app.plan(tasks, for: day) }
                     }
                 }
                 if tasks.contains(where: { $0.plannedDay != nil }) {
                     Divider()
                     Button(role: .destructive) {
-                        app.plan(tasks, for: nil)
+                        Motion.animate(Motion.list) { app.plan(tasks, for: nil) }
                     } label: {
-                        Label("Take Off the Plan", systemImage: "calendar.badge.minus")
+                        Label("Off Plan", systemImage: "calendar.badge.minus")
                     }
                 }
             } label: {
@@ -231,33 +240,33 @@ struct TaskMenuItems: View {
             Divider()
             Menu {
                 Button {
-                    withAnimation(.snappy) { app.store.moveToEdge(single, top: true) }
+                    Motion.animate(Motion.list) { app.store.moveToEdge(single, top: true) }
                 } label: {
                     Label("Move to Top of Ties", systemImage: "arrow.up.to.line")
                 }
                 Button {
-                    withAnimation(.snappy) { app.store.move(single, .up) }
+                    Motion.animate(Motion.list) { app.store.move(single, .up) }
                 } label: {
                     Label("Move Up", systemImage: "arrow.up")
                 }
                 Button {
-                    withAnimation(.snappy) { app.store.move(single, .down) }
+                    Motion.animate(Motion.list) { app.store.move(single, .down) }
                 } label: {
                     Label("Move Down", systemImage: "arrow.down")
                 }
                 Button {
-                    withAnimation(.snappy) { app.store.moveToEdge(single, top: false) }
+                    Motion.animate(Motion.list) { app.store.moveToEdge(single, top: false) }
                 } label: {
                     Label("Move to Bottom", systemImage: "arrow.down.to.line")
                 }
                 Divider()
                 Button {
-                    withAnimation(.snappy) { app.store.indent(single, by: 1) }
+                    Motion.animate(Motion.list) { app.store.indent(single, by: 1) }
                 } label: {
                     Label("Indent", systemImage: "increase.indent")
                 }
                 Button {
-                    withAnimation(.snappy) { app.store.indent(single, by: -1) }
+                    Motion.animate(Motion.list) { app.store.indent(single, by: -1) }
                 } label: {
                     Label("Outdent", systemImage: "decrease.indent")
                 }
@@ -265,7 +274,7 @@ struct TaskMenuItems: View {
                 Label("Arrange", systemImage: "arrow.up.arrow.down")
             }
             Button {
-                app.store.duplicate(single)
+                Motion.animate(Motion.list) { app.store.duplicate(single) }
             } label: {
                 Label("Duplicate", systemImage: "plus.square.on.square")
             }
@@ -273,7 +282,7 @@ struct TaskMenuItems: View {
 
         Divider()
         Button(role: .destructive) {
-            app.delete(tasks)
+            Motion.animate(Motion.list) { app.delete(tasks) }
         } label: {
             Label(tasks.count > 1 ? "Delete \(tasks.count) Tasks" : "Delete", systemImage: "trash")
         }

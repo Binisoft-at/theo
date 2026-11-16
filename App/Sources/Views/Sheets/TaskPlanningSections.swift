@@ -15,6 +15,12 @@ struct TaskPlanningSections: View {
     @State private var customMinutes = 45
     /// Ranking is set less often than the rest, so it starts folded.
     @State private var showsRanking = false
+    /// Counts taps on the Power Hours chips, for the iPhone's selection tick.
+    @State private var estimateTick = 0
+    /// The accent chosen in Settings: the matrix dot takes a colour rather than the tint.
+    @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
+
+    private var accent: Color { (AccentChoice(rawValue: accentRaw) ?? .notes).color }
 
     private static let nudgeOptions: [(title: String, count: Int, every: Int)] = [
         ("Off", 0, 0), ("3× every 5 min", 3, 5), ("3× every 10 min", 3, 10), ("5× every 15 min", 5, 15), ("4× every 30 min", 4, 30),
@@ -35,47 +41,32 @@ struct TaskPlanningSections: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(PowerHours.presets, id: \.self) { value in
-                        ChipButton(title: PowerHours.number(value), color: .teal, isOn: task.estimate == value) {
-                            app.store.setEstimate([task], task.estimate == value ? 0 : value)
+                        ChipButton(title: PowerHours.number(value), color: Tint.powerHours, isOn: task.estimate == value) {
+                            estimateTick += 1
+                            Motion.animate(Motion.tap) {
+                                app.store.setEstimate([task], task.estimate == value ? 0 : value)
+                            }
                         }
                     }
                 }
                 .padding(.vertical, 2)
             }
             .scrollClipDisabled()
-            HStack {
-                Label("Custom", systemImage: "slider.horizontal.3")
-                Spacer()
-                TextField(task.estimate > 0 && !PowerHours.presets.contains(task.estimate) ? PowerHours.number(task.estimate) : "PH", text: $customEstimate)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 90)
-                    #if os(iOS)
-                    .keyboardType(.decimalPad)
-                    #endif
-                    .onSubmit(applyCustomEstimate)
-                    .onChange(of: customEstimate) { _, _ in
-                        if PowerHours.parse(customEstimate) != nil { applyCustomEstimate() }
-                    }
-            }
+            #if os(iOS)
+            .sensoryFeedback(.selection, trigger: estimateTick)
+            #endif
+            customEstimateRow
             if task.focusSeconds >= 60 {
-                LabeledContent("Focused", value: PowerHours.format(task.focusSeconds / (PowerHours.minutesPerPH * 60)))
+                LabeledContent {
+                    Text(PowerHours.format(task.focusSeconds / (PowerHours.minutesPerPH * 60)))
+                        .monospacedDigit()
+                } label: {
+                    SheetRowLabel("Focused")
+                }
             }
             if !task.isDone {
-                Button {
-                    if embedded {
-                        app.startFocus(on: task)
-                    } else {
-                        // The timer opens once the sheet is gone.
-                        let target = task
-                        let model = app
-                        dismiss()
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(450))
-                            model.startFocus(on: target)
-                        }
-                    }
-                } label: {
-                    Label("Start Focus", systemImage: "timer")
+                Button(action: startFocus) {
+                    SheetRowLabel("Start Focus", action: "scope")
                 }
             }
         } header: {
@@ -85,9 +76,47 @@ struct TaskPlanningSections: View {
         }
     }
 
+    /// Any other amount, typed: it applies as soon as it reads as a number.
+    private var customEstimateRow: some View {
+        HStack {
+            SheetRowLabel("Custom", symbol: "slider.horizontal.3", color: Tint.powerHours)
+            Spacer()
+            TextField(customPlaceholder, text: $customEstimate)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 90)
+                #if os(iOS)
+                .keyboardType(.decimalPad)
+                #endif
+                .onSubmit(applyCustomEstimate)
+                .onChange(of: customEstimate) { _, _ in
+                    if PowerHours.parse(customEstimate) != nil { applyCustomEstimate() }
+                }
+        }
+    }
+
+    /// The task's own amount when it isn't one of the chips.
+    private var customPlaceholder: String {
+        task.estimate > 0 && !PowerHours.presets.contains(task.estimate) ? PowerHours.number(task.estimate) : "PH"
+    }
+
     private func applyCustomEstimate() {
         guard let value = PowerHours.parse(customEstimate) else { return }
         app.store.setEstimate([task], value)
+    }
+
+    private func startFocus() {
+        if embedded {
+            app.startFocus(on: task)
+        } else {
+            // The timer opens once the sheet is gone.
+            let target = task
+            let model = app
+            dismiss()
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(450))
+                model.startFocus(on: target)
+            }
+        }
     }
 
     // MARK: - Repeat & reminders
@@ -100,39 +129,19 @@ struct TaskPlanningSections: View {
                     Text(recurrence.title).tag(Recurrence?.some(recurrence))
                 }
             } label: {
-                Label("Repeat", systemImage: "repeat")
+                SheetRowLabel("Repeat", symbol: "repeat")
             }
             if task.dueHasTime {
-                DisclosureGroup {
-                    ForEach(Reminders.presets, id: \.self) { offset in
-                        Toggle(Reminders.describe(offset), isOn: reminderBinding(offset))
-                    }
-                    ForEach(customOffsets, id: \.self) { offset in
-                        Toggle(Reminders.describe(offset), isOn: reminderBinding(offset))
-                    }
-                    HStack {
-                        Stepper("\(customMinutes) min before", value: $customMinutes, in: 5...10080, step: 5)
-                        Button("Add") {
-                            app.store.setReminders(task, task.reminderOffsets + [customMinutes])
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    Picker("After the time", selection: nudgeBinding) {
-                        ForEach(Self.nudgeOptions.indices, id: \.self) { index in
-                            Text(Self.nudgeOptions[index].title).tag(index)
-                        }
-                    }
-                } label: {
-                    LabeledContent {
-                        Text(reminderSummary)
-                    } label: {
-                        Label("Reminders", systemImage: "bell")
-                    }
-                }
+                remindersGroup
             } else {
-                Text("Give the deadline a time to get reminders.")
-                    .theoFont(.footnote)
-                    .foregroundStyle(.secondary)
+                // Where the reminders will be, once the deadline has a time.
+                Label {
+                    Text("Give the deadline a time to get reminders.")
+                } icon: {
+                    SheetRowIcon("bell.slash")
+                }
+                .theoFont(.footnote)
+                .foregroundStyle(.secondary)
             }
         } header: {
             Text("Repeat & Reminders")
@@ -145,8 +154,55 @@ struct TaskPlanningSections: View {
         }
     }
 
+    /// Reminders before the time and nudges after it, folded behind one row that says how
+    /// many there are.
+    private var remindersGroup: some View {
+        DisclosureGroup {
+            ForEach(Reminders.presets, id: \.self) { offset in
+                Toggle(Reminders.describe(offset), isOn: reminderBinding(offset))
+            }
+            ForEach(customOffsets, id: \.self) { offset in
+                Toggle(Reminders.describe(offset), isOn: reminderBinding(offset))
+            }
+            HStack {
+                Stepper(value: $customMinutes, in: 5...10080, step: 5) {
+                    Text("\(customMinutes) min before")
+                        .rollingNumber(customMinutes)
+                }
+                #if os(iOS)
+                .sensoryFeedback(.increase, trigger: customMinutes) { old, new in new > old }
+                .sensoryFeedback(.decrease, trigger: customMinutes) { old, new in new < old }
+                #endif
+                Button("Add") {
+                    Motion.animate(Motion.list) {
+                        app.store.setReminders(task, task.reminderOffsets + [customMinutes])
+                    }
+                }
+                .buttonStyle(.borderless)
+            }
+            Picker("After the time", selection: nudgeBinding) {
+                ForEach(Self.nudgeOptions.indices, id: \.self) { index in
+                    Text(Self.nudgeOptions[index].title).tag(index)
+                }
+            }
+        } label: {
+            LabeledContent {
+                Text(reminderSummary)
+                    .contentTransition(.numericText())
+                    .animation(Motion.resolved(Motion.tap), value: reminderSummary)
+            } label: {
+                SheetRowLabel("Reminders", symbol: "bell")
+            }
+        }
+    }
+
     private var recurrenceBinding: Binding<Recurrence?> {
-        Binding(get: { task.recurrence }, set: { app.store.setRecurrence([task], $0) })
+        Binding(
+            get: { task.recurrence },
+            set: { recurrence in
+                Motion.animate(Motion.list) { app.store.setRecurrence([task], recurrence) }
+            }
+        )
     }
 
     private func reminderBinding(_ offset: Int) -> Binding<Bool> {
@@ -155,7 +211,7 @@ struct TaskPlanningSections: View {
             set: { on in
                 var offsets = task.reminderOffsets.filter { $0 != offset }
                 if on { offsets.append(offset) }
-                app.store.setReminders(task, offsets)
+                Motion.animate(Motion.list) { app.store.setReminders(task, offsets) }
             }
         )
     }
@@ -174,7 +230,9 @@ struct TaskPlanningSections: View {
             set: { index in
                 let option = Self.nudgeOptions[index]
                 let before = task.reminderOffsets.filter { $0 >= 0 }
-                app.store.setReminders(task, before + Reminders.nudges(count: option.count, every: option.every))
+                Motion.animate(Motion.tap) {
+                    app.store.setReminders(task, before + Reminders.nudges(count: option.count, every: option.every))
+                }
             }
         )
     }
@@ -189,22 +247,30 @@ struct TaskPlanningSections: View {
     // MARK: - Ranking
 
     /// The importance level and the matrix, folded behind one row that says where the task
-    /// ranks. The priority marks above already set a matching importance.
+    /// ranks. The priority marks above already set a matching importance. The dot glides to the
+    /// cell that's tapped, and the row's words follow.
     private var rankingSection: some View {
         let cell = MatrixGeometry.cell(of: task, today: app.dayStart)
         return Section {
-            DisclosureGroup(isExpanded: $showsRanking) {
+            DisclosureGroup(isExpanded: $showsRanking.animation(Motion.resolved(Motion.list))) {
                 Stepper(value: importanceLevelBinding, in: 1...Matrix.levels) {
-                    LabeledContent("Importance", value: "\(task.importanceLevel) of \(Matrix.levels)")
+                    LabeledContent {
+                        Text("\(task.importanceLevel) of \(Matrix.levels)")
+                            .rollingNumber(task.importanceLevel)
+                    } label: {
+                        Text("Importance")
+                    }
                 }
                 MatrixBoard(compact: true) { size in
-                    MatrixDot(point: MatrixGeometry.center(of: cell, in: size), color: Color.accentColor, isSelected: true)
-                        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: cell.key)
+                    MatrixDot(point: MatrixGeometry.center(of: cell, in: size), color: accent, isSelected: true)
+                        .animation(Motion.resolved(Motion.tap), value: cell.key)
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture { location in
                             let target = MatrixGeometry.cell(at: location, in: size)
-                            withAnimation(.snappy) { app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart) }
+                            Motion.animate(Motion.tap) {
+                                app.store.placeOnMatrix(task, days: target.days, level: target.level, today: app.dayStart)
+                            }
                         }
                 }
                 .frame(height: 170)
@@ -212,8 +278,10 @@ struct TaskPlanningSections: View {
             } label: {
                 LabeledContent {
                     Text(MatrixGeometry.describe(cell))
+                        .contentTransition(.numericText())
+                        .animation(Motion.resolved(Motion.tap), value: cell.key)
                 } label: {
-                    Label("Ranking", systemImage: "square.grid.3x3")
+                    SheetRowLabel("Ranking", symbol: "square.grid.3x3", color: Tint.priority)
                 }
             }
         } footer: {
@@ -224,6 +292,11 @@ struct TaskPlanningSections: View {
     }
 
     private var importanceLevelBinding: Binding<Int> {
-        Binding(get: { task.importanceLevel }, set: { app.store.setImportance([task], Matrix.importance(forLevel: $0)) })
+        Binding(
+            get: { task.importanceLevel },
+            set: { level in
+                Motion.animate(Motion.tap) { app.store.setImportance([task], Matrix.importance(forLevel: level)) }
+            }
+        )
     }
 }

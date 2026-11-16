@@ -17,7 +17,8 @@ struct GroupPageView: View {
     var body: some View {
         let group = groups.first { $0.uuid == groupID }
         if groupID != nil && group == nil {
-            ContentUnavailableView("Group Not Found", systemImage: "folder", description: Text("It may have been deleted on another device."))
+            PageEmptyState(title: "Group Not Found", symbol: "folder", color: Color.secondary,
+                           message: "It may have been deleted on another device.")
         } else {
             content(group: group)
         }
@@ -64,7 +65,7 @@ struct GroupPageView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Toggle(isOn: $showAllCompleted) {
+                    Toggle(isOn: $showAllCompleted.animation(Motion.resolved(Motion.list))) {
                         Label("Show All Completed", systemImage: "clock.arrow.circlepath")
                     }
                     Button {
@@ -116,6 +117,8 @@ struct GroupPageView: View {
     }
 }
 
+/// The top of a group's page: its icon on a disc of its colour, its deadline and figures, then
+/// what it hands to new tasks and its subgroups. Quick Entry has the figures and what it's for.
 struct GroupPageHeader: View {
     let group: TaskGroup?
     let open: Int
@@ -126,77 +129,144 @@ struct GroupPageHeader: View {
 
     @Environment(AppModel.self) private var app
 
+    /// Off by itself, or with a group it sits in.
+    private var isOff: Bool {
+        guard let group else { return false }
+        return GroupTree.isOff(group, in: groups)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let group, GroupTree.isOff(group, in: groups) {
+        VStack(alignment: .leading, spacing: 12) {
+            if let group, isOff {
                 OffBanner(group: group, groups: groups)
+                    .transition(.scale(scale: 0.96, anchor: .top).combined(with: .opacity))
             }
             if let group {
-                // The counts live in the stats bar; next to the icon only what it doesn't say.
-                HStack(spacing: 10) {
-                    Image(systemName: group.symbol)
-                        .theoFont(.title2)
-                        .foregroundStyle(group.color.color)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(group.color.color.opacity(0.15)))
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let due = group.dueDate {
-                            Label("Deadline \(DateText.due(due, hasTime: false, today: today))", systemImage: "flag.checkered")
-                                .theoFont(.caption, weight: .semibold)
-                                .foregroundStyle(DateText.dayDelta(due, today: today) < 0 ? Color.red : Color.orange)
-                        }
-                        if let stats {
-                            // Clipped here so the figures don't scroll over the icon.
-                            TaskStatsBar(stats: stats)
-                                .clipped()
-                        }
-                    }
-                }
-                if group.isProject, open + done > 0 {
-                    ProgressView(value: Double(done), total: Double(open + done))
-                        .tint(group.color.color)
-                }
-                if !group.notes.isEmpty {
-                    Text(group.notes)
-                        .theoFont(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                let traits = app.store.traits(of: group)
-                if !traits.isEmpty {
-                    // What the group hands to tasks placed in it; tap to change it.
-                    Button {
-                        app.groupEditor = .edit(group)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "wand.and.stars")
-                            Text("New tasks get " + traits.summary.joined(separator: " · "))
-                                .multilineTextAlignment(.leading)
-                            Image(systemName: "chevron.right")
-                                .imageScale(.small)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .theoFont(.caption, weight: .medium)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.secondary.opacity(0.1)))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("New and moved tasks take these unless they have their own")
-                    .accessibilityHint("Opens the group's settings")
-                }
-                SubgroupSwitches(parent: group, groups: groups)
+                groupSummary(group)
             } else {
-                if let stats {
-                    TaskStatsBar(stats: stats)
-                }
-                Text("Everything you threw in quickly. Drag tasks onto a group, or swipe left → Move.")
-                    .theoFont(.callout)
-                    .foregroundStyle(.secondary)
+                quickEntrySummary
             }
         }
         .padding(.vertical, 4)
+        .animation(Motion.resolved(Motion.layout), value: isOff)
+    }
+
+    /// The counts live in the figures; next to the icon only what they don't say.
+    @ViewBuilder
+    private func groupSummary(_ group: TaskGroup) -> some View {
+        HStack(spacing: 12) {
+            groupIcon(group)
+            VStack(alignment: .leading, spacing: 6) {
+                if let due = group.dueDate {
+                    deadline(due)
+                }
+                if let stats {
+                    figuresBesideIcon(stats)
+                }
+            }
+        }
+        if !group.notes.isEmpty {
+            Text(group.notes)
+                .theoFont(.callout)
+                .foregroundStyle(.secondary)
+        }
+        traitsButton(group)
+        SubgroupSwitches(parent: group, groups: groups)
+    }
+
+    /// A project wears its progress as a ring around its icon, the way a line with subtasks
+    /// shows its ring; any other group shows just the icon.
+    @ViewBuilder
+    private func groupIcon(_ group: TaskGroup) -> some View {
+        if group.isProject, open + done > 0 {
+            iconTile(group)
+                .padding(4)
+                .overlay {
+                    MiniRing(fraction: Double(done) / Double(open + done), tint: group.color.color, lineWidth: 3)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Project progress")
+                .accessibilityValue("\(done) of \(open + done) done")
+        } else {
+            iconTile(group)
+        }
+    }
+
+    /// The group's icon on a disc of its colour, like a list in Reminders. The glyph is white,
+    /// and dark on yellow, where white wouldn't read.
+    private func iconTile(_ group: TaskGroup) -> some View {
+        let glyph: Color = group.color == .yellow ? Color.black.opacity(0.75) : Color.white
+        return Image(systemName: group.symbol)
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(glyph)
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(group.color.color.gradient))
+            .accessibilityHidden(true)
+    }
+
+    /// A project's deadline in the deadline's blue, calm orange once it's today or past.
+    private func deadline(_ due: Date) -> some View {
+        let reached = DateText.dayDelta(due, today: today) <= 0
+        return HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "calendar")
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text("Deadline \(DateText.due(due, hasTime: false, today: today))")
+        }
+        .theoFont(.caption, weight: .semibold)
+        .foregroundStyle(reached ? Tint.overdue : Tint.deadline)
+    }
+
+    /// The figures beside the icon: clipped on the left so they don't scroll over it, and
+    /// running on to the screen's edge on the right like any row of chips.
+    private func figuresBesideIcon(_ stats: TaskStats) -> some View {
+        TaskStatsBar(stats: stats)
+            .contentMargins(.trailing, edgeBleed, for: .scrollContent)
+            .clipped()
+            .padding(.trailing, -edgeBleed)
+    }
+
+    /// What the group hands to tasks placed in it; tap to change it.
+    @ViewBuilder
+    private func traitsButton(_ group: TaskGroup) -> some View {
+        let traits = app.store.traits(of: group)
+        if !traits.isEmpty {
+            Button {
+                app.groupEditor = .edit(group)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "wand.and.stars")
+                        .symbolRenderingMode(.hierarchical)
+                    Text("New tasks get " + traits.summary.joined(separator: " · "))
+                        .multilineTextAlignment(.leading)
+                    Image(systemName: "chevron.right")
+                        .imageScale(.small)
+                        .foregroundStyle(.tertiary)
+                }
+                .theoFont(.caption, weight: .medium)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.secondary.opacity(0.1)))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.pressable)
+            .help("New and moved tasks take these unless they have their own")
+            .accessibilityHint("Opens the group's settings")
+        }
+    }
+
+    private var quickEntrySummary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let stats {
+                TaskStatsBar(stats: stats)
+                    .contentMargins(.horizontal, edgeBleed, for: .scrollContent)
+                    .padding(.horizontal, -edgeBleed)
+            }
+            Text("Everything you threw in quickly. Drag tasks onto a group, or swipe left → Move.")
+                .theoFont(.callout)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -213,12 +283,13 @@ struct UpcomingView: View {
         let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true, showDeferred: true), rankDay: app.dayStart))
         Group {
             if rows.isEmpty {
-                ContentUnavailableView("Nothing Scheduled", systemImage: "calendar",
-                                       description: Text("Tasks with a deadline appear here. Try typing “Pay rent friday” below."))
+                PageEmptyState(title: "Nothing Scheduled", symbol: "calendar", color: Tint.deadline,
+                               message: "Tasks with a deadline appear here. Try typing “Pay rent friday” below.")
             } else {
                 TaskListView(rows: rows, allowsReorder: false)
             }
         }
+        .animation(Motion.resolved(Motion.layout), value: rows.isEmpty)
         .navigationTitle("Upcoming")
         .safeAreaInset(edge: .bottom) {
             QuickEntryBar(defaultGroupID: nil, placeholder: "Add with a date: fri 3pm")
@@ -239,12 +310,13 @@ struct PriorityView: View {
         let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true), rankDay: app.dayStart))
         Group {
             if rows.isEmpty {
-                ContentUnavailableView("No Priorities Set", systemImage: "exclamationmark.3",
-                                       description: Text("Add !, !! or !!! when typing a task, or long-press a task → Priority."))
+                PageEmptyState(title: "No Priorities Set", symbol: "exclamationmark", color: Tint.priority,
+                               message: "Add !, !! or !!! when typing a task, or long-press a task → Priority.")
             } else {
                 TaskListView(rows: rows, allowsReorder: false)
             }
         }
+        .animation(Motion.resolved(Motion.layout), value: rows.isEmpty)
         .navigationTitle("Priority")
         .safeAreaInset(edge: .bottom) {
             QuickEntryBar(defaultGroupID: nil, placeholder: "Add an important task !!")
@@ -273,17 +345,19 @@ struct TagView: View {
         let toPlan = tagged.filter { !$0.isDone && !$0.isPlanned(for: dayStart) }
         Group {
             if rows.isEmpty {
-                ContentUnavailableView("No Tasks", systemImage: "number", description: Text("No open tasks tagged #\(tag)."))
+                PageEmptyState(title: "No Tasks", symbol: "number", color: TheoColor.forTag(tag).color,
+                               message: "No open tasks tagged #\(tag).")
             } else {
                 TaskListView(rows: rows, allowsReorder: false)
             }
         }
+        .animation(Motion.resolved(Motion.layout), value: rows.isEmpty)
         .navigationTitle("#" + tag)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
-                        app.plan(toPlan, for: dayStart)
+                        Motion.animate(Motion.list) { app.plan(toPlan, for: dayStart) }
                     } label: {
                         Label("Plan All for Today", systemImage: "sun.max.fill")
                     }
@@ -335,9 +409,10 @@ struct OffBanner: View {
     var body: some View {
         // Off because of the group itself, or a group it sits in.
         let switchedOff: TaskGroup? = group.isActive ? offAncestor : group
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: "pause.circle.fill")
                 .theoFont(.title3)
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
             Text(switchedOff === group
                  ? "Off: these tasks stay out of Today, Plan and the other lists."
@@ -346,15 +421,19 @@ struct OffBanner: View {
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
             if let switchedOff {
-                Button("Turn On") {
-                    withAnimation(.snappy) { app.store.setActive(switchedOff, true) }
+                Button {
+                    Motion.animate(Motion.list) { app.store.setActive(switchedOff, true) }
+                } label: {
+                    Text("Turn On")
+                        .theoFont(.footnote, weight: .semibold)
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
                 .controlSize(.small)
             }
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.secondary.opacity(0.1)))
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.secondary.opacity(0.1)))
     }
 }
 
@@ -370,33 +449,82 @@ struct SubgroupSwitches: View {
         let children = groups.filter { $0.parentUUID == parent.uuid }.sorted { $0.sortOrder < $1.sortOrder }
         if !children.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(children, id: \.uuid) { child in
-                        Button {
-                            withAnimation(.snappy) { app.store.setActive(child, !child.isActive) }
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: child.isActive ? "circle.inset.filled" : "circle")
-                                    .imageScale(.small)
-                                Text(child.displayName)
-                                    .lineLimit(1)
-                            }
-                            .theoFont(.caption, weight: .semibold)
-                            .foregroundStyle(child.isActive ? child.color.color : Color.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(child.isActive ? child.color.color.opacity(0.14) : Color.secondary.opacity(0.08)))
-                            .overlay(Capsule().strokeBorder(Color.secondary.opacity(child.isActive ? 0 : 0.3), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
-                        }
-                        .buttonStyle(.plain)
-                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in app.go(.group(child.uuid)) })
-                        .accessibilityLabel(child.displayName)
-                        .accessibilityValue(child.isActive ? "On" : "Off")
-                        .accessibilityHint("Tap to switch it \(child.isActive ? "off" : "on"), touch and hold to open it")
+                        switchChip(child)
                     }
                 }
+                .padding(.vertical, 2)
+                .padding(.horizontal, edgeBleed)
             }
             .scrollClipDisabled()
+            .padding(.horizontal, -edgeBleed)
         }
     }
+
+    /// On: a filled dot in the subgroup's colour and its name in the text colour. Off: a hollow
+    /// dot in a dashed outline, everything quieter.
+    private func switchChip(_ child: TaskGroup) -> some View {
+        let isOn = child.isActive
+        return Button {
+            Motion.animate(Motion.list) { app.store.setActive(child, !child.isActive) }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isOn ? "circle.inset.filled" : "circle")
+                    .imageScale(.small)
+                    .foregroundStyle(isOn ? child.color.color : Color.secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                Text(child.displayName)
+                    .lineLimit(1)
+                    .foregroundStyle(isOn ? Color.primary : Color.secondary)
+            }
+            .theoFont(.caption, weight: .semibold)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(Color.secondary.opacity(isOn ? 0.12 : 0.05)))
+            .overlay(Capsule().strokeBorder(Color.secondary.opacity(isOn ? 0 : 0.3), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.pressable)
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in app.go(.group(child.uuid)) })
+        .sensoryFeedback(.selection, trigger: isOn)
+        .accessibilityLabel(child.displayName)
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityHint("Tap to switch it \(isOn ? "off" : "on"), touch and hold to open it")
+    }
 }
+
+/// A page with nothing to show: a symbol in the colour of what the page is about, a title and
+/// one calm line, at Theo's text size. It fades in and out as the page empties or fills.
+struct PageEmptyState: View {
+    let title: String
+    let symbol: String
+    /// The page's colour (deadlines blue, priority purple …); nil = the accent.
+    var color: Color?
+    let message: String
+
+    var body: some View {
+        ContentUnavailableView {
+            Label {
+                Text(title)
+                    .theoFont(.title3, weight: .semibold)
+            } icon: {
+                Image(systemName: symbol)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.tint))
+            }
+        } description: {
+            Text(message)
+                .theoFont(.subheadline)
+        }
+        .transition(.opacity)
+    }
+}
+
+/// How far a row of chips reaches past the list's side margin, so it scrolls from one edge of
+/// the screen to the other (the Mac's list has narrower margins).
+#if os(macOS)
+private let edgeBleed: CGFloat = 8
+#else
+private let edgeBleed: CGFloat = 16
+#endif

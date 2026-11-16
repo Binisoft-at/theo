@@ -22,6 +22,8 @@ struct AllTasksView: View {
     @State private var showFilters = false
     @State private var naming = false
     @State private var newName = ""
+    /// Taps on the ready-made and saved views, for the light tick of a pick.
+    @State private var picks = 0
 
     private var savedView: SavedView? { viewID.flatMap { id in views.first { $0.uuid == id } } }
 
@@ -43,24 +45,7 @@ struct AllTasksView: View {
         let result = QueryBuilder.build(tasks: tasks, groups: groups, query: query, today: app.dayStart, collapsed: app.collapsedTaskIDs)
 
         TaskListView(rows: result.rows, allowsReorder: false, defaultGroupID: query.quickEntryOnly ? nil : query.groupIDs.first) {
-            VStack(alignment: .leading, spacing: 12) {
-                TaskStatsBar(stats: TaskStats(result.matched, today: app.dayStart))
-                if savedView == nil {
-                    quickSwitch(current: query)
-                }
-                controls(query)
-                if savedView != nil, draft != nil {
-                    changedBanner
-                }
-                if result.rows.isEmpty {
-                    Text(query.filterCount > 0 ? "Nothing matches these filters." : "No tasks yet.")
-                        .theoFont(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 20)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.vertical, 4)
+            header(query: query, rows: result.rows, matched: result.matched)
         }
         .navigationTitle(savedView?.displayName ?? "All Tasks")
         .toolbar {
@@ -100,90 +85,184 @@ struct AllTasksView: View {
 
     // MARK: - Header
 
+    /// The figures, the views to switch to, the controls, and what to do about a changed view
+    /// or an empty list. The rows of chips and figures scroll from one edge of the screen to the
+    /// other; their first item lines up with everything else.
+    private func header(query: TaskQuery, rows: [ListRow], matched: [TaskItem]) -> some View {
+        let changed: Bool = savedView != nil && draft != nil
+        let isEmpty: Bool = rows.isEmpty
+        return VStack(alignment: .leading, spacing: 12) {
+            TaskStatsBar(stats: TaskStats(matched, today: app.dayStart))
+                .contentMargins(.horizontal, edgeBleed, for: .scrollContent)
+                .padding(.horizontal, -edgeBleed)
+            if savedView == nil {
+                quickSwitch(current: query)
+            }
+            controls(query)
+            if changed {
+                changedBanner
+                    .transition(.scale(scale: 0.96, anchor: .top).combined(with: .opacity))
+            }
+            if isEmpty {
+                emptyState(filtered: query.filterCount > 0)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.vertical, 4)
+        .animation(Motion.resolved(Motion.layout), value: changed)
+        .animation(Motion.resolved(Motion.layout), value: isEmpty)
+    }
+
     /// Ready-made views and saved ones, one tap to switch.
     private func quickSwitch(current: TaskQuery) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+        let saved = views.sorted { ($0.isFavorite ? 0 : 1, $0.sortOrder) < ($1.isFavorite ? 0 : 1, $1.sortOrder) }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
                 ForEach(TaskQuery.presets) { preset in
                     ChipButton(title: preset.title, symbol: preset.symbol, isOn: current == preset.query) {
-                        withAnimation(.snappy) { setQuery(preset.query) }
+                        pick(preset.query)
                     }
                 }
-                let saved = views.sorted { ($0.isFavorite ? 0 : 1, $0.sortOrder) < ($1.isFavorite ? 0 : 1, $1.sortOrder) }
                 ForEach(saved, id: \.uuid) { view in
                     ChipButton(title: view.displayName, symbol: view.isFavorite ? "star.fill" : view.symbol, color: view.color.color,
                                isOn: current == view.query) {
-                        withAnimation(.snappy) { setQuery(view.query) }
+                        pick(view.query)
                     }
                 }
             }
             .padding(.vertical, 2)
+            .padding(.horizontal, edgeBleed)
         }
         .scrollClipDisabled()
+        .padding(.horizontal, -edgeBleed)
+        .sensoryFeedback(.selection, trigger: picks)
     }
 
+    /// One of the views above: its chip lights up and the list settles on it in one movement.
+    private func pick(_ new: TaskQuery) {
+        picks += 1
+        Motion.animate(Motion.tap) { setQuery(new) }
+    }
+
+    /// Filters, grouping and order as quiet chips. The filter chip turns the accent while
+    /// filters are on; the two menus show their choice and a small up-and-down chevron.
     private func controls(_ query: TaskQuery) -> some View {
-        HStack(spacing: 8) {
+        let motion: Animation = Motion.resolved(Motion.list)
+        let filtered: Bool = query.filterCount > 0
+        return HStack(spacing: 8) {
             Button {
                 showFilters = true
             } label: {
-                Label(query.filterCount > 0 ? "Filters · \(query.filterCount)" : "Filters", systemImage: "line.3.horizontal.decrease")
-                    .theoFont(.caption, weight: .semibold)
+                controlChip(filtered ? "Filters · \(query.filterCount)" : "Filters", symbol: "line.3.horizontal.decrease", active: filtered)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.pressable)
             Menu {
-                Picker("Group By", selection: Binding(get: { query.grouping }, set: { value in
-                    var new = query
-                    new.grouping = value
-                    setQuery(new)
-                })) {
+                Picker("Group By", selection: groupingBinding(query).animation(motion)) {
                     ForEach(TaskQuery.Grouping.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             } label: {
-                Label(query.grouping.shortTitle, systemImage: "rectangle.3.group")
-                    .theoFont(.caption, weight: .semibold)
-                    .lineLimit(1)
+                controlChip(query.grouping.shortTitle, symbol: "rectangle.3.group", isMenu: true)
             }
             .menuStyle(.button)
-            .buttonStyle(.glass)
+            .menuIndicator(.hidden)
+            .buttonStyle(.pressable)
             Menu {
-                Picker("Sort By", selection: Binding(get: { query.sort }, set: { value in
-                    var new = query
-                    new.sort = value
-                    setQuery(new)
-                })) {
+                Picker("Sort By", selection: sortBinding(query).animation(motion)) {
                     ForEach(TaskQuery.Sort.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             } label: {
-                Label(query.sort.shortTitle, systemImage: "arrow.up.arrow.down")
-                    .theoFont(.caption, weight: .semibold)
-                    .lineLimit(1)
+                controlChip(query.sort.shortTitle, symbol: "arrow.up.arrow.down", isMenu: true)
             }
             .menuStyle(.button)
-            .buttonStyle(.glass)
+            .menuIndicator(.hidden)
+            .buttonStyle(.pressable)
             Spacer(minLength: 0)
         }
     }
 
+    private func groupingBinding(_ query: TaskQuery) -> Binding<TaskQuery.Grouping> {
+        Binding(get: { query.grouping }, set: { value in
+            var new = query
+            new.grouping = value
+            setQuery(new)
+        })
+    }
+
+    private func sortBinding(_ query: TaskQuery) -> Binding<TaskQuery.Sort> {
+        Binding(get: { query.sort }, set: { value in
+            var new = query
+            new.sort = value
+            setQuery(new)
+        })
+    }
+
+    /// A small capsule on a quiet fill, like a chip that's off.
+    private func controlChip(_ title: String, symbol: String, active: Bool = false, isMenu: Bool = false) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .imageScale(.small)
+            Text(title)
+                .lineLimit(1)
+            if isMenu {
+                Image(systemName: "chevron.up.chevron.down")
+                    .imageScale(.small)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .theoFont(.caption, weight: .semibold)
+        .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.primary))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.secondary.opacity(0.12)))
+        .contentShape(Capsule())
+        .animation(Motion.resolved(Motion.tap), value: active)
+    }
+
     /// A saved view with unsaved changes: keep them or go back.
     private var changedBanner: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: "pencil.circle.fill")
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.tint)
             Text("Changed")
                 .theoFont(.subheadline, weight: .medium)
             Spacer()
-            Button("Revert") { withAnimation(.snappy) { draft = nil } }
-                .buttonStyle(.glass)
-            Button("Update View") {
-                if let savedView, let draft {
-                    app.store.updateView(savedView, query: draft)
-                    self.draft = nil
-                }
+            Button {
+                Motion.animate(Motion.list) { draft = nil }
+            } label: {
+                Text("Revert")
+                    .theoFont(.subheadline)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.bordered)
+            Button {
+                updateView()
+            } label: {
+                Text("Update View")
+                    .theoFont(.subheadline, weight: .semibold)
+                    .modifier(OnAccentForeground())
+            }
+            .buttonStyle(.borderedProminent)
         }
+        .buttonBorderShape(.capsule)
         .controlSize(.small)
+    }
+
+    private func updateView() {
+        guard let savedView, let draft else { return }
+        Motion.animate(Motion.layout) {
+            app.store.updateView(savedView, query: draft)
+            self.draft = nil
+        }
+    }
+
+    /// Nothing to list: the same calm form as every empty page.
+    @ViewBuilder
+    private func emptyState(filtered: Bool) -> some View {
+        if filtered {
+            EmptyHint(symbol: "line.3.horizontal.decrease.circle", title: "No Matches", message: "Nothing matches these filters.")
+        } else {
+            EmptyHint(symbol: "checklist", title: "No Tasks Yet", message: "Add one below.")
+        }
     }
 
     private var moreMenu: some View {
@@ -208,7 +287,7 @@ struct AllTasksView: View {
                 }
             } else {
                 Button {
-                    withAnimation(.snappy) { setQuery(.standard) }
+                    Motion.animate(Motion.list) { setQuery(.standard) }
                 } label: {
                     Label("Reset to Standard", systemImage: "arrow.counterclockwise")
                 }
@@ -274,38 +353,11 @@ struct QueryEditor: View {
             }
 
             Section {
-                Toggle("Only Quick Entry", isOn: $query.quickEntryOnly)
+                Toggle("Only Quick Entry", isOn: $query.quickEntryOnly.animation(Motion.resolved(Motion.list)))
                 if !query.quickEntryOnly {
                     let off = offIDs
                     ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
-                        let id = item.group.uuid
-                        let isOff = off.contains(id)
-                        Button {
-                            if let index = query.groupIDs.firstIndex(of: id) {
-                                query.groupIDs.remove(at: index)
-                            } else {
-                                query.groupIDs.append(id)
-                            }
-                        } label: {
-                            HStack {
-                                Label(item.group.displayName, systemImage: item.group.symbol)
-                                    .foregroundStyle(item.group.color.color)
-                                    .opacity(isOff ? 0.5 : 1)
-                                    .padding(.leading, CGFloat(item.level) * 14)
-                                if isOff {
-                                    Image(systemName: "pause.circle")
-                                        .foregroundStyle(.secondary)
-                                        .accessibilityLabel("Off")
-                                }
-                                Spacer()
-                                if query.groupIDs.contains(id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        groupRow(item.group, level: item.level, isOff: off.contains(item.group.uuid))
                     }
                 }
             } header: {
@@ -317,25 +369,7 @@ struct QueryEditor: View {
             if !tags.isEmpty {
                 Section("Tags (any of)") {
                     ForEach(tags, id: \.self) { tag in
-                        Button {
-                            if let index = query.tags.firstIndex(of: tag) {
-                                query.tags.remove(at: index)
-                            } else {
-                                query.tags.append(tag)
-                            }
-                        } label: {
-                            HStack {
-                                Text("#" + tag)
-                                    .foregroundStyle(TheoColor.forTag(tag).color)
-                                Spacer()
-                                if query.tags.contains(tag) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        tagRow(tag)
                     }
                 }
             }
@@ -377,4 +411,85 @@ struct QueryEditor: View {
             }
         }
     }
+
+    /// A group to tick: its icon in its colour, its name in the text colour, indented under
+    /// the group it sits in.
+    private func groupRow(_ group: TaskGroup, level: Int, isOff: Bool) -> some View {
+        let id = group.uuid
+        let isOn = query.groupIDs.contains(id)
+        return Button {
+            Motion.animate(Motion.tap) { toggleGroup(id) }
+        } label: {
+            HStack {
+                Label {
+                    Text(group.displayName)
+                        .foregroundStyle(Color.primary)
+                } icon: {
+                    Image(systemName: group.symbol)
+                        .foregroundStyle(group.color.color)
+                }
+                .opacity(isOff ? 0.5 : 1)
+                .padding(.leading, CGFloat(level) * 14)
+                if isOff {
+                    Image(systemName: "pause.circle")
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Off")
+                }
+                Spacer()
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isOn)
+    }
+
+    private func tagRow(_ tag: String) -> some View {
+        let isOn = query.tags.contains(tag)
+        return Button {
+            Motion.animate(Motion.tap) { toggleTag(tag) }
+        } label: {
+            HStack {
+                Text("#" + tag)
+                    .foregroundStyle(TheoColor.forTag(tag).color)
+                Spacer()
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isOn)
+    }
+
+    private func toggleGroup(_ id: UUID) {
+        if let index = query.groupIDs.firstIndex(of: id) {
+            query.groupIDs.remove(at: index)
+        } else {
+            query.groupIDs.append(id)
+        }
+    }
+
+    private func toggleTag(_ tag: String) {
+        if let index = query.tags.firstIndex(of: tag) {
+            query.tags.remove(at: index)
+        } else {
+            query.tags.append(tag)
+        }
+    }
 }
+
+/// How far a row of chips reaches past the list's side margin, so it scrolls from one edge of
+/// the screen to the other (the Mac's list has narrower margins).
+#if os(macOS)
+private let edgeBleed: CGFloat = 8
+#else
+private let edgeBleed: CGFloat = 16
+#endif

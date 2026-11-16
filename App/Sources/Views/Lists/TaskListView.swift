@@ -627,13 +627,13 @@ struct TaskListView<Header: View>: View {
                 focusedID = nil
                 Motion.animate(Motion.layout) { app.matrixTask = task }
             } label: {
-                Label("Place in Matrix…", systemImage: "square.grid.2x2")
+                Label("Place in Matrix…", systemImage: "square.grid.3x3")
             }
             Button {
                 focusedID = nil
                 app.startFocus(on: task)
             } label: {
-                Label("Start Focus", systemImage: "timer")
+                Label("Start Focus", systemImage: "scope")
             }
             Button {
                 focusedID = nil

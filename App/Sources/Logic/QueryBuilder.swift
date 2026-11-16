@@ -197,37 +197,40 @@ struct TaskStatsBar: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                figure("\(stats.open)", "open", symbol: "circle", color: .accentColor)
-                figure(PowerHours.number(stats.openHours), "PH left", symbol: "timer", color: .teal)
+                figure("\(stats.open)", "open", symbol: "circle", color: nil)
+                figure(PowerHours.number(stats.openHours), "PH left", symbol: "timer", color: Tint.powerHours)
                 if stats.overdue > 0 {
-                    figure("\(stats.overdue)", "overdue", symbol: "exclamationmark.circle", color: .red)
+                    figure("\(stats.overdue)", "overdue", symbol: "exclamationmark.circle", color: Tint.overdue)
                 }
                 if stats.dueSoon > 0 {
-                    figure("\(stats.dueSoon)", "due in 7 days", symbol: "calendar", color: .orange)
+                    figure("\(stats.dueSoon)", "due in 7 days", symbol: "calendar", color: Tint.deadline)
                 }
                 figure("\(stats.doneToday)", stats.doneTodayHours > 0 ? "done today · \(PowerHours.format(stats.doneTodayHours))" : "done today",
-                       symbol: "checkmark.circle", color: .green)
+                       symbol: "checkmark.circle", color: Tint.done)
             }
             .padding(.vertical, 2)
         }
         .scrollClipDisabled()
     }
 
-    private func figure(_ value: String, _ label: String, symbol: String, color: Color) -> some View {
-        HStack(spacing: 6) {
+    /// One figure: its meaning's colour on the icon only, a rounded number that rolls when it
+    /// changes, and a quiet label. `color` nil = the accent chosen in Settings.
+    private func figure(_ value: String, _ label: String, symbol: String, color: Color?) -> some View {
+        let iconStyle: AnyShapeStyle = color.map { AnyShapeStyle($0) } ?? AnyShapeStyle(TintShapeStyle.tint)
+        return HStack(spacing: 6) {
             Image(systemName: symbol)
                 .theoFont(.caption, weight: .semibold)
-                .foregroundStyle(color)
+                .foregroundStyle(iconStyle)
             Text(value)
-                .theoFont(.subheadline, weight: .bold)
-                .monospacedDigit()
+                .theoFont(.subheadline, weight: .bold, design: .rounded)
+                .modifier(RollingFigures(text: value))
             Text(label)
                 .theoFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Capsule().fill(color.opacity(0.1)))
+        .background(Capsule().fill(Color.secondary.opacity(0.1)))
         .accessibilityElement(children: .combine)
     }
 }

@@ -47,25 +47,28 @@ struct DayReviewView: View {
                 Section {
                     comparisonChart(today: DayReview.Day(start: day, powerHours: powerHours, done: done.count), history: history)
                 } header: {
-                    Text("Compared with the \(compareDays) days before")
+                    sectionTitle("Compared with the \(compareDays) days before")
                 }
             }
             if showBreakdown && !done.isEmpty {
-                Section("Worked On") {
+                Section {
                     breakdown(done)
+                } header: {
+                    sectionTitle("Worked On")
                 }
             }
             if showTasks {
                 Section {
                     if done.isEmpty {
                         Text(isToday ? "Nothing finished yet today." : "Nothing was finished that day.")
+                            .theoFont(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     ForEach(done, id: \.uuid) { task in
                         FinishedRow(task: task, groups: groups)
                     }
                 } header: {
-                    Text("Finished · \(done.count)")
+                    sectionTitle("Finished · \(done.count)")
                 }
             }
         }
@@ -119,69 +122,115 @@ struct DayReviewView: View {
 
     // MARK: - Sections
 
+    /// A section's title, as on the other pages: a headline in the text colour.
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .theoFont(.headline)
+            .foregroundStyle(.primary)
+            .textCase(nil)
+            .modifier(RollingFigures(text: title))
+    }
+
     private func summary(powerHours: Double, done: Int, open: Int, history: [DayReview.Day]) -> some View {
         let average = DayReview.average(history)
         let ratio = DayReview.ratio(powerHours, average: average)
         let rank = DayReview.rank(of: powerHours, among: history)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
                 if showPowerHours {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(PowerHours.format(powerHours))
-                            .theoFont(.largeTitle, weight: .bold)
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                        Text(isToday ? "worked so far" : "worked")
-                            .theoFont(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    powerHoursFigure(powerHours)
                 }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("\(done)")
-                        .theoFont(showPowerHours ? .title2 : .largeTitle, weight: showPowerHours ? .semibold : .bold)
-                        .monospacedDigit()
-                    Text(done == 1 ? "task done" : "tasks done")
-                        .theoFont(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                tasksFigure(done)
                 Spacer(minLength: 0)
                 if showShare, done + open > 0 {
-                    // Quietly: how much of the day's page got done.
-                    let share = DayReview.share(done: done, open: open)
-                    VStack(spacing: 2) {
-                        ZStack {
-                            ProgressRing(progress: share)
-                            Text(share.formatted(.percent.precision(.fractionLength(0))))
-                                .theoFont(.caption2, weight: .semibold)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 40, height: 40)
-                        Text("of the page")
-                            .theoFont(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(Int((share * 100).rounded())) percent of the day's tasks done")
+                    shareRing(DayReview.share(done: done, open: open))
                 }
             }
             if showComparison, showPowerHours, average > 0 {
-                let delta = powerHours - average
-                Label {
-                    Text("\(DayReview.signed(delta)) against your \(compareDays)-day average of \(PowerHours.format((average * 100).rounded() / 100))")
-                } icon: {
-                    Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
-                }
-                .theoFont(.subheadline, weight: .medium)
-                .foregroundStyle(delta >= 0 ? Color.green : Color.orange)
+                comparisonLine(delta: powerHours - average, average: average)
                 if rank == 1, powerHours > 0, let ratio, ratio > 1.05 {
-                    Label("Your best day in \(compareDays + 1) days", systemImage: "star.fill")
-                        .theoFont(.caption, weight: .semibold)
-                        .foregroundStyle(.yellow)
+                    bestDayLine
                 }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// The day's Power Hours, big and rounded, with the unit smaller beside it.
+    private func powerHoursFigure(_ powerHours: Double) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(PowerHours.number(powerHours))
+                    .theoFont(.largeTitle, weight: .bold, design: .rounded)
+                    .rollingNumber(powerHours)
+                Text("PH")
+                    .theoFont(.title2, weight: .semibold, design: .rounded)
+                    .foregroundStyle(.secondary)
+            }
+            Text(isToday ? "worked so far" : "worked")
+                .theoFont(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func tasksFigure(_ done: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(done)")
+                .theoFont(showPowerHours ? .title2 : .largeTitle, weight: .bold, design: .rounded)
+                .rollingNumber(done)
+            Text(done == 1 ? "task done" : "tasks done")
+                .theoFont(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Quietly: how much of the day's page got done.
+    private func shareRing(_ share: Double) -> some View {
+        VStack(spacing: 4) {
+            ZStack {
+                ProgressRing(progress: share)
+                Text(share.formatted(.percent.precision(.fractionLength(0))))
+                    .theoFont(.caption2, weight: .semibold, design: .rounded)
+                    .rollingNumber(share)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(width: 44, height: 44)
+            Text("of the page")
+                .theoFont(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(Int((share * 100).rounded())) percent of the day's tasks done")
+    }
+
+    /// The day against the average: green and pointing up when it's ahead, a calm grey when
+    /// it's behind. The arrow sits right before its words; a second line wraps under them.
+    private func comparisonLine(delta: Double, average: Double) -> some View {
+        let ahead = delta >= 0
+        let text = "\(DayReview.signed(delta)) against your \(compareDays)-day average of \(PowerHours.format((average * 100).rounded() / 100))"
+        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: ahead ? "arrow.up.right" : "arrow.down.right")
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityHidden(true)
+            Text(text)
+                .modifier(RollingFigures(text: text))
+        }
+        .theoFont(.subheadline, weight: .medium)
+        .foregroundStyle(ahead ? Tint.done : Color.secondary)
+    }
+
+    private var bestDayLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "star.fill")
+                .foregroundStyle(.yellow)
+                .accessibilityHidden(true)
+            Text("Your best day in \(compareDays + 1) days")
+        }
+        .theoFont(.caption, weight: .semibold)
     }
 
     private func comparisonChart(today: DayReview.Day, history: [DayReview.Day]) -> some View {
@@ -194,14 +243,17 @@ struct DayReviewView: View {
         let labelFormat = isWeek
             ? Date.FormatStyle().weekday(.abbreviated)
             : Date.FormatStyle().day().month(.defaultDigits)
+        // The day itself in the accent the user picked, the days before it quiet.
+        let todayStyle = AnyShapeStyle(TintShapeStyle.tint)
+        let otherStyle = AnyShapeStyle(Color.secondary.opacity(0.3))
         return Chart {
             ForEach(days, id: \.start) { item in
                 BarMark(
                     x: .value("Day", item.start, unit: .day),
                     y: .value("Power Hours", showPowerHours ? item.powerHours : Double(item.done))
                 )
-                .foregroundStyle(item.start == today.start ? Color.accentColor : Color.secondary.opacity(0.35))
-                .cornerRadius(3)
+                .foregroundStyle(item.start == today.start ? todayStyle : otherStyle)
+                .cornerRadius(4)
             }
             if average > 0, showPowerHours {
                 RuleMark(y: .value("Average", average))
@@ -209,7 +261,7 @@ struct DayReviewView: View {
                     .foregroundStyle(Color.secondary)
                     .annotation(position: .top, alignment: .leading) {
                         Text("average")
-                            .font(.caption2)
+                            .theoFont(.caption2)
                             .foregroundStyle(.secondary)
                     }
             }
@@ -222,6 +274,8 @@ struct DayReviewView: View {
         .chartYAxisLabel(showPowerHours ? "PH" : "tasks")
         .frame(height: 140)
         .padding(.vertical, 6)
+        .animation(Motion.resolved(Motion.layout), value: compareDays)
+        .animation(Motion.resolved(Motion.layout), value: showPowerHours)
     }
 
     /// Power Hours (and tasks) per top-level group.
@@ -233,28 +287,43 @@ struct DayReviewView: View {
             .sorted { ($0.powerHours, $0.count) > ($1.powerHours, $1.count) }
         let most = max(rows.map(\.powerHours).max() ?? 0, 0.01)
         return ForEach(rows) { row in
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Label(row.title, systemImage: row.symbol)
+            breakdownRow(row, most: most)
+        }
+    }
+
+    /// One group's share of the day: its icon in its colour, its name in the text colour, the
+    /// figures, and a bar in its colour on a faint track.
+    private func breakdownRow(_ row: GroupWork, most: Double) -> some View {
+        let figures = (showPowerHours ? PowerHours.format(row.powerHours) + " · " : "") + "\(row.count) done"
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label {
+                    Text(row.title)
+                } icon: {
+                    Image(systemName: row.symbol)
                         .foregroundStyle(row.color)
-                        .theoFont(.subheadline, weight: .semibold)
-                    Spacer()
-                    Text((showPowerHours ? PowerHours.format(row.powerHours) + " · " : "") + "\(row.count) done")
-                        .theoFont(.caption, weight: .medium)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
                 }
-                if showPowerHours {
-                    GeometryReader { geo in
+                .theoFont(.subheadline, weight: .semibold)
+                Spacer()
+                Text(figures)
+                    .theoFont(.caption, weight: .medium)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            if showPowerHours {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.12))
                         Capsule()
                             .fill(row.color.gradient)
-                            .frame(width: max(4, geo.size.width * row.powerHours / most))
+                            .frame(width: max(6, geo.size.width * row.powerHours / most))
                     }
-                    .frame(height: 6)
                 }
+                .frame(height: 6)
             }
-            .padding(.vertical, 2)
         }
+        .padding(.vertical, 2)
     }
 
     // MARK: - Menus
@@ -286,14 +355,16 @@ struct DayReviewView: View {
         }
     }
 
+    /// What the review shows. Sections that come or go slide into place.
     private var showMenu: some View {
-        Menu {
-            Toggle("Power Hours", isOn: $showPowerHours)
-            Toggle("Worked On", isOn: $showBreakdown)
-            Toggle("Comparison", isOn: $showComparison)
-            Toggle("Share of the Page Done", isOn: $showShare)
-            Toggle("Finished Tasks", isOn: $showTasks)
-            Picker("Compare With", selection: $compareDays) {
+        let motion: Animation = Motion.resolved(Motion.layout)
+        return Menu {
+            Toggle("Power Hours", isOn: $showPowerHours.animation(motion))
+            Toggle("Worked On", isOn: $showBreakdown.animation(motion))
+            Toggle("Comparison", isOn: $showComparison.animation(motion))
+            Toggle("Share of the Page Done", isOn: $showShare.animation(motion))
+            Toggle("Finished Tasks", isOn: $showTasks.animation(motion))
+            Picker("Compare With", selection: $compareDays.animation(motion)) {
                 ForEach([7, 14, 30], id: \.self) { days in
                     Text("\(days) days before").tag(days)
                 }
@@ -314,7 +385,8 @@ private struct GroupWork: Identifiable {
     let count: Int
 }
 
-/// A finished task: when, where, and how many Power Hours.
+/// A finished task: when, where (the group's icon in its colour, its name as quiet as the
+/// time), and how many Power Hours.
 private struct FinishedRow: View {
     let task: TaskItem
     let groups: [TaskGroup]
@@ -322,19 +394,24 @@ private struct FinishedRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tint.done)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.trimmedTitle.isEmpty ? "Untitled" : task.trimmedTitle)
                     .theoBodyFont()
                 HStack(spacing: 8) {
                     if let completed = task.completedAt {
                         Text(completed.formatted(date: .omitted, time: .shortened))
+                            .monospacedDigit()
                     }
                     if let group = task.group, group.deletedAt == nil {
-                        Label(GroupTree.path(of: group, in: groups), systemImage: group.symbol)
-                            .foregroundStyle(group.color.color)
-                            .labelStyle(CompactLabelStyle())
-                            .lineLimit(1)
+                        Label {
+                            Text(GroupTree.path(of: group, in: groups))
+                        } icon: {
+                            Image(systemName: group.symbol)
+                                .foregroundStyle(group.color.color)
+                        }
+                        .labelStyle(CompactLabelStyle())
+                        .lineLimit(1)
                     }
                 }
                 .theoFont(.caption)
@@ -343,9 +420,9 @@ private struct FinishedRow: View {
             Spacer(minLength: 0)
             if task.estimate > 0 {
                 Text(PowerHours.format(task.estimate))
-                    .theoFont(.caption, weight: .semibold)
+                    .theoFont(.caption, weight: .semibold, design: .rounded)
                     .monospacedDigit()
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(Tint.powerHours)
             }
         }
     }

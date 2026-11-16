@@ -307,7 +307,8 @@ final class QuickAddPanel {
         let flipped = lines.count > 1 && placement == .top
         let ordered: [String] = flipped ? Array(lines.reversed()) : lines
         var added: [Added] = []
-        withAnimation(.snappy) {
+        // The new lines glide into any list that's open in Theo's window.
+        Motion.animate(Motion.list) {
             for line in ordered {
                 let entry = QuickParser.parse(line, groups: refs, now: today)
                 guard !entry.title.isEmpty else { continue }
@@ -361,6 +362,8 @@ final class QuickAddWindow: NSPanel {
 final class QuickAddState {
     var text = ""
     var confirmation: String?
+    /// Counts the adds that keep the panel open: the + and the check bounce with each one.
+    private(set) var addedCount = 0
     @ObservationIgnored private var confirmationID = UUID()
 
     /// "Added to Work · due Friday · !!" under the field for a moment.
@@ -368,6 +371,7 @@ final class QuickAddState {
         let id = UUID()
         confirmationID = id
         confirmation = message
+        addedCount += 1
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(1500))
             guard let self, self.confirmationID == id else { return }
@@ -407,7 +411,13 @@ enum QuickAddCapture {
 
 enum QuickAddLayout {
     static let width: CGFloat = 560
-    static let cornerRadius: CGFloat = 20
+    static let cornerRadius: CGFloat = 24
+    /// The content's distance from the panel's sides.
+    static let inset: CGFloat = 20
+    /// The icons' column (at standard text size), so the field's text and the line under it
+    /// start at the same place.
+    static let iconColumn: CGFloat = 22
+    static let gap: CGFloat = 12
 
     /// A stretchable rounded rectangle for the frosted background's mask.
     @MainActor
@@ -439,25 +449,29 @@ private struct QuickAddPanelRoot: View {
     }
 }
 
-/// The field and, under it, what will be understood (or what was just added).
+/// The field and, under it, what will be understood (or what was just added). The icons sit in
+/// one column, so the field's text and the line under it start at the same place; the line under
+/// the field changes with a soft blur, and the + (and the check) bounce with each add that keeps
+/// the panel open.
 private struct QuickAddPanelView: View {
     @Bindable var state: QuickAddState
     @Environment(AppModel.self) private var app
+    @Environment(\.textScale) private var textScale
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
     @FocusState private var focused: Bool
+
+    /// What the line under the field shows.
+    private enum FooterKind: Equatable {
+        case hint, preview, added
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             field
             Divider()
-                .padding(.horizontal, 16)
-            footer
-                .theoFont(.callout)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
+                .padding(.horizontal, QuickAddLayout.inset)
+            footerLine
         }
         .frame(width: QuickAddLayout.width)
         .fixedSize(horizontal: false, vertical: true)
@@ -465,7 +479,6 @@ private struct QuickAddPanelView: View {
             RoundedRectangle(cornerRadius: QuickAddLayout.cornerRadius, style: .circular)
                 .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
         }
-        .animation(.snappy(duration: 0.2), value: state.confirmation)
         .onGeometryChange(for: CGFloat.self) { proxy in
             proxy.size.height
         } action: { newHeight in
@@ -483,10 +496,15 @@ private struct QuickAddPanelView: View {
         }
     }
 
+    /// The icons' column at Theo's text size.
+    private var iconColumn: CGFloat { (QuickAddLayout.iconColumn * textScale).rounded() }
+
     private var field: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: QuickAddLayout.gap) {
             Image(systemName: "plus.circle.fill")
                 .foregroundStyle(.tint)
+                .symbolEffect(.bounce, value: state.addedCount)
+                .frame(width: iconColumn)
             TextField("New task — try “Report bis Freitag !! #work”", text: $state.text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
@@ -494,8 +512,30 @@ private struct QuickAddPanelView: View {
                 .accessibilityLabel("New task")
         }
         .theoFont(.title2)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, QuickAddLayout.inset)
         .padding(.vertical, 16)
+    }
+
+    /// The line under the field. What it shows crosses over in place (a soft blur) instead of
+    /// stacking up, so the panel keeps its height.
+    private var footerLine: some View {
+        let animation = Motion.resolved(Motion.tap)
+        return ZStack(alignment: .leading) {
+            footer
+        }
+        .theoFont(.callout)
+        .lineLimit(1)
+        .contentTransition(.opacity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, QuickAddLayout.inset)
+        .padding(.vertical, 12)
+        .animation(animation, value: footerKind)
+        .animation(animation, value: state.addedCount)
+    }
+
+    private var footerKind: FooterKind {
+        if !trimmed.isEmpty { return .preview }
+        return state.confirmation == nil ? .hint : .added
     }
 
     private var trimmed: String {
@@ -510,10 +550,14 @@ private struct QuickAddPanelView: View {
     private var footer: some View {
         if !trimmed.isEmpty {
             preview(QuickAddCapture.lines(trimmed))
+                .transition(.blurReplace)
         } else if let message = state.confirmation {
             row("checkmark.circle.fill", .tint, Text(message).foregroundStyle(.secondary))
+                .symbolEffect(.bounce, value: state.addedCount)
+                .transition(.blurReplace)
         } else {
             row("keyboard", .tertiary, Text("Return adds · ⇧Return adds another · Esc cancels").foregroundStyle(.tertiary))
+                .transition(.blurReplace)
         }
     }
 
@@ -585,14 +629,15 @@ private struct QuickAddPanelView: View {
     /// " · ☀ on today" (or " · ☀ 2 on today"), in Today's orange.
     private func onToday(_ count: Int?) -> Text {
         let words: String = count.map { "\($0) on today" } ?? "on today"
-        return Text(" · \(Image(systemName: "sun.max.fill")) \(words)").foregroundStyle(Color.orange)
+        return Text(" · \(Image(systemName: "sun.max.fill")) \(words)").foregroundStyle(Tint.today)
     }
 
+    /// An icon in the column under the field's +, and the words lined up with the field's text.
     private func row<S: ShapeStyle>(_ symbol: String, _ style: S, _ text: Text) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: QuickAddLayout.gap) {
             Image(systemName: symbol)
                 .foregroundStyle(style)
-                .frame(width: 18)
+                .frame(width: iconColumn)
             text
                 .truncationMode(.tail)
         }

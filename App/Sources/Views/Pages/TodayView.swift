@@ -236,7 +236,7 @@ struct TodayView: View {
     /// layouts have no headings that fold, so there it folds the parents' subtasks, on this
     /// device only.
     private func setAllCollapsed(_ collapsed: Bool, parents: [TaskItem], visible: [TaskItem]) {
-        withAnimation(.snappy) {
+        Motion.animate(Motion.list) {
             if grouping == .groups {
                 quickCollapsed = collapsed
                 for group in groups where group.isCollapsed != collapsed {
@@ -277,6 +277,8 @@ struct TodayView: View {
     }
 }
 
+/// Today's header, read as one unit: the ring with the day's count, the date, how many are open
+/// and done, and the Power Hours; then the filters and, in the morning, the carry-over strip.
 struct TodayHeader: View {
     let date: Date
     let open: Int
@@ -292,12 +294,22 @@ struct TodayHeader: View {
     let tags: [String]
 
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The start of the day the carry-over strip was hidden on (seconds since 1970), per device.
     @AppStorage("today.carryDismissedDay") private var carryDismissedDay: Double = 0
     /// The tour's practice page hides it without touching the real setting.
     @State private var carryHiddenHere = false
+    /// Goes up each time the last task planned for the day gets done: the ring bounces once.
+    @State private var dayCompletions = 0
+    /// The pointer is over the ring (Mac, iPad): a faint disc shows it's a button.
+    @State private var hoversRing = false
 
     private var total: Int { open + done }
+
+    private var progress: Double { total == 0 ? 0 : Double(done) / Double(total) }
+
+    /// Everything planned for the day is done.
+    private var dayComplete: Bool { total > 0 && open == 0 }
 
     private var summary: String {
         if total == 0 { return "Nothing planned yet." }
@@ -333,81 +345,99 @@ struct TodayHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                Button {
-                    app.reviewDay = DayRef(start: date)
-                } label: {
-                    ZStack {
-                        ProgressRing(progress: total == 0 ? 0 : Double(done) / Double(total))
-                        Text("\(done)")
-                            .theoFont(.caption, weight: .bold)
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                    }
-                    .frame(width: 42, height: 42)
-                    .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Day review")
-                .accessibilityHint("Shows what got done today")
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ring
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateText.pageTitle(date))
                         .theoFont(.headline)
                     Text(summary)
                         .theoFont(.subheadline)
                         .foregroundStyle(.secondary)
+                        .modifier(RollingFigures(text: summary))
                     if openEstimate > 0 || doneEstimate > 0 {
                         estimateLine
+                            .transition(.opacity)
                     }
                 }
                 Spacer(minLength: 0)
                 if let session = app.focus {
                     FocusPill(session: session)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
                 }
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ChipButton(title: "All", isOn: filter == .all) { filter = .all }
-                    ChipButton(title: "Priority", symbol: "exclamationmark.3", color: .red, isOn: filter == .priority) {
-                        toggle(.priority)
-                    }
-                    ChipButton(title: "Due", symbol: "calendar", color: .orange, isOn: filter == .due) {
-                        toggle(.due)
-                    }
-                    ForEach(tags, id: \.self) { tag in
-                        ChipButton(title: "#" + tag, color: TheoColor.forTag(tag).color, isOn: filter == .tag(tag)) {
-                            toggle(.tag(tag))
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            .scrollClipDisabled()
+            .animation(Motion.resolved(Motion.layout), value: app.focus != nil)
+            filterChips
             if showsCarryOver {
                 CarryOverStrip(date: date, carry: carry) {
                     hideCarryOver()
                 }
-                .transition(.opacity)
+                .transition(.scale(scale: 0.96, anchor: .top).combined(with: .opacity))
             }
         }
-        .padding(.top, 2)
-        .padding(.bottom, 4)
+        .padding(.vertical, 4)
+        .onChange(of: dayComplete) { _, complete in
+            if complete { dayCompletions += 1 }
+        }
     }
 
-    /// Power Hours still open and done today, against a usual day. A plan clearly bigger than
-    /// that turns orange and opens Plan.
+    /// The day's progress, done over planned, with the count in the middle; a tap opens the day
+    /// review. When the last planned task gets done, the ring closes and bounces once.
+    private var ring: some View {
+        let lift: CGFloat = reduceMotion ? 1 : 1.1
+        return Button {
+            app.reviewDay = DayRef(start: date)
+        } label: {
+            ZStack {
+                ProgressRing(progress: progress)
+                Text("\(done)")
+                    .theoFont(.subheadline, weight: .bold, design: .rounded)
+                    .rollingNumber(done)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(.horizontal, 6)
+            }
+            .frame(width: 44, height: 44)
+            .background {
+                Circle().fill(Color.secondary.opacity(hoversRing ? 0.1 : 0))
+            }
+            .animation(Motion.hover, value: hoversRing)
+            .phaseAnimator([false, true], trigger: dayCompletions) { content, raised in
+                content.scaleEffect(raised ? lift : 1)
+            } animation: { _ in
+                Motion.celebrate
+            }
+            .contentShape(Circle())
+        }
+        .buttonStyle(.pressable)
+        .onHover { inside in
+            hoversRing = inside
+        }
+        .accessibilityLabel("Day review")
+        .accessibilityValue("\(done) of \(total) done")
+        .accessibilityHint("Shows what got done today")
+        .help("Day Review")
+    }
+
+    /// Power Hours still open and done today, against a usual day. The timer sits right before
+    /// its words, and a long line wraps under the words, not under the icon. A plan clearly
+    /// bigger than a usual day turns orange and opens Plan.
     @ViewBuilder
     private var estimateLine: some View {
-        let line = Label(estimateText, systemImage: "timer")
-            .labelStyle(CompactLabelStyle())
-            .theoFont(.caption, weight: .medium)
-            .multilineTextAlignment(.leading)
+        let line = HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "timer")
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text(estimateText)
+                .multilineTextAlignment(.leading)
+                .modifier(RollingFigures(text: estimateText))
+        }
+        .theoFont(.caption, weight: .medium)
         if isOverplanned {
             Button {
                 app.go(.plan)
             } label: {
-                line.foregroundStyle(Color.orange)
+                line.foregroundStyle(Tint.today)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens Plan")
@@ -416,12 +446,43 @@ struct TodayHeader: View {
         }
     }
 
+    /// The filters, in a row that scrolls from one edge of the screen to the other while its
+    /// first chip lines up with the text above.
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ChipButton(title: "All", isOn: filter == .all) { select(.all) }
+                ChipButton(title: "Priority", symbol: "exclamationmark", color: Tint.priority, isOn: filter == .priority) {
+                    toggle(.priority)
+                }
+                ChipButton(title: "Due", symbol: "calendar", color: Tint.overdue, isOn: filter == .due) {
+                    toggle(.due)
+                }
+                ForEach(tags, id: \.self) { tag in
+                    ChipButton(title: "#" + tag, color: TheoColor.forTag(tag).color, isOn: filter == .tag(tag)) {
+                        toggle(.tag(tag))
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+            .padding(.horizontal, edgeBleed)
+        }
+        .scrollClipDisabled()
+        .padding(.horizontal, -edgeBleed)
+        .sensoryFeedback(.selection, trigger: filter)
+    }
+
+    /// The chip lights up and the list settles on the new set in one movement.
+    private func select(_ value: TaskFilter) {
+        Motion.animate(Motion.tap) { filter = value }
+    }
+
     private func toggle(_ value: TaskFilter) {
-        filter = filter == value ? .all : value
+        select(filter == value ? .all : value)
     }
 
     private func hideCarryOver() {
-        withAnimation(.snappy) {
+        Motion.animate(Motion.layout) {
             if app.isSandbox {
                 carryHiddenHere = true
             } else {
@@ -440,43 +501,64 @@ struct CarryOverStrip: View {
     let onHide: () -> Void
 
     @Environment(AppModel.self) private var app
+    @State private var hoversHide = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 if !carry.leftOver.isEmpty {
                     CarryOverCapsule(
                         text: "\(carry.leftOver.count) unfinished from earlier",
                         symbol: "arrow.uturn.forward",
-                        color: .orange,
+                        color: Tint.today,
                         buttonTitle: "Bring Over"
                     ) {
                         app.plan(carry.leftOver, for: date)
                     }
+                    .transition(.scale(scale: 0.92, anchor: .leading).combined(with: .opacity))
                 }
                 if !carry.dueUnplanned.isEmpty {
                     CarryOverCapsule(
                         text: "\(carry.dueUnplanned.count) due by today, not planned",
                         symbol: "calendar.badge.exclamationmark",
-                        color: .red,
+                        color: Tint.overdue,
                         buttonTitle: "Add"
                     ) {
                         app.plan(carry.dueUnplanned, for: date)
                     }
+                    .transition(.scale(scale: 0.92, anchor: .leading).combined(with: .opacity))
                 }
             }
             Spacer(minLength: 0)
-            Button(action: onHide) {
-                Image(systemName: "xmark")
-                    .theoFont(.caption, weight: .bold)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Hide until tomorrow")
-            .help("Hide until tomorrow")
+            hideButton
         }
+        .animation(Motion.resolved(Motion.list), value: carry.leftOver.isEmpty)
+        .animation(Motion.resolved(Motion.list), value: carry.dueUnplanned.isEmpty)
+    }
+
+    /// × in a small round well, centred on the first line. Its touch area is a full 44 points
+    /// although it takes no more room than the circle.
+    private var hideButton: some View {
+        Button(action: onHide) {
+            Image(systemName: "xmark")
+                .theoFont(.caption2, weight: .bold)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background {
+                    Circle().fill(Color.secondary.opacity(hoversHide ? 0.2 : 0.12))
+                }
+                .animation(Motion.hover, value: hoversHide)
+                .padding(8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(-8)
+        .padding(.top, 4)
+        .onHover { inside in
+            hoversHide = inside
+        }
+        .accessibilityLabel("Hide until tomorrow")
+        .help("Hide until tomorrow")
     }
 }
 
@@ -496,14 +578,16 @@ private struct CarryOverCapsule: View {
             Button {
                 app.go(.plan)
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: symbol)
                         .imageScale(.small)
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(color)
                     Text(text)
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .modifier(RollingFigures(text: text))
                 }
                 .theoFont(.subheadline, weight: .medium)
                 .contentShape(Rectangle())
@@ -511,17 +595,17 @@ private struct CarryOverCapsule: View {
             .buttonStyle(.plain)
             .accessibilityHint("Opens Plan")
             Button {
-                withAnimation(.snappy) { perform() }
+                Motion.animate(Motion.list) { perform() }
             } label: {
                 Text(buttonTitle)
                     .theoFont(.subheadline, weight: .semibold)
                     .foregroundStyle(color.onFillForeground(in: environment))
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(color))
+                    .background(Capsule().fill(color.gradient))
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
         }
         .padding(.leading, 12)
         .padding(.trailing, 4)
@@ -543,40 +627,54 @@ struct PlanPrompt: View {
     var body: some View {
         let leftOver = carry.leftOver
         let due = carry.dueUnplanned
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 40))
+                .font(.system(size: 38, weight: .regular))
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.tint)
-            Text("Pick what today is for")
-                .theoFont(.headline)
-            Text("Today only shows the tasks you plan for it. Choose them in Plan, or add one below.")
-                .theoFont(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button {
-                app.go(.plan)
-            } label: {
-                Label("Plan Today", systemImage: "calendar.badge.plus")
-                    .frame(minWidth: 160)
+            VStack(spacing: 6) {
+                Text("Pick what today is for")
+                    .theoFont(.headline)
+                Text("Today only shows the tasks you plan for it. Choose them in Plan, or add one below.")
+                    .theoFont(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.glassProminent)
-            if !leftOver.isEmpty {
+            VStack(spacing: 8) {
                 Button {
-                    withAnimation(.snappy) { app.plan(leftOver, for: dayStart) }
+                    app.go(.plan)
                 } label: {
-                    Label(leftOver.count == 1 ? "Bring Over 1 Unfinished Task" : "Bring Over \(leftOver.count) Unfinished Tasks",
-                          systemImage: "arrow.uturn.forward")
+                    Label("Plan Today", systemImage: "calendar.badge.plus")
+                        .theoFont(.body, weight: .semibold)
+                        .modifier(OnAccentForeground())
+                        .frame(minWidth: 160)
                 }
-                .buttonStyle(.glass)
-            }
-            if !due.isEmpty {
-                Button {
-                    withAnimation(.snappy) { app.plan(due, for: dayStart) }
-                } label: {
-                    Label(due.count == 1 ? "Add 1 Task Due Today" : "Add \(due.count) Tasks Due by Today", systemImage: "calendar")
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                if !leftOver.isEmpty {
+                    Button {
+                        Motion.animate(Motion.list) { app.plan(leftOver, for: dayStart) }
+                    } label: {
+                        Label(leftOver.count == 1 ? "Bring Over 1 Unfinished Task" : "Bring Over \(leftOver.count) Unfinished Tasks",
+                              systemImage: "arrow.uturn.forward")
+                            .theoFont(.subheadline, weight: .medium)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Tint.today)
                 }
-                .buttonStyle(.glass)
+                if !due.isEmpty {
+                    Button {
+                        Motion.animate(Motion.list) { app.plan(due, for: dayStart) }
+                    } label: {
+                        Label(due.count == 1 ? "Add 1 Task Due Today" : "Add \(due.count) Tasks Due by Today", systemImage: "calendar")
+                            .theoFont(.subheadline, weight: .medium)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Tint.overdue)
+                }
             }
+            .buttonBorderShape(.capsule)
+            .padding(.top, 4)
             if !doneYesterday.isEmpty {
                 let powerHours = PageBuilder.estimateTotals(doneYesterday).done
                 Button {
@@ -591,7 +689,7 @@ struct PlanPrompt: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 30)
+        .padding(.vertical, 32)
         .listRowSeparator(.hidden)
     }
 }
@@ -626,30 +724,69 @@ struct SearchResultsView: View {
     private func rows(open: [TaskItem], finished: [TaskItem]) -> [ListRow] {
         var sections = Sections.byGroup(open, groups: groups)
         if showsFinished || open.isEmpty {
-            sections.append((key: "finished", title: "Finished", symbol: "checkmark.circle", color: .green, tasks: finished))
+            sections.append((key: "finished", title: "Finished", symbol: "checkmark.circle", color: Tint.done, tasks: finished))
         }
         return PageBuilder.labeled(sections, options: PageBuilder.Options(completed: .bottom, rankDay: app.dayStart))
     }
 
-    /// "3 open" and the switch for the finished matches.
+    /// "3 open" and the switch for the finished matches. The count rolls as the search narrows.
     private func summary(open: Int, finished: Int) -> some View {
         let openText: String = open == 0 ? "Nothing open matches" : (open == 1 ? "1 open" : "\(open) open")
         let toggleText: String = showsFinished ? "Hide Finished" : "Show \(finished) Finished"
         let finishedText: String = finished == 1 ? "1 finished" : "\(finished) finished"
         return HStack(spacing: 8) {
             Text(openText)
+                .modifier(RollingFigures(text: openText))
             Spacer(minLength: 8)
             if finished > 0 && open > 0 {
                 Button(toggleText) {
-                    withAnimation(.snappy) { showsFinished.toggle() }
+                    Motion.animate(Motion.list) { showsFinished.toggle() }
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.tint)
             } else if finished > 0 {
                 Text(finishedText)
+                    .modifier(RollingFigures(text: finishedText))
             }
         }
         .theoFont(.subheadline)
         .foregroundStyle(.secondary)
     }
 }
+
+/// A line of text with numbers in it: its digits keep their width, and when the line changes
+/// the figures roll to their new values instead of jumping (a short cross-fade under Reduce
+/// Motion). For a number standing on its own, `rollingNumber` does the same. Used by the
+/// pages (Today, History, the day review).
+struct RollingFigures: ViewModifier {
+    let text: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .monospacedDigit()
+            .contentTransition(.numericText())
+            .animation(reduceMotion ? Motion.reduced : Motion.tap, value: text)
+    }
+}
+
+/// The words of a button filled with the accent (`.borderedProminent`): dark on Notes Yellow,
+/// where white wouldn't read, white on the other accents, the way the chips do it. A modifier
+/// of its own, so only the button's words follow the environment, not the whole page.
+struct OnAccentForeground: ViewModifier {
+    @Environment(\.self) private var environment
+    @AppStorage(Prefs.accent, store: UserDefaults.standard) private var accentRaw = AccentChoice.notes.rawValue
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle((AccentChoice(rawValue: accentRaw) ?? .notes).color.onFillForeground(in: environment))
+    }
+}
+
+/// How far a row of chips reaches past the list's side margin, so it scrolls from one edge of
+/// the screen to the other (the Mac's list has narrower margins).
+#if os(macOS)
+private let edgeBleed: CGFloat = 8
+#else
+private let edgeBleed: CGFloat = 16
+#endif

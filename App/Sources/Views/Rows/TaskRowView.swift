@@ -438,7 +438,7 @@ struct SubtaskBadge: View {
                     .rotationEffect(.degrees(folded ? 0 : 90))
             }
             .theoFont(.caption, weight: .semibold, design: .rounded)
-            .foregroundStyle(complete ? Color.accentColor : Color.secondary)
+            .foregroundStyle(complete ? AnyShapeStyle(TintShapeStyle.tint) : AnyShapeStyle(Color.secondary))
             .padding(.leading, 6)
             .padding(.trailing, 8)
             .padding(.vertical, 4)
