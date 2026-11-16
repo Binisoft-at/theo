@@ -18,7 +18,9 @@ permissions:
 jobs:
   import:
     # GitHub's Macs (free for public repositories); MAC_RUNNER overrides the runner.
-    runs-on: ${{ fromJSON(vars.MAC_RUNNER || '"macos-26"') }}
+    # Public repository: always GitHub's own Macs, never a self-hosted runner (even if an
+    # organisation-wide MAC_RUNNER variable exists for the private Binisoft apps).
+    runs-on: macos-26
     timeout-minutes: 15
     env:
       CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
