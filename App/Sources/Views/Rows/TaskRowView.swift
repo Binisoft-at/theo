@@ -29,7 +29,7 @@ struct TaskRowView: View {
 
     private var displayDone: Bool { task.isDone || checkedPreview }
 
-    /// A line with subtasks reads like a small group: bolder, with its progress underneath.
+    /// A line with subtasks reads like a small group: bolder, with a ring for its progress.
     private var isParent: Bool { style.subtaskCount > 0 }
 
     var body: some View {
@@ -63,10 +63,6 @@ struct TaskRowView: View {
                         .lineLimit(1)
                 }
                 TaskMetaLine(task: task, style: style, today: today, showAge: showAge)
-                if isParent && !task.isDone {
-                    SubtaskProgress(done: style.subtasksDone, total: style.subtaskCount)
-                        .padding(.top, 2)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -97,7 +93,7 @@ struct TaskRowView: View {
         .alignmentGuide(.listRowSeparatorLeading) { _ in Self.textLeading(depth: depth) }
         .alignmentGuide(.listRowSeparatorTrailing) { d in d.width }
         .opacity(task.isDone && !isEditing ? 0.75 : 1)
-        .animation(.snappy(duration: 0.25), value: displayDone)
+        .animation(Motion.resolved(Motion.tap), value: displayDone)
     }
 
     @ViewBuilder
@@ -196,12 +192,12 @@ struct TaskRowView: View {
             if task.isDone { onToggle() }
             return
         }
-        // Show the check first, then let the line sink to the bottom (like Notes).
+        // Show the check first, then let the line glide to the bottom (like Notes).
         checkedPreview = true
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(420))
             guard checkedPreview else { return }
-            withAnimation(.snappy) {
+            Motion.animate(Motion.list) {
                 onToggle()
             }
             checkedPreview = false
@@ -331,9 +327,14 @@ struct TaskMetaLine: View {
                         .accessibilityLabel("Subtask of \(parentTitle)")
                 }
                 if style.showGroup, let group = task.group, group.deletedAt == nil {
-                    Label(group.displayName, systemImage: group.symbol)
-                        .foregroundStyle(group.color.color)
-                        .layoutPriority(-1)
+                    // The group's colour on its icon; its name stays as calm as the rest.
+                    Label {
+                        Text(group.displayName)
+                    } icon: {
+                        Image(systemName: group.symbol)
+                            .foregroundStyle(group.color.color)
+                    }
+                    .layoutPriority(-1)
                 }
                 let tags = task.tags
                 ForEach(Array(tags.prefix(Self.tagLimit)), id: \.self) { tag in
@@ -405,60 +406,58 @@ struct TaskMetaLine: View {
     }
 }
 
-/// "2/5 ›" on a parent line: subtask progress, and a tap folds or unfolds the subtasks.
+/// A parent line's subtasks at a glance: a small ring that fills as they get done, "2/5", and a
+/// chevron. A tap folds or unfolds them.
 struct SubtaskBadge: View {
     let done: Int
     let total: Int
     let folded: Bool
     let action: () -> Void
 
+    #if os(macOS)
+    @Environment(\.textScale) private var textScale
+    private var ringSize: CGFloat { 11 * textScale }
+    #else
+    @ScaledMetric(relativeTo: .caption) private var ringSize: CGFloat = 13
+    #endif
+
+    private var complete: Bool { total > 0 && done >= total }
+
+    private var fraction: Double { total > 0 ? Double(done) / Double(total) : 0 }
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 3) {
+            HStack(spacing: 5) {
+                MiniRing(fraction: fraction, lineWidth: max(1.5, ringSize * 0.16))
+                    .frame(width: ringSize, height: ringSize)
                 Text("\(done)/\(total)")
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
+                    .rollingNumber(done)
                 Image(systemName: "chevron.right")
                     .imageScale(.small)
+                    .foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(folded ? 0 : 90))
             }
-            .theoFont(.caption, weight: .semibold)
-            .foregroundStyle(done == total ? Color.accentColor : Color.secondary)
-            .padding(.horizontal, 8)
+            .theoFont(.caption, weight: .semibold, design: .rounded)
+            .foregroundStyle(complete ? Color.accentColor : Color.secondary)
+            .padding(.leading, 6)
+            .padding(.trailing, 8)
             .padding(.vertical, 4)
-            .background(Capsule().fill(Color.secondary.opacity(0.12)))
+            .background(Capsule().fill(Color.secondary.opacity(0.1)))
             .contentShape(Capsule())
         }
+        #if os(macOS)
         .buttonStyle(.borderless)
+        #else
+        .buttonStyle(.pressable)
+        #endif
         .padding(.top, 1)
-        .animation(.snappy(duration: 0.2), value: folded)
+        .animation(Motion.resolved(Motion.tap), value: folded)
         .accessibilityLabel(folded ? "Show \(total) subtasks" : "Hide \(total) subtasks")
         .accessibilityValue("\(done) of \(total) done")
     }
 }
 
 /// Thin vertical lines that show which parent a nested line belongs to.
-/// A thin bar under a parent line: how much of its subtasks is done.
-struct SubtaskProgress: View {
-    let done: Int
-    let total: Int
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.15))
-                Capsule()
-                    .fill(Color.accentColor.opacity(0.8))
-                    .frame(width: total > 0 ? geo.size.width * CGFloat(done) / CGFloat(total) : 0)
-            }
-        }
-        .frame(maxWidth: 160)
-        .frame(height: 3)
-        .animation(.snappy, value: done)
-        .accessibilityHidden(true)
-    }
-}
-
 struct IndentGuides: View {
     let depth: Int
 
@@ -498,18 +497,18 @@ struct TraitProposalMenu: View {
     var body: some View {
         Section("\(group.displayName) suggests") {
             Button {
-                withAnimation(.snappy) { app.store.acceptProposal(task, traits) }
+                Motion.animate(Motion.list) { app.store.acceptProposal(task, traits) }
             } label: {
                 Label("Apply All", systemImage: "wand.and.stars")
             }
             ForEach(parts.indices, id: \.self) { index in
                 let part = parts[index]
                 Button(part.title) {
-                    withAnimation(.snappy) { app.store.acceptProposal(task, part.traits) }
+                    Motion.animate(Motion.list) { app.store.acceptProposal(task, part.traits) }
                 }
             }
             Button(role: .destructive) {
-                withAnimation(.snappy) { app.store.dismissProposal(task) }
+                Motion.animate(Motion.list) { app.store.dismissProposal(task) }
             } label: {
                 Label("Keep Mine", systemImage: "xmark")
             }

@@ -104,7 +104,7 @@ struct TaskListView<Header: View>: View {
             let done = !tasks.allSatisfy(\.isDone)
             // Checking off moves the selection on to the next open line.
             let next = done ? nextOpenRow(afterChecking: tasks) : nil
-            withAnimation(.snappy) { app.markDone(tasks, done) }
+            Motion.animate(Motion.list) { app.markDone(tasks, done) }
             if let next { app.selectedRowIDs = [next] }
             return .handled
         }
@@ -125,8 +125,12 @@ struct TaskListView<Header: View>: View {
                 // Between a line's title and its description it's still the same line.
                 let staysOnLine = newValue.flatMap(lookupTask)?.uuid == task.uuid
                 if !staysOnLine {
-                    app.store.applyInlineShortcuts(task)
-                    app.store.discardIfEmpty(task)
+                    // An empty line closes up and the lines below glide back; a line its typed
+                    // shortcuts moved glides to its new place.
+                    Motion.animate(Motion.list) {
+                        app.store.applyInlineShortcuts(task)
+                        app.store.discardIfEmpty(task)
+                    }
                 }
                 // Leaving a line saves it at once, so it syncs to the other devices right away.
                 app.store.save()
@@ -146,6 +150,7 @@ struct TaskListView<Header: View>: View {
             #if os(macOS)
             startRightClick()
             #endif
+            runInsertDemoIfAsked()
         }
         .onDisappear {
             #if os(macOS)
@@ -158,21 +163,28 @@ struct TaskListView<Header: View>: View {
             }
         }
         .onChange(of: app.insertDragLocation) { _, location in
+            // The line glides from gap to gap under the finger instead of blinking.
             guard isVisible, let location, let point = insertionPoint(at: location) else {
-                insertAfterID = nil
-                insertBeforeFirst = false
+                Motion.animate(Motion.hover) {
+                    insertAfterID = nil
+                    insertBeforeFirst = false
+                }
                 return
             }
-            insertAfterID = point.above?.id
-            insertBeforeFirst = point.above == nil
+            Motion.animate(Motion.hover) {
+                insertAfterID = point.above?.id
+                insertBeforeFirst = point.above == nil
+            }
         }
+        // A light tick for every gap the dragged + passes, like a picker's detents.
+        .sensoryFeedback(.selection, trigger: insertAfterID) { _, new in new != nil }
         .onChange(of: app.indentRequest) { _, request in
             guard isVisible, let request, let task = lookupTask("t-" + request.taskID.uuidString) else { return }
             app.indentRequest = nil
             if request.delta > 0 {
                 makeSubtaskOfLineAbove(task)
             } else {
-                withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                Motion.animate(Motion.list) { app.store.indent(task, by: -1) }
             }
         }
         .confirmationDialog(
@@ -303,11 +315,11 @@ struct TaskListView<Header: View>: View {
                     if delta > 0 {
                         makeSubtaskOfLineAbove(task)
                     } else {
-                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                        Motion.animate(Motion.list) { app.store.indent(task, by: -1) }
                     }
                 },
                 onToggleSubtasks: {
-                    withAnimation(.snappy) { app.toggleSubtasks(task) }
+                    Motion.animate(Motion.list) { app.toggleSubtasks(task) }
                 }
             )
             // On a ranked list a subtask snaps back under its parent anyway.
@@ -321,7 +333,7 @@ struct TaskListView<Header: View>: View {
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if let parent = lineAbove(task) {
                     Button {
-                        withAnimation(.snappy) { app.store.makeSubtask(task, of: parent) }
+                        Motion.animate(Motion.list) { app.store.makeSubtask(task, of: parent) }
                     } label: {
                         Label("Subtask", systemImage: "arrow.turn.down.right")
                     }
@@ -330,7 +342,7 @@ struct TaskListView<Header: View>: View {
                 #if os(iOS)
                 if depth > 0 {
                     Button {
-                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                        Motion.animate(Motion.list) { app.store.indent(task, by: -1) }
                     } label: {
                         Label("Outdent", systemImage: "arrow.turn.up.left")
                     }
@@ -343,7 +355,7 @@ struct TaskListView<Header: View>: View {
                 // Two fingers on the trackpad: swipe right indents, swipe left outdents.
                 if depth > 0 {
                     Button {
-                        withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                        Motion.animate(Motion.list) { app.store.indent(task, by: -1) }
                     } label: {
                         Label("Outdent", systemImage: "arrow.turn.up.left")
                     }
@@ -359,14 +371,14 @@ struct TaskListView<Header: View>: View {
                     // Onto today's plan from any page; once it's on today, on to tomorrow's.
                     if task.isPlanned(for: app.dayStart) {
                         Button {
-                            withAnimation(.snappy) { app.deferToTomorrow([task]) }
+                            Motion.animate(Motion.list) { app.deferToTomorrow([task]) }
                         } label: {
                             Label("Tomorrow", systemImage: "moon.zzz.fill")
                         }
                         .tint(.indigo)
                     } else {
                         Button {
-                            withAnimation(.snappy) { app.plan([task], for: app.dayStart) }
+                            Motion.animate(Motion.list) { app.plan([task], for: app.dayStart) }
                         } label: {
                             Label("Today", systemImage: "sun.max.fill")
                         }
@@ -374,7 +386,7 @@ struct TaskListView<Header: View>: View {
                     }
                     if let due = task.dueDate, DateText.dayDelta(due, today: app.dayStart) < 0 {
                         Button {
-                            withAnimation(.snappy) { app.store.postpone([task], days: 1, today: app.dayStart) }
+                            Motion.animate(Motion.list) { app.store.postpone([task], days: 1, today: app.dayStart) }
                         } label: {
                             Label("+1 Day", systemImage: "calendar.badge.plus")
                         }
@@ -514,7 +526,7 @@ struct TaskListView<Header: View>: View {
         }
         .accessibilityLabel("Description")
         Button {
-            withAnimation(.snappy) { app.store.indent(task, by: -1) }
+            Motion.animate(Motion.list) { app.store.indent(task, by: -1) }
         } label: {
             Image(systemName: "decrease.indent")
         }
@@ -526,7 +538,7 @@ struct TaskListView<Header: View>: View {
         }
         .accessibilityLabel("Make Subtask")
         Button {
-            withAnimation(.snappy) { app.addSubtask(to: task) }
+            Motion.animate(Motion.list) { app.addSubtask(to: task) }
         } label: {
             Image(systemName: "arrow.turn.down.right")
         }
@@ -613,7 +625,7 @@ struct TaskListView<Header: View>: View {
             }
             Button {
                 focusedID = nil
-                withAnimation(.snappy) { app.matrixTask = task }
+                Motion.animate(Motion.layout) { app.matrixTask = task }
             } label: {
                 Label("Place in Matrix…", systemImage: "square.grid.2x2")
             }
@@ -698,12 +710,14 @@ struct TaskListView<Header: View>: View {
         focusedID == task.rowID || focusedID == TaskRowView.notesFocusID(task) || pendingEditID == task.rowID
     }
 
-    private func beginEdit(_ task: TaskItem) {
+    /// Starts editing a line. The line takes its editing shape at once; the cursor (and on
+    /// iPhone the keyboard) follows after `delay`.
+    private func beginEdit(_ task: TaskItem, after delay: Duration = .milliseconds(30)) {
         guard !app.isSelecting, !task.isDone else { return }
         let id = task.rowID
         pendingEditID = id
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(30))
+            try? await Task.sleep(for: delay)
             focusedID = id
             try? await Task.sleep(for: .milliseconds(250))
             if pendingEditID == id { focusedID = id }
@@ -720,33 +734,41 @@ struct TaskListView<Header: View>: View {
             // Return on an empty subtask steps out one level; on an empty top-level line it
             // ends editing. Same as leaving a checklist in Notes.
             if app.store.layout(for: task.groupID).depth(of: task) > 0 {
-                withAnimation(.snappy) { app.store.indent(task, by: -1) }
+                Motion.animate(Motion.tap) { app.store.indent(task, by: -1) }
                 beginEdit(task)
             } else {
                 focusedID = nil
             }
             return
         }
-        var anchor = task
-        for text in texts {
-            anchor = app.store.insertTask(after: anchor, title: text.trimmingCharacters(in: .whitespaces))
+        // The new line slides in under this one while the lines below make room, already in
+        // its editing shape, so nothing moves a second time when the cursor arrives.
+        Motion.animate(Motion.tap) {
+            var anchor = task
+            for text in texts {
+                anchor = app.store.insertTask(after: anchor, title: text.trimmingCharacters(in: .whitespaces))
+            }
+            beginEdit(anchor)
         }
-        beginEdit(anchor)
     }
 
+    /// A blank line at the top or bottom of a section: the section opens if it was folded, and
+    /// the line arrives in one movement, ready to type into.
     private func addBlank(groupID: UUID?) {
-        if groupID == nil {
-            quickCollapsed = false
-        } else if let group = app.store.group(id: groupID), group.isCollapsed {
-            app.store.setCollapsed(group, false)
+        Motion.animate(Motion.list) {
+            if groupID == nil {
+                quickCollapsed = false
+            } else if let group = app.store.group(id: groupID), group.isCollapsed {
+                app.store.setCollapsed(group, false)
+            }
+            let task = app.store.newBlankTask(in: groupID ?? defaultGroupID, placement: placement)
+            if let plansFor { app.store.plan([task], for: plansFor) }
+            beginEdit(task, after: Self.focusAfterInsert)
         }
-        let task = app.store.newBlankTask(in: groupID ?? defaultGroupID, placement: placement)
-        if let plansFor { app.store.plan([task], for: plansFor) }
-        beginEdit(task)
     }
 
     private func toggleCollapse(_ info: SectionHeaderInfo) {
-        withAnimation(.snappy) {
+        Motion.animate(Motion.list) {
             switch info.kind {
             case .quickEntry: quickCollapsed.toggle()
             case .group(let group): app.store.setCollapsed(group, !group.isCollapsed)
@@ -763,7 +785,7 @@ struct TaskListView<Header: View>: View {
         newRows.move(fromOffsets: source, toOffset: destination)
         let moved = rows[from]
         guard let newIndex = newRows.firstIndex(where: { $0.id == moved.id }) else { return }
-        withAnimation(.snappy) {
+        Motion.animate(Motion.list) {
             switch moved {
             case .task(let task, let depth, _):
                 // Lists are ranked: the task takes just enough importance to stay where it was put.
@@ -794,7 +816,7 @@ struct TaskListView<Header: View>: View {
         guard task.importance != importance || task.priorityRaw != priorityRaw else { return }
         let model = app
         model.show("Moved \(movedUp ? "up" : "down") · importance \(task.importanceLevel)", symbol: "arrow.up.arrow.down") {
-            withAnimation(.snappy) {
+            Motion.animate(Motion.list) {
                 task.importance = importance
                 task.priorityRaw = priorityRaw
                 task.touch()
@@ -844,7 +866,7 @@ struct TaskListView<Header: View>: View {
 
     private func makeSubtaskOfLineAbove(_ task: TaskItem) {
         if let parent = lineAbove(task) {
-            withAnimation(.snappy) { app.store.makeSubtask(task, of: parent) }
+            Motion.animate(Motion.list) { app.store.makeSubtask(task, of: parent) }
         } else {
             app.show("Nothing above it to tuck it under", symbol: "arrow.turn.down.right")
         }
@@ -876,11 +898,33 @@ struct TaskListView<Header: View>: View {
     /// unless what was typed sets its priority or deadline. Dropped right under a task with
     /// subtasks, it becomes that task's first subtask.
     private func insertTask(at location: CGPoint, entry: ParsedEntry?) -> Bool {
-        insertAfterID = nil
-        insertBeforeFirst = false
+        Motion.animate(Motion.hover) {
+            insertAfterID = nil
+            insertBeforeFirst = false
+        }
         guard isVisible, let point = insertionPoint(at: location) else { return false }
         insertTask(between: point, entry: entry)
         return true
+    }
+
+    /// CI's screen recording of an insert (`-TheoInsertDemo`): a few seconds after the page shows,
+    /// a blank line is added between the first two top-level task lines, as the + would.
+    private func runInsertDemoIfAsked() {
+        guard ProcessInfo.processInfo.arguments.contains("-TheoInsertDemo"), !InsertDemo.started else { return }
+        InsertDemo.started = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard isVisible else { return }
+            let listed = rows
+            let pairs = listed.indices.dropLast().filter { Self.isTopLevelTask(listed[$0]) && Self.isTopLevelTask(listed[$0 + 1]) }
+            guard let index = pairs.first else { return }
+            insertTask(between: (above: listed[index], below: listed[index + 1]), entry: nil)
+        }
+    }
+
+    private static func isTopLevelTask(_ row: ListRow) -> Bool {
+        if case .task(_, let depth, _) = row { return depth == 0 }
+        return false
     }
 
     /// The panel acts on the whole selection when the line is part of it, else on the line.
@@ -915,7 +959,7 @@ struct TaskListView<Header: View>: View {
               let index = rows.firstIndex(where: { $0.id == id }),
               case .task(let task, let depth, let style) = rows[index] else { return .ignored }
         if style.subtaskCount > 0 && style.subtasksFolded == unfold {
-            withAnimation(.snappy) { app.toggleSubtasks(task) }
+            Motion.animate(Motion.list) { app.toggleSubtasks(task) }
             return .handled
         }
         guard !unfold, depth > 0, let parent = parentRowID(of: index, depth: depth) else { return .ignored }
@@ -1025,8 +1069,30 @@ struct TaskListView<Header: View>: View {
         return rows[index + 1]
     }
 
-    /// Adds a task between two rows (see `insertTask(at:entry:)`).
+    /// Adds a task between two rows (see `insertTask(at:entry:)`). The new line makes room for
+    /// itself in one movement: the lines above stay where they are, the ones below glide down to
+    /// the end of the list, and a blank line arrives already in its editing shape (so it doesn't
+    /// grow a second time when the cursor lands in it).
     private func insertTask(between point: (above: ListRow?, below: ListRow?), entry: ParsedEntry?) {
+        Motion.animate(Motion.list) {
+            let new = makeTask(between: point, entry: entry)
+            if entry == nil { beginEdit(new, after: Self.focusAfterInsert) }
+        }
+    }
+
+    /// How long a new line waits for the cursor. On iPhone and iPad the keyboard comes up once
+    /// the line has made room, so the two movements follow each other instead of tangling; the
+    /// Mac has no keyboard to bring up.
+    private static var focusAfterInsert: Duration {
+        #if os(iOS)
+        .milliseconds(340)
+        #else
+        .milliseconds(30)
+        #endif
+    }
+
+    /// The task `insertTask(between:entry:)` adds: filed, nested and ranked between its neighbours.
+    private func makeTask(between point: (above: ListRow?, below: ListRow?), entry: ParsedEntry?) -> TaskItem {
         let aboveTask = point.above?.task
         let belowTask = point.below?.task
         let title = entry?.title ?? ""
@@ -1068,7 +1134,7 @@ struct TaskListView<Header: View>: View {
             app.store.save()
         }
         if let plansFor { app.store.plan([new], for: plansFor) }
-        if entry == nil { beginEdit(new) }
+        return new
     }
 
     /// A neighbour's place in the ranking; finished tasks don't count.
@@ -1142,6 +1208,11 @@ extension TaskListView where Header == EmptyView {
         self.rankOnly = rankOnly
         self.header = { EmptyView() }
     }
+}
+
+/// Whether CI's insert recording (`-TheoInsertDemo`) has run; once per launch.
+@MainActor private enum InsertDemo {
+    static var started = false
 }
 
 /// Row frames, kept outside SwiftUI state so scrolling doesn't re-render the list.
@@ -1264,7 +1335,7 @@ struct HoverInsertZone: ViewModifier {
                 }
                 if next != edge { edge = next }
             }
-            .animation(.easeOut(duration: 0.1), value: edge)
+            .animation(Motion.resolved(Motion.hover), value: edge)
     }
 
     /// The edge the pointer is at. Once lit, an edge stays lit over its whole tab, so the tab
@@ -1288,20 +1359,21 @@ struct InsertionLine: View {
 
     var body: some View {
         ZStack(alignment: edge == .bottom ? .bottomLeading : .topLeading) {
-            Rectangle()
+            Capsule()
                 .fill(.tint)
                 .frame(height: 2)
                 .padding(.leading, leading)
             Image(systemName: "plus")
                 .font(.system(size: 9, weight: .heavy))
                 .foregroundStyle(.white)
-                .frame(width: 14, height: 14)
-                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.tint))
-                .padding(.leading, max(0, leading - 16))
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(.tint))
+                .padding(.leading, max(0, leading - 18))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .allowsHitTesting(false)
-        .transition(.opacity)
+        // It grows out from where the text starts, and fades away.
+        .transition(.asymmetric(insertion: .scale(scale: 0.85, anchor: .leading).combined(with: .opacity), removal: .opacity))
     }
 }
 
@@ -1343,26 +1415,26 @@ struct SelectionBar: View {
         let allDone = !tasks.isEmpty && open.isEmpty
         actionButton(allDone ? "Reopen" : "Done", allDone ? "arrow.uturn.backward" : "checkmark", .green, enabled: !tasks.isEmpty) {
             if allDone {
-                withAnimation(.snappy) { app.store.setDone(tasks, false) }
+                Motion.animate(Motion.list) { app.store.setDone(tasks, false) }
             } else if open.contains(where: { !$0.isOngoing }) {
                 app.complete(open)
             } else {
                 // Only ongoing tasks: each one is logged for today, as its checkbox does.
-                withAnimation(.snappy) { app.store.setDone(open, true) }
+                Motion.animate(Motion.list) { app.store.setDone(open, true) }
             }
             app.endSelection()
         }
         if !open.isEmpty && open.allSatisfy({ $0.isPlanned(for: app.dayStart) }) {
             actionButton("Off Plan", "calendar.badge.minus", .gray) {
-                withAnimation(.snappy) { app.plan(open, for: nil) }
+                Motion.animate(Motion.list) { app.plan(open, for: nil) }
             }
         } else {
             actionButton("Today", "sun.max.fill", .orange, enabled: !open.isEmpty) {
-                withAnimation(.snappy) { app.plan(open, for: app.dayStart) }
+                Motion.animate(Motion.list) { app.plan(open, for: app.dayStart) }
             }
         }
         actionButton("Tomorrow", "moon.zzz.fill", .indigo, enabled: !open.isEmpty) {
-            withAnimation(.snappy) { app.deferToTomorrow(open) }
+            Motion.animate(Motion.list) { app.deferToTomorrow(open) }
         }
         actionButton("Deadline", "calendar", .blue, enabled: !tasks.isEmpty) {
             app.dateBatch = TaskBatch(tasks: tasks)
@@ -1416,7 +1488,7 @@ struct SelectionBar: View {
         Button(action: action) {
             actionLabel(title, symbol, color)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
         .accessibilityLabel(title)
