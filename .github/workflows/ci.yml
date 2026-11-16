@@ -171,6 +171,16 @@ jobs:
           open "$APP" --args -TheoDemo -TheoTour -TheoTourStep subtask
           sleep 12
           screencapture -x shots/mac-tour.png || true
+          pkill -x Theo || true
+          sleep 2
+          open "$APP" --args -TheoDemo -TheoScreen today -TheoSelectFirst
+          sleep 14
+          screencapture -x shots/mac-inspector.png || true
+          pkill -x Theo || true
+          sleep 2
+          open "$APP" --args -TheoDemo -TheoScreen plan
+          sleep 12
+          screencapture -x shots/mac-plan.png || true
           osascript -e 'tell application "System Events" to get {name, position, size} of every window of process "Theo"' > shots/mac-windows.txt 2>&1 || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 

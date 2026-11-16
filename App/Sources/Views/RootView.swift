@@ -167,7 +167,9 @@ struct RootView: View {
             }
         }
         .onChange(of: app.selection) { _, _ in
-            app.selectedRowIDs = []
+            // A page change clears the old page's selection, unless `reveal(_:)` asked for a row.
+            app.selectedRowIDs = app.pendingRevealRowID.map { [$0] } ?? []
+            app.pendingRevealRowID = nil
             app.isSelecting = false
         }
     }

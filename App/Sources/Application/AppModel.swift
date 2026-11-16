@@ -149,8 +149,13 @@ final class AppModel {
     /// iOS multi-select mode.
     var isSelecting = false
 
-    /// The model used by the scene; lets UIKit callbacks (Home Screen quick actions) reach it.
-    static weak var shared: AppModel?
+    /// The model used by the scene; lets UIKit callbacks (Home Screen quick actions), notification
+    /// actions and App Intents reach it. Strong, so Siri/Shortcuts still find it when Theo was
+    /// launched in the background without a window.
+    static var shared: AppModel?
+    /// A row to select once the page `reveal(_:)` switched to is on screen (RootView applies it
+    /// after it clears the old page's selection).
+    @ObservationIgnored var pendingRevealRowID: String?
 
     /// Start of the current logical day, refreshed by `refreshDay()`.
     var dayStart: Date

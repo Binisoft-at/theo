@@ -7,6 +7,27 @@ enum MainWindow {
     static var isVisible: Bool {
         NSApp.windows.contains { $0.isVisible && $0.canBecomeMain }
     }
+
+    /// Opens the main window when none is showing, by sending ourselves the "reopen" Apple
+    /// event a click on the Dock icon sends (works from anywhere, no SwiftUI environment needed).
+    @MainActor
+    static func reopen() {
+        NSApp.activate()
+        guard !isVisible else { return }
+        let target = NSAppleEventDescriptor(processIdentifier: ProcessInfo.processInfo.processIdentifier)
+        let event = NSAppleEventDescriptor(
+            eventClass: AEEventClass(kCoreEventClass),
+            eventID: AEEventID(kAEReopenApplication),
+            targetDescriptor: target,
+            returnID: AEReturnID(kAutoGenerateReturnID),
+            transactionID: AETransactionID(kAnyTransactionID)
+        )
+        do {
+            _ = try event.sendEvent(options: [.noReply], timeout: 2)
+        } catch {
+            print("Theo: reopen event failed: \(error)")
+        }
+    }
 }
 
 /// The menu bar icon. It is the one SwiftUI view that exists right after launch, so it
@@ -36,20 +57,7 @@ final class TheoMacAppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(for: .seconds(2))
             guard !MainWindow.isVisible else { return }
             print("Theo: opening main window via reopen event")
-            NSApp.activate()
-            let target = NSAppleEventDescriptor(processIdentifier: ProcessInfo.processInfo.processIdentifier)
-            let event = NSAppleEventDescriptor(
-                eventClass: AEEventClass(kCoreEventClass),
-                eventID: AEEventID(kAEReopenApplication),
-                targetDescriptor: target,
-                returnID: AEReturnID(kAutoGenerateReturnID),
-                transactionID: AETransactionID(kAnyTransactionID)
-            )
-            do {
-                _ = try event.sendEvent(options: [.noReply], timeout: 2)
-            } catch {
-                print("Theo: reopen event failed: \(error)")
-            }
+            MainWindow.reopen()
         }
     }
 }
