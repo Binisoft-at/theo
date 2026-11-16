@@ -28,12 +28,12 @@ struct GroupTraitsTests {
     }
 
     @Test func subgroupsInheritAndOverride() {
-        let parent = GroupTraits(importance: 0.5, estimate: 0.5, tags: ["haeb"])
-        let child = GroupTraits(estimate: 2, tags: ["dev", "haeb"])
+        let parent = GroupTraits(importance: 0.5, estimate: 0.5, tags: ["office"])
+        let child = GroupTraits(estimate: 2, tags: ["dev", "office"])
         let merged = child.inheriting(from: parent)
         #expect(merged.importance == 0.5)
         #expect(merged.estimate == 2)
-        #expect(merged.tags == ["haeb", "dev"])
+        #expect(merged.tags == ["office", "dev"])
         #expect(merged.dueDays == nil)
     }
 

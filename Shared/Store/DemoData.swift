@@ -25,6 +25,8 @@ enum DemoData {
             let task = store.addTask(entry, defaultGroupID: group?.uuid, placement: .bottom)
             task.indent = indent
             task.priority = priority
+            // The marks and the importance they stand for agree, as everywhere in the app.
+            task.importance = Matrix.importance(for: priority, current: task.importance)
             task.tags = tags
             task.notes = notes
             if let dueDays {
@@ -107,7 +109,30 @@ enum DemoData {
             task.priority = Matrix.priority(forImportance: task.importance)
             task.estimate = sample.estimate
             task.plannedDay = sample.planned ? todayKey : nil
+            task.plannedSince = sample.planned ? todayKey : nil
         }
+        // Carried over: on the plan since earlier days (the rows count the days).
+        func calendarDay(_ offset: Int) -> Date { cal.date(byAdding: .day, value: offset, to: todayKey) ?? todayKey }
+        for (title, since) in [("Pay electricity bill", -3), ("Call dentist to move appointment", -1)] {
+            if let task = open.first(where: { $0.title == title }), task.plannedDay != nil {
+                task.plannedSince = calendarDay(since)
+            }
+        }
+        // For Today's carry-over strip: one task planned for yesterday and left open, and one due
+        // today that isn't planned. Added after the samples so the values above stay the same.
+        let books = store.addTask(ParsedEntry(title: "Return library books"), defaultGroupID: home.uuid, placement: .bottom)
+        books.importance = Matrix.importance(forLevel: 4)
+        books.priority = Matrix.priority(forImportance: books.importance)
+        books.estimate = 0.5
+        books.createdAt = cal.date(byAdding: .day, value: -3, to: Date()) ?? Date()
+        books.plannedDay = calendarDay(-1)
+        books.plannedSince = calendarDay(-2)
+        let permit = store.addTask(ParsedEntry(title: "Renew parking permit"), defaultGroupID: home.uuid, placement: .bottom)
+        permit.importance = Matrix.importance(forLevel: 6)
+        permit.priority = Matrix.priority(forImportance: permit.importance)
+        permit.estimate = 0.25
+        permit.dueDate = todayKey
+        permit.createdAt = cal.date(byAdding: .day, value: -5, to: Date()) ?? Date()
         // Work hands its tasks 1 PH and #work; a task that had its own estimate shows the
         // suggestion instead of being changed.
         admin.isActive = false
@@ -127,10 +152,12 @@ enum DemoData {
             mail.isOngoing = true
             mail.lastDoneAt = Date().addingTimeInterval(-26 * 3600)
             mail.plannedDay = todayKey
+            if mail.plannedSince == nil { mail.plannedSince = todayKey }
         }
         if let reviews = open.first(where: { $0.title == "Review pull requests" }) {
             reviews.estimate = 0.5
             reviews.plannedDay = todayKey
+            if reviews.plannedSince == nil { reviews.plannedSince = todayKey }
             reviews.traitProposalGroupID = work.uuid
         }
         store.save()

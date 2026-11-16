@@ -23,6 +23,9 @@ struct TaskRowView: View {
     @AppStorage(Prefs.showAge) private var showAge = true
     @AppStorage(Prefs.showNotesPreview) private var showNotesPreview = true
     @State private var checkedPreview = false
+    #if os(macOS)
+    @Environment(AppModel.self) private var app
+    #endif
 
     private var displayDone: Bool { task.isDone || checkedPreview }
 
@@ -46,6 +49,13 @@ struct TaskRowView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1...8)
                         .focused(focus, equals: Self.notesFocusID(task))
+                        #if os(macOS)
+                        .onKeyPress(.escape) {
+                            endEditing()
+                            return .handled
+                        }
+                        .onExitCommand { endEditing() }
+                        #endif
                 } else if showNotesPreview, let preview = task.notesPreview {
                     Text(preview)
                         .theoFont(.subheadline)
@@ -97,6 +107,7 @@ struct TaskRowView: View {
                 Text(task.priority.marks)
                     .theoFont(.body, weight: .heavy)
                     .foregroundStyle(task.priority.color)
+                    .accessibilityLabel("\(task.priority.title) priority")
             }
             if isEditing {
                 TextField("New Task", text: titleBinding, axis: .vertical)
@@ -116,6 +127,13 @@ struct TaskRowView: View {
                     }
                     #if os(iOS)
                     .submitLabel(.next)
+                    #elseif os(macOS)
+                    // Esc: done editing (Return would start the next line).
+                    .onKeyPress(.escape) {
+                        endEditing()
+                        return .handled
+                    }
+                    .onExitCommand { endEditing() }
                     #endif
             } else {
                 Text(task.title.isEmpty ? "New Task" : task.title)
@@ -132,6 +150,17 @@ struct TaskRowView: View {
 
     /// Focus ID of a task's description field (the title's is `rowID`).
     static func notesFocusID(_ task: TaskItem) -> String { "n-" + task.uuid.uuidString }
+
+    #if os(macOS)
+    /// Esc while editing: the line stops editing and stays selected, so ↑↓, Space and Return
+    /// go on from it. (An empty new line is discarded when it loses focus, so it isn't selected.)
+    private func endEditing() {
+        focus.wrappedValue = nil
+        if !task.trimmedTitle.isEmpty, app.selectedRowIDs != [task.rowID] {
+            app.selectedRowIDs = [task.rowID]
+        }
+    }
+    #endif
 
     private var notesBinding: Binding<String> {
         Binding(
@@ -180,7 +209,9 @@ struct TaskRowView: View {
     }
 }
 
-/// Secondary information under a task title: deadline, deferral, tags, carried-over age, group.
+/// Secondary information under a task title: deadline, repeat, Power Hours, plan, group, tags,
+/// days carried over. The numbers (deadline, Power Hours) never shorten; when the line is tight
+/// the parent, group, tags and carried-over days give way first.
 struct TaskMetaLine: View {
     let task: TaskItem
     let style: RowStyle
@@ -189,15 +220,32 @@ struct TaskMetaLine: View {
 
     @Environment(AppModel.self) private var app
 
-    private var ageDays: Int {
-        guard !task.isDone else { return 0 }
-        return DayBoundary.current.days(from: task.createdAt, to: today)
+    /// Tags shown by name; the others are counted ("+2").
+    private static let tagLimit = 2
+
+    /// Days it has been on the plan without being done, from the day its current run of plans
+    /// began. 0 when it isn't planned, is done, or was planned before Theo kept track of that.
+    private var carriedDays: Int {
+        guard showAge, !task.isDone, task.plannedDay != nil, let since = task.plannedSince else { return 0 }
+        return PlanAge.days(since: since, today: today)
     }
 
+    /// "Planned since Mon · carried over 3 days".
+    private func carriedHelp(_ days: Int) -> String {
+        guard let since = task.plannedSince else { return "" }
+        let day = days >= 7
+            ? since.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+            : since.formatted(.dateTime.weekday(.abbreviated))
+        return "Planned since \(day) · carried over \(days) day\(days == 1 ? "" : "s")"
+    }
+
+    /// Anything to show besides the days carried over.
     private var hasContent: Bool {
-        task.dueDate != nil || !task.tags.isEmpty || (showAge && ageDays >= 1) || task.estimate > 0 || task.focusSeconds >= 60
-            || (style.showGroup && task.group != nil) || plannedToShow != nil || task.traitProposalGroupID != nil
-            || task.isOngoing
+        // Split up so the type checker doesn't have to solve one long chain of `!= nil`s.
+        if task.dueDate != nil || task.recurrence != nil || estimateText != nil { return true }
+        if !task.tags.isEmpty || task.isOngoing || plannedToShow != nil { return true }
+        if style.showGroup && task.group != nil { return true }
+        return style.parentTitle != nil || task.traitProposalGroupID != nil
     }
 
     /// "Ongoing · yesterday": an ongoing task and when it was last checked off.
@@ -234,18 +282,23 @@ struct TaskMetaLine: View {
     }
 
     var body: some View {
-        if hasContent {
+        let carried = carriedDays
+        if carried >= 1 || hasContent {
             HStack(spacing: 10) {
                 if let due = task.dueDate {
                     dueLabel(due)
-                    if task.recurrence != nil {
-                        Image(systemName: "repeat")
-                            .accessibilityLabel(task.recurrence?.title ?? "Repeats")
-                    }
-                    if task.dueHasTime && !task.isDone && !task.reminderOffsets.isEmpty {
-                        Image(systemName: "bell.fill")
-                            .accessibilityLabel("Reminder on")
-                    }
+                        .layoutPriority(2)
+                }
+                // With or without a deadline: a repeat is never invisible.
+                if let recurrence = task.recurrence {
+                    let title = recurrence.title(firstDue: task.dueDate)
+                    Image(systemName: "repeat")
+                        .help(title)
+                        .accessibilityLabel(title)
+                }
+                if task.dueDate != nil && task.dueHasTime && !task.isDone && !task.reminderOffsets.isEmpty {
+                    Image(systemName: "bell.fill")
+                        .accessibilityLabel("Reminder on")
                 }
                 if task.isOngoing && !task.isDone {
                     Label(ongoingText, systemImage: "infinity")
@@ -255,6 +308,8 @@ struct TaskMetaLine: View {
                 if let estimateText {
                     Label(estimateText, systemImage: "timer")
                         .foregroundStyle(task.estimate > 0 && task.focusSeconds / 60 >= task.estimate * PowerHours.minutesPerPH ? Color.green : Color.secondary)
+                        .fixedSize()
+                        .layoutPriority(2)
                 }
                 if let planned = plannedToShow {
                     if DateText.dayDelta(planned, today: today) == 0 {
@@ -268,17 +323,35 @@ struct TaskMetaLine: View {
                             .accessibilityLabel("Planned for " + DateText.due(planned, hasTime: false, today: today))
                     }
                 }
+                if let parentTitle = style.parentTitle {
+                    // A subtask on the page without its parent: which line it belongs to.
+                    Label(parentTitle, systemImage: "arrow.turn.down.right")
+                        .layoutPriority(-1)
+                        .help("Subtask of “\(parentTitle)”")
+                        .accessibilityLabel("Subtask of \(parentTitle)")
+                }
                 if style.showGroup, let group = task.group, group.deletedAt == nil {
                     Label(group.displayName, systemImage: group.symbol)
                         .foregroundStyle(group.color.color)
+                        .layoutPriority(-1)
                 }
-                ForEach(task.tags, id: \.self) { tag in
+                let tags = task.tags
+                ForEach(Array(tags.prefix(Self.tagLimit)), id: \.self) { tag in
                     TagChip(tag: tag)
+                        .layoutPriority(-1)
                 }
-                if showAge, ageDays >= 1 {
-                    Label("\(ageDays)d", systemImage: "arrow.uturn.forward")
-                        .foregroundStyle(ageDays >= 3 ? Color.orange : Color.secondary)
-                        .help("Carried over for \(ageDays) day\(ageDays == 1 ? "" : "s")")
+                if tags.count > Self.tagLimit {
+                    Text("+\(tags.count - Self.tagLimit)")
+                        .layoutPriority(-1)
+                        .help(tags.dropFirst(Self.tagLimit).map { "#" + $0 }.joined(separator: " "))
+                        .accessibilityLabel("\(tags.count - Self.tagLimit) more tags")
+                }
+                if carried >= 1 {
+                    Label("\(carried)d", systemImage: "arrow.uturn.forward")
+                        .foregroundStyle(carried >= 3 ? Color.orange : Color.secondary)
+                        .layoutPriority(-1)
+                        .help(carriedHelp(carried))
+                        .accessibilityLabel("Carried over \(carried) day\(carried == 1 ? "" : "s")")
                 }
                 if task.traitProposalGroupID != nil, let proposal = app.store.traitProposal(for: task) {
                     Menu {
@@ -314,7 +387,7 @@ struct TaskMetaLine: View {
                 Divider()
                 Button("No Deadline", role: .destructive) { app.store.setDue([task], nil) }
             } label: {
-                Label("was due " + DateText.due(due, hasTime: false, today: today), systemImage: "clock.arrow.circlepath")
+                Label("was due " + DateText.dueInline(due, hasTime: false, today: today), systemImage: "clock.arrow.circlepath")
                     .foregroundStyle(Color.orange.opacity(0.85))
             }
             .menuStyle(.button)
@@ -327,6 +400,7 @@ struct TaskMetaLine: View {
             let color: Color = task.isDone ? .secondary : (delta == 0 ? .orange : .secondary)
             Label(DateText.due(due, hasTime: task.dueHasTime, today: today), systemImage: lateToday ? "clock.badge.exclamationmark" : "calendar")
                 .foregroundStyle(color)
+                .fixedSize()
         }
     }
 }

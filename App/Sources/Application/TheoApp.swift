@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import TheoCore
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct TheoApp: App {
@@ -63,6 +66,24 @@ struct TheoCommands: Commands {
     /// Task commands act on the tour's practice page while the tour is open.
     private var target: AppModel { app.commandTarget }
 
+    #if os(macOS)
+    /// Text is being typed somewhere (the bottom bar, a line, the details, the search field or
+    /// the menu bar panel): field editors and multi-line fields are text views.
+    private var isEditingText: Bool {
+        NSApp.keyWindow?.firstResponder is NSTextView
+    }
+    #endif
+
+    /// Runs a Task command on the selected tasks. On the Mac a ⌘ shortcut reaches the menu before
+    /// the field being typed in, so while text is edited the commands do nothing: typing never
+    /// finishes, moves or changes a task that may not even be in sight.
+    private func run(_ action: (AppModel) -> Void) {
+        #if os(macOS)
+        guard !isEditingText else { return }
+        #endif
+        action(target)
+    }
+
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Task") { app.commandTarget.requestQuickEntry() }
@@ -89,6 +110,11 @@ struct TheoCommands: Commands {
         }
 
         CommandMenu("Go") {
+            // Searches every task from any page (the toolbar field on the Mac and iPad, the
+            // Search tab on iPhone).
+            Button("Find…") { app.wantsSearchFocus = true }
+                .keyboardShortcut("f")
+            Divider()
             Button("Today") { app.go(.today) }
                 .keyboardShortcut("1")
             Button("Plan") { app.go(.plan) }
@@ -123,80 +149,132 @@ struct TheoCommands: Commands {
 
         CommandMenu("Task") {
             Button("Mark as Done / Not Done") {
-                let tasks = target.selectedTasks
-                target.store.setDone(tasks, !tasks.allSatisfy(\.isDone))
+                run { target in
+                    let tasks = target.selectedTasks
+                    if tasks.count == 1 {
+                        // The row's checkbox: Undo when it does more than tick the line.
+                        target.toggle(tasks[0])
+                    } else if !tasks.isEmpty && tasks.allSatisfy(\.isDone) {
+                        target.store.setDone(tasks, false)
+                    } else {
+                        target.complete(tasks)
+                    }
+                }
             }
             .keyboardShortcut(.return, modifiers: .command)
             Button("New Subtask") {
-                if let task = target.selectedTasks.first { target.addSubtask(to: task) }
+                run { target in
+                    if let task = target.selectedTasks.first { target.addSubtask(to: task) }
+                }
             }
             .keyboardShortcut("n", modifiers: [.command, .option])
             Button("Details…") {
-                if let task = target.selectedTasks.first { target.detailTask = task }
+                run { target in
+                    if let task = target.selectedTasks.first { target.showDetails(task) }
+                }
             }
             .keyboardShortcut("i")
             Divider()
             Button("Move Up") {
-                if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.move(task, .up) } }
+                run { target in
+                    if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.move(task, .up) } }
+                }
             }
             .keyboardShortcut(.upArrow, modifiers: [.command, .option])
             Button("Move Down") {
-                if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.move(task, .down) } }
+                run { target in
+                    if let task = target.selectedTasks.first { withAnimation(.snappy) { target.store.move(task, .down) } }
+                }
             }
             .keyboardShortcut(.downArrow, modifiers: [.command, .option])
             Button("Make Subtask of Line Above") {
-                if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: 1) }
+                run { target in
+                    if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: 1) }
+                }
             }
             .keyboardShortcut("]")
             Button("Outdent") {
-                if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: -1) }
+                run { target in
+                    if let task = target.selectedTasks.first { target.indentRequest = IndentRequest(taskID: task.uuid, delta: -1) }
+                }
             }
             .keyboardShortcut("[")
             Divider()
             Menu("Priority") {
                 ForEach(Priority.allCases.reversed()) { priority in
-                    Button(priority.title) { target.store.setPriority(target.selectedTasks, priority) }
-                        .keyboardShortcut(KeyEquivalent(Character("\(priority.rawValue)")), modifiers: [.command, .option])
+                    Button(priority.title) {
+                        run { target in target.store.setPriority(target.selectedTasks, priority) }
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character("\(priority.rawValue)")), modifiers: [.command, .option])
                 }
             }
             Button("Raise Priority") {
-                for task in target.selectedTasks { target.store.setPriority([task], task.priority.next) }
+                run { target in
+                    for task in target.selectedTasks { target.store.setPriority([task], task.priority.next) }
+                }
             }
             .keyboardShortcut("p", modifiers: [.command, .option])
             Button("Start Focus") {
-                target.startFocus(on: target.selectedTasks.first)
+                run { target in target.startFocus(on: target.selectedTasks.first) }
             }
             .keyboardShortcut("f", modifiers: [.command, .option])
             Button("Place in Matrix…") {
-                if let task = target.selectedTasks.first { target.matrixTask = task }
+                run { target in
+                    if let task = target.selectedTasks.first { target.matrixTask = task }
+                }
             }
             .keyboardShortcut("m", modifiers: [.command, .option])
             Menu("Estimate") {
                 ForEach(PowerHours.presets, id: \.self) { value in
-                    Button(PowerHours.format(value)) { target.store.setEstimate(target.selectedTasks, value) }
+                    Button(PowerHours.format(value)) {
+                        run { target in target.store.setEstimate(target.selectedTasks, value) }
+                    }
                 }
-                Button("None") { target.store.setEstimate(target.selectedTasks, 0) }
+                Button("None") {
+                    run { target in target.store.setEstimate(target.selectedTasks, 0) }
+                }
             }
             Button("Fold / Unfold Subtasks") {
-                if let task = target.selectedTasks.first { withAnimation(.snappy) { target.toggleSubtasks(task) } }
+                run { target in
+                    if let task = target.selectedTasks.first { withAnimation(.snappy) { target.toggleSubtasks(task) } }
+                }
             }
             .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
-            Button("Due Today") { target.store.setDue(target.selectedTasks, QuickDate.today.date(from: target.dayStart)) }
-                .keyboardShortcut("t", modifiers: [.command, .option])
-            Button("Due Tomorrow") { target.store.setDue(target.selectedTasks, QuickDate.tomorrow.date(from: target.dayStart)) }
-                .keyboardShortcut("t", modifiers: [.command, .option, .shift])
-            Button("Do Today") { target.plan(target.selectedTasks, for: target.dayStart) }
-                .keyboardShortcut("d", modifiers: [.command, .option])
-            Button("Not Today") { target.deferToTomorrow(target.selectedTasks) }
-                .keyboardShortcut("l", modifiers: [.command, .option])
+            Button("Due Today") {
+                run { target in target.store.setDue(target.selectedTasks, QuickDate.today.date(from: target.dayStart)) }
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Due Tomorrow") {
+                run { target in target.store.setDue(target.selectedTasks, QuickDate.tomorrow.date(from: target.dayStart)) }
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option, .shift])
+            Button("Do Today") {
+                run { target in target.plan(target.selectedTasks, for: target.dayStart) }
+            }
+            .keyboardShortcut("d", modifiers: [.command, .option])
+            Button("Plan for Tomorrow") {
+                run { target in target.deferToTomorrow(target.selectedTasks) }
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
             Button("Move to…") {
-                let tasks = target.selectedTasks
-                if !tasks.isEmpty { target.moveBatch = TaskBatch(tasks: tasks) }
+                run { target in
+                    let tasks = target.selectedTasks
+                    if !tasks.isEmpty { target.moveBatch = TaskBatch(tasks: tasks) }
+                }
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
             Divider()
-            Button("Delete") { target.delete(target.selectedTasks) }
-                .keyboardShortcut(.delete, modifiers: .command)
+            Button("Delete") {
+                #if os(macOS)
+                if isEditingText {
+                    // ⌘⌫ while typing deletes back to the start of the line, as everywhere on the Mac.
+                    _ = NSApp.sendAction(#selector(NSResponder.deleteToBeginningOfLine(_:)), to: nil, from: nil)
+                    return
+                }
+                #endif
+                target.delete(target.selectedTasks)
+            }
+            .keyboardShortcut(.delete, modifiers: .command)
         }
     }
 }

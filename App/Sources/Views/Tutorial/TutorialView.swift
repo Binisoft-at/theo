@@ -46,7 +46,8 @@ final class TutorialSandbox {
         Self.seed(container.mainContext)
     }
 
-    /// Practice tasks the steps refer to ("Call grandma", "Plan a hike" with two subtasks ...).
+    /// Practice tasks the steps refer to ("Call grandma", "Plan a hike" with two subtasks, a
+    /// Work group ...), plus one task left open from yesterday's plan for the carry-over hint.
     static func seed(_ context: ModelContext) {
         let store = TaskStore(context: context)
         let today = DayBoundary.current.start(of: Date())
@@ -70,19 +71,24 @@ final class TutorialSandbox {
         add("Buy flowers", weekend)
 
         let work = store.addGroup(name: "Work", symbol: "briefcase", color: .blue)
-        add("Prepare slides for Monday", work, priority: .medium)
+        let slides = add("Prepare slides for Monday", work, priority: .medium)
         add("Send the invoice", work, dueToday: true)
 
-        // Everything but Work is on today's plan, so the Plan step has something to pick.
+        // Everything but the slides is on today's plan: the group steps find a Work heading on
+        // the page, and the Plan step still has something to pick.
         let key = Calendar.current.startOfDay(for: today)
-        for task in store.liveTasks() where task.group?.uuid != work.uuid {
+        for task in store.liveTasks() where task.uuid != slides.uuid {
             task.plannedDay = key
         }
+        // Planned for yesterday and still open: Today offers to bring it over.
+        let leftOver = add("Book a haircut", nil)
+        leftOver.plannedDay = Calendar.current.startOfDay(for: DayBoundary.current.dayStart(byAdding: -1, to: today))
         store.save()
     }
 }
 
-/// The practice page plus the coach card, inside the sandbox's environment.
+/// The practice page plus the coach card, inside the sandbox's environment. Plan opens on top
+/// of it (its buttons, and the card's, switch the sandbox to Plan), with the card along.
 struct TutorialStage: View {
     let steps: [TutorialStep]
     let accent: Color
@@ -96,6 +102,8 @@ struct TutorialStage: View {
     private var deletedTasks: [TaskItem]
     @Query(filter: #Predicate<TaskGroup> { $0.deletedAt == nil }, sort: \TaskGroup.sortOrder)
     private var groups: [TaskGroup]
+    /// The practice page's layout (the sandbox's own settings, through `defaultAppStorage`).
+    @AppStorage(Prefs.todayGrouping) private var groupingRaw = TodayGrouping.ranked.rawValue
 
     @State private var index = 0
     @State private var tracker = TutorialTracker(baseline: TutorialSnapshot())
@@ -103,32 +111,88 @@ struct TutorialStage: View {
 
     private var step: TutorialStep { steps[min(index, steps.count - 1)] }
 
+    /// Steps about groups need headings on the page; the others read best ranked.
+    private static let groupSteps: Set<String> = ["group", "subproject"]
+    /// Steps that happen in Plan: their card has a button that opens it.
+    private static let planSteps: Set<String> = ["plan", "plan-actions"]
+
     var body: some View {
         let snapshot = currentSnapshot
+        // Read here, so the stage follows the practice app's page.
+        let showsPlan = app.selection == SidebarItem.plan
         NavigationStack {
             // Below the navigation bar, so its buttons stay reachable for the steps that use them.
             TodayView(dayStart: app.dayStart)
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    TutorialCoach(
-                        step: step,
-                        index: index,
-                        count: steps.count,
-                        isMet: isMet,
-                        onBack: back,
-                        onNext: next,
-                        onClose: onClose
-                    )
+                    coach(onPlan: false)
+                }
+                // The practice app has no tabs or sidebar: its "Plan" (the page's buttons, or
+                // the card's) opens Plan right here, under the same card.
+                .navigationDestination(isPresented: planBinding(showsPlan)) {
+                    PlanView()
+                        .safeAreaInset(edge: .top, spacing: 0) {
+                            coach(onPlan: true)
+                        }
                 }
         }
         .modifier(AppChrome(app: app, accent: accent))
         .onAppear {
             app.container.mainContext.undoManager = undoManager
             applyLaunchStep()
+            applyGrouping()
             tracker.restart(at: snapshot)
         }
         .onChange(of: snapshot) { _, newValue in
             evaluate(newValue)
         }
+        .onChange(of: index) { _, _ in
+            applyGrouping()
+        }
+    }
+
+    private func coach(onPlan: Bool) -> TutorialCoach {
+        TutorialCoach(
+            step: step,
+            index: index,
+            count: steps.count,
+            isMet: isMet,
+            onBack: back,
+            onNext: next,
+            onClose: onClose,
+            link: pageLink(onPlan: onPlan)
+        )
+    }
+
+    /// In Plan, the way back to the practice page; on the page, the way to Plan for the steps
+    /// that happen there.
+    private func pageLink(onPlan: Bool) -> CoachLink? {
+        if onPlan {
+            return CoachLink(title: "Back to Today", symbol: "chevron.backward") { closePlan() }
+        }
+        guard Self.planSteps.contains(step.id) else { return nil }
+        return CoachLink(title: "Open Plan", symbol: "calendar.badge.plus") { app.go(.plan) }
+    }
+
+    /// Plan is open while the practice app's page is Plan; going back returns it to Today.
+    private func planBinding(_ shown: Bool) -> Binding<Bool> {
+        Binding(
+            get: { shown },
+            set: { isShown in
+                if !isShown { closePlan() }
+            }
+        )
+    }
+
+    private func closePlan() {
+        if app.selection == SidebarItem.plan { app.selection = .today }
+        // A task clicked in Plan (Mac) shouldn't stay selected on the practice page.
+        app.selectedRowIDs = []
+    }
+
+    /// Headings ("Groups & Subgroups") while a group step is on, ranked otherwise.
+    private func applyGrouping() {
+        let wanted = Self.groupSteps.contains(step.id) ? TodayGrouping.groups : TodayGrouping.ranked
+        if groupingRaw != wanted.rawValue { groupingRaw = wanted.rawValue }
     }
 
     private var currentSnapshot: TutorialSnapshot {
@@ -144,7 +208,7 @@ struct TutorialStage: View {
         snapshot.deletedCount = deletedTasks.count
         snapshot.groupCount = groups.count
         snapshot.collapsedCount = app.collapsedTaskIDs.count
-        snapshot.order = tasks.filter { !$0.isDone }.sorted(by: Sections.pageOrder(groups)).map(\.uuid.uuidString)
+        snapshot.order = rankedOrder()
         snapshot.detailsOpen = app.detailTask != nil
         snapshot.estimateSum = tasks.reduce(0) { $0 + $1.estimate }
         snapshot.matrixSum = tasks.reduce(0) { $0 + $1.urgency + $1.importance }
@@ -152,6 +216,20 @@ struct TutorialStage: View {
         snapshot.timedCount = tasks.filter { $0.dueHasTime && $0.dueDate != nil }.count
         snapshot.subgroupCount = groups.filter { $0.parentUUID != nil }.count
         return snapshot
+    }
+
+    /// Open tasks in the order the ranked page shows them: dragging a task changes its rank
+    /// (its importance), not only its place in its group.
+    private func rankedOrder() -> [String] {
+        let day = app.dayStart
+        let pageOrder = Sections.pageOrder(groups)
+        let scored = tasks.filter { !$0.isDone }.map { (task: $0, score: $0.matrixScore(today: day)) }
+        return scored
+            .sorted { a, b in
+                if abs(a.score - b.score) > 1e-9 { return a.score > b.score }
+                return pageOrder(a.task, b.task)
+            }
+            .map { $0.task.uuid.uuidString }
     }
 
     private func evaluate(_ snapshot: TutorialSnapshot) {
@@ -194,6 +272,13 @@ struct TutorialStage: View {
     }
 }
 
+/// A button on the coach card that takes the practice app to another page (Plan, and back).
+struct CoachLink {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+}
+
 /// The floating card that explains the current step.
 struct TutorialCoach: View {
     let step: TutorialStep
@@ -203,6 +288,7 @@ struct TutorialCoach: View {
     let onBack: () -> Void
     let onNext: () -> Void
     let onClose: () -> Void
+    var link: CoachLink? = nil
 
     @State private var isFolded = false
 
@@ -256,6 +342,14 @@ struct TutorialCoach: View {
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
+                if let link {
+                    Button(action: link.action) {
+                        Label(link.title, systemImage: link.symbol)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.borderless)
+                    .transition(.opacity)
+                }
                 HStack(spacing: 12) {
                     ProgressView(value: Double(index + 1), total: Double(count))
                     if index > 0 {

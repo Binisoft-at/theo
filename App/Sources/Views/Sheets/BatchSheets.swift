@@ -18,7 +18,8 @@ struct MoveSheet: View {
                 Section {
                     row(title: "Quick Entry", symbol: "tray.and.arrow.down.fill", color: .teal, id: nil)
                     ForEach(GroupTree.ordered(groups), id: \.group.uuid) { item in
-                        row(title: item.group.displayName, symbol: item.group.symbol, color: item.group.color.color, id: item.group.uuid)
+                        row(title: item.group.displayName, symbol: item.group.symbol, color: item.group.color.color, id: item.group.uuid,
+                            adds: traits(of: item.group).summary)
                             .padding(.leading, CGFloat(item.level) * 16)
                     }
                 }
@@ -48,17 +49,25 @@ struct MoveSheet: View {
         #endif
     }
 
-    private func row(title: String, symbol: String, color: Color, id: UUID?) -> some View {
+    /// `adds`: what the group's traits give the tasks moved in (shown under its name).
+    private func row(title: String, symbol: String, color: Color, id: UUID?, adds: [String] = []) -> some View {
         let current = batch.tasks.allSatisfy { $0.groupID == id }
         return Button {
-            withAnimation(.snappy) { app.store.move(batch.tasks, toGroup: id) }
+            // app.move shows "Moved to …" with Undo.
+            withAnimation(.snappy) { app.move(batch.tasks, toGroup: id) }
             app.endSelection()
-            app.show("Moved to \(title)", symbol: "folder.fill")
             dismiss()
         } label: {
             HStack {
                 Label {
-                    Text(title).foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(title).foregroundStyle(.primary)
+                        if !adds.isEmpty && !current {
+                            Text("Adds: " + adds.joined(separator: " · "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } icon: {
                     Image(systemName: symbol).foregroundStyle(color)
                 }
@@ -72,11 +81,25 @@ struct MoveSheet: View {
         .buttonStyle(.plain)
     }
 
+    /// A group's traits with what it inherits from the groups it sits in (like
+    /// `TaskStore.traits(of:)`, from the groups this sheet already has).
+    private func traits(of group: TaskGroup) -> GroupTraits {
+        var result = group.ownTraits
+        var seen: Set<UUID> = [group.uuid]
+        var current = group
+        while let parentID = current.parentUUID, !seen.contains(parentID), let parent = groups.first(where: { $0.uuid == parentID }) {
+            result = result.inheriting(from: parent.ownTraits)
+            seen.insert(parentID)
+            current = parent
+        }
+        return result
+    }
+
     private func createAndMove() {
         let name = newGroupName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
         let group = app.store.addGroup(name: name, symbol: "list.bullet", color: TheoColor.forTag(name.lowercased()))
-        withAnimation(.snappy) { app.store.move(batch.tasks, toGroup: group.uuid) }
+        withAnimation(.snappy) { app.move(batch.tasks, toGroup: group.uuid) }
         app.endSelection()
         dismiss()
     }

@@ -12,6 +12,8 @@ struct RootView: View {
     @AppStorage(Prefs.appearance) private var appearanceRaw = AppearanceChoice.system.rawValue
     @AppStorage(Prefs.accent) private var accentRaw = AccentChoice.notes.rawValue
     @AppStorage(Prefs.textSize) private var textSizeRaw = TextSizeChoice.platformDefault.rawValue
+    /// The toolbar search field (Mac and iPad), focused by Find… (⌘F).
+    @FocusState private var searchFocused: Bool
 
     private let clock = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -54,6 +56,11 @@ struct RootView: View {
                     OverviewView()
                         .navigationDestination(for: SidebarItem.self) { item in
                             DetailRouter(selection: item, dayStart: app.dayStart)
+                                .onAppear { app.selection = item }
+                        }
+                        // History (pushed from "done in 7 days") opens its days in place.
+                        .navigationDestination(for: DayRef.self) { day in
+                            DayPageView(day: day)
                         }
                 }
             }
@@ -76,6 +83,17 @@ struct RootView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onChange(of: app.phoneTab) { _, tab in
+            // `selection` follows the page in front, so the Home Screen's New Task adds there
+            // (Plan's bar plans for its day) and never jumps to a tab you've left.
+            switch tab {
+            case .today: app.selection = .today
+            case .plan: app.selection = .plan
+            case .overview: app.selection = .overview
+            case .lists: if app.phonePath.isEmpty { app.selection = nil }
+            case .search: app.selection = nil
+            }
+        }
     }
     #endif
 
@@ -86,11 +104,14 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         } detail: {
             NavigationStack(path: $app.detailPath) {
-                DetailRouter(selection: app.selection, dayStart: app.dayStart)
+                DetailRouter(selection: app.selection, dayStart: app.dayStart, search: app.searchText)
                     .navigationDestination(for: DayRef.self) { day in
                         DayPageView(day: day)
                     }
             }
+            // One search over every task, from any page (Find…, ⌘F). Esc or a page change clears it.
+            .searchable(text: $app.searchText, placement: .toolbar, prompt: "Search all tasks")
+            .searchFocused($searchFocused)
             #if os(macOS)
             // The space a wide window has to spare goes to the selected task's details.
             .inspector(isPresented: $app.showInspector) {
@@ -117,6 +138,10 @@ struct RootView: View {
     var body: some View {
         @Bindable var app = app
         navigation
+        // Red when Theo couldn't open its storage, orange when it isn't syncing; nothing otherwise.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            StorageWarningBanner()
+        }
         .theoTextSize(TextSizeChoice(rawValue: textSizeRaw) ?? .platformDefault)
         .tint(accent.color)
         .preferredColorScheme(appearance.colorScheme)
@@ -148,9 +173,15 @@ struct RootView: View {
         .task {
             try? await Task.sleep(for: .milliseconds(600))
             app.offerTourIfNeeded()
+            // The daily backup at launch (a scene's first phase sends no change).
+            app.backups.backUpIfDue()
         }
         .onReceive(clock) { _ in
+            // A Mac window stays "active" for days: the new day, a focus phase that ran out and
+            // the daily backup are checked here too (each is a cheap check when nothing is due).
             app.refreshDay()
+            app.tickFocus()
+            app.backups.backUpIfDue()
         }
         .onChange(of: scenePhase) { _, phase in
             // Hand changes to iCloud before the app goes to sleep.
@@ -171,6 +202,24 @@ struct RootView: View {
             app.selectedRowIDs = app.pendingRevealRowID.map { [$0] } ?? []
             app.pendingRevealRowID = nil
             app.isSelecting = false
+            app.searchText = ""
+        }
+        .onChange(of: app.searchText) { _, text in
+            // The results replace the page at the bottom of the stack: a day opened on top of it
+            // (History) would hide them.
+            if !text.isEmpty && !app.detailPath.isEmpty { app.detailPath = NavigationPath() }
+        }
+        .onChange(of: app.wantsSearchFocus) { _, wants in
+            guard wants else { return }
+            app.wantsSearchFocus = false
+            #if os(iOS)
+            // The iPhone searches in its Search tab.
+            if sizeClass == .compact {
+                app.phoneTab = .search
+                return
+            }
+            #endif
+            searchFocused = true
         }
     }
 }
@@ -187,6 +236,7 @@ struct AppChrome: ViewModifier {
                     ToastView(toast: toast) {
                         withAnimation(.snappy) { app.toast = nil }
                     }
+                    .tint(toast.isWarning ? Color.red : accent)
                     .padding(.bottom, 84)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -291,8 +341,21 @@ struct InsertGhost: View {
 struct DetailRouter: View {
     let selection: SidebarItem?
     let dayStart: Date
+    /// The toolbar search (Mac and iPad): while it holds text, the results replace the page.
+    var search = ""
 
     var body: some View {
+        if search.trimmingCharacters(in: .whitespaces).isEmpty {
+            page
+        } else {
+            // A task list like any page: selection, the details column and right-click work.
+            SearchResultsView(query: search)
+                .navigationTitle("Search")
+        }
+    }
+
+    @ViewBuilder
+    private var page: some View {
         switch selection {
         case .today, .none:
             TodayView(dayStart: dayStart)

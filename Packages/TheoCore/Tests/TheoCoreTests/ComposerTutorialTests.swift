@@ -88,6 +88,30 @@ struct TutorialTests {
         #expect(TutorialCatalog.steps(newerThan: TutorialCatalog.version).isEmpty)
     }
 
+    @Test func theLatestVersionHasSteps() {
+        #expect(TutorialCatalog.steps.contains { $0.since == TutorialCatalog.version })
+    }
+
+    @Test func whatsNewInVersion9() {
+        let steps = TutorialCatalog.steps(newerThan: 8)
+        #expect(steps.first?.id == "whats-new")
+        #expect(steps.last?.id == "finish")
+        #expect(steps.filter { $0.since == 9 }.map(\.id) == ["dates-de", "swipe-today", "plan-actions", "carry-over", "capture-anywhere"])
+    }
+
+    /// The labels the app shows: "Tomorrow" and "Off Plan" (never "Not Today"), "Subgroup"
+    /// (never "Subproject"), "Description" for a task's text.
+    @Test func tourUsesTheAppsWords() {
+        for step in TutorialCatalog.steps + [TutorialCatalog.whatsNew] {
+            for text in [step.title, step.body, step.macBody] {
+                let lower = text.lowercased()
+                #expect(!lower.contains("not today"), "\(step.id)")
+                #expect(!lower.contains("subproject"), "\(step.id)")
+                #expect(!lower.contains("for notes"), "\(step.id)")
+            }
+        }
+    }
+
     @Test func addingATask() {
         var tracker = TutorialTracker(baseline: snapshot(tasks: 3))
         let met1 = tracker.isMet(.addTask, now: snapshot(tasks: 3))

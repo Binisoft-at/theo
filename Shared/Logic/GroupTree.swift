@@ -61,7 +61,7 @@ enum GroupTree {
         inactiveIDs(groups).contains(group.uuid)
     }
 
-    /// "haeb tasks › 1. Laufend".
+    /// "Work › Clients".
     static func path(of group: TaskGroup, in groups: [TaskGroup]) -> String {
         var names = [group.displayName]
         var current = group

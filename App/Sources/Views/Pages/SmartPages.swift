@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import TheoCore
 
-/// A single group (or Quick Entry) as its own page, including tasks hidden with "Not Today".
+/// A single group (or Quick Entry) as its own page: every task in it, planned or not.
 struct GroupPageView: View {
     let groupID: UUID?
 
@@ -41,13 +41,10 @@ struct GroupPageView: View {
             if task.isDone { return showAllCompleted || (task.completedAt ?? .distantPast) >= app.dayStart }
             return true
         }
-        let rows = PageBuilder.groupPage(
-            groupID: groupID,
-            tasks: mine,
-            groups: groups,
-            options: PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs, rankDay: app.dayStart)
-        )
+        let rows = pageRows(mine, completed: completed)
         let open = mine.filter { !$0.isDone }.count
+        // Ongoing tasks never finish (checking one off only logs it), so they stay out.
+        let toComplete = mine.filter { !$0.isDone && !$0.isOngoing }
         let name = group?.displayName ?? "Quick Entry"
 
         TaskListView(rows: rows, allowsReorder: true, defaultGroupID: groupID) {
@@ -71,10 +68,11 @@ struct GroupPageView: View {
                         Label("Show All Completed", systemImage: "clock.arrow.circlepath")
                     }
                     Button {
-                        withAnimation(.snappy) { app.store.completeAll(in: groupID) }
+                        app.complete(toComplete)
                     } label: {
-                        Label("Complete All", systemImage: "checkmark.circle")
+                        Label("Complete All Open", systemImage: "checkmark.circle")
                     }
+                    .disabled(toComplete.isEmpty)
                     if let group {
                         Button {
                             app.groupEditor = .subgroup(group)
@@ -108,6 +106,14 @@ struct GroupPageView: View {
             }
         }
     }
+
+    /// The page's rows. Nesting comes from each group's whole stored list (every live task, open
+    /// or done), so a subtask whose parent isn't shown here isn't drawn under another task.
+    private func pageRows(_ mine: [TaskItem], completed: CompletedMode) -> [ListRow] {
+        var options = PageBuilder.Options(completed: completed, style: RowStyle(showDeferred: true), collapsedTasks: app.collapsedTaskIDs, rankDay: app.dayStart)
+        options.fullSections = Dictionary(grouping: tasks, by: \.groupID)
+        return PageBuilder.groupPage(groupID: groupID, tasks: mine, groups: groups, options: options)
+    }
 }
 
 struct GroupPageHeader: View {
@@ -126,25 +132,25 @@ struct GroupPageHeader: View {
                 OffBanner(group: group, groups: groups)
             }
             if let group {
+                // The counts live in the stats bar; next to the icon only what it doesn't say.
                 HStack(spacing: 10) {
                     Image(systemName: group.symbol)
                         .font(.title2)
                         .foregroundStyle(group.color.color)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(group.color.color.opacity(0.15)))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(open) open · \(done) done")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
                         if let due = group.dueDate {
                             Label("Deadline \(DateText.due(due, hasTime: false, today: today))", systemImage: "flag.checkered")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(DateText.dayDelta(due, today: today) < 0 ? Color.red : Color.orange)
                         }
+                        if let stats {
+                            // Clipped here so the figures don't scroll over the icon.
+                            TaskStatsBar(stats: stats)
+                                .clipped()
+                        }
                     }
-                }
-                if let stats {
-                    TaskStatsBar(stats: stats)
                 }
                 if group.isProject, open + done > 0 {
                     ProgressView(value: Double(done), total: Double(open + done))
@@ -157,10 +163,28 @@ struct GroupPageHeader: View {
                 }
                 let traits = app.store.traits(of: group)
                 if !traits.isEmpty {
-                    Label(traits.summary.joined(separator: " · "), systemImage: "wand.and.stars")
+                    // What the group hands to tasks placed in it; tap to change it.
+                    Button {
+                        app.groupEditor = .edit(group)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "wand.and.stars")
+                            Text("New tasks get " + traits.summary.joined(separator: " · "))
+                                .multilineTextAlignment(.leading)
+                            Image(systemName: "chevron.right")
+                                .imageScale(.small)
+                                .foregroundStyle(.tertiary)
+                        }
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .help("New and moved tasks take these unless they have their own")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.secondary.opacity(0.1)))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("New and moved tasks take these unless they have their own")
+                    .accessibilityHint("Opens the group's settings")
                 }
                 SubgroupSwitches(parent: group, groups: groups)
             } else {
@@ -186,7 +210,7 @@ struct UpcomingView: View {
 
     var body: some View {
         let sections = Sections.upcoming(tasks.activeOnly(groups), groups: groups, today: app.dayStart)
-        let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true, showDeferred: true)))
+        let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true, showDeferred: true), rankDay: app.dayStart))
         Group {
             if rows.isEmpty {
                 ContentUnavailableView("Nothing Scheduled", systemImage: "calendar",
@@ -197,7 +221,7 @@ struct UpcomingView: View {
         }
         .navigationTitle("Upcoming")
         .safeAreaInset(edge: .bottom) {
-            QuickEntryBar(defaultGroupID: nil, placeholder: "Add with a date, e.g. “dentist fri 3pm”")
+            QuickEntryBar(defaultGroupID: nil, placeholder: "Add with a date: fri 3pm")
         }
     }
 }
@@ -212,7 +236,7 @@ struct PriorityView: View {
 
     var body: some View {
         let sections = Sections.byPriority(tasks.activeOnly(groups), groups: groups, includeNone: false)
-        let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true)))
+        let rows = PageBuilder.labeled(sections, options: PageBuilder.Options(style: RowStyle(showGroup: true), rankDay: app.dayStart))
         Group {
             if rows.isEmpty {
                 ContentUnavailableView("No Priorities Set", systemImage: "exclamationmark.3",
@@ -223,12 +247,13 @@ struct PriorityView: View {
         }
         .navigationTitle("Priority")
         .safeAreaInset(edge: .bottom) {
-            QuickEntryBar(defaultGroupID: nil, placeholder: "Add an important task, e.g. “Call bank !!!”")
+            QuickEntryBar(defaultGroupID: nil, placeholder: "Add an important task !!")
         }
     }
 }
 
-/// Tasks carrying one tag, grouped by their group.
+/// Every open task carrying one tag (plus those finished today), grouped by their group and
+/// ranked, the same set the sidebar counts.
 struct TagView: View {
     let tag: String
 
@@ -239,16 +264,57 @@ struct TagView: View {
     private var groups: [TaskGroup]
 
     var body: some View {
-        let tagged = tasks.activeOnly(groups).filter { $0.tags.contains(tag) && PageBuilder.isOnToday($0, dayStart: app.dayStart) }
-        let rows = PageBuilder.labeled(Sections.byGroup(tagged, groups: groups), options: PageBuilder.Options())
+        let dayStart = app.dayStart
+        let tagged = tasks.activeOnly(groups).filter { task in
+            task.tags.contains(tag) && (!task.isDone || (task.completedAt ?? .distantPast) >= dayStart)
+        }
+        let rows = PageBuilder.labeled(Sections.byGroup(tagged, groups: groups),
+                                       options: PageBuilder.Options(completed: .bottom, style: RowStyle(showDeferred: true), rankDay: dayStart))
+        let toPlan = tagged.filter { !$0.isDone && !$0.isPlanned(for: dayStart) }
         Group {
             if rows.isEmpty {
-                ContentUnavailableView("No Tasks", systemImage: "number", description: Text("Nothing tagged #\(tag) right now."))
+                ContentUnavailableView("No Tasks", systemImage: "number", description: Text("No open tasks tagged #\(tag)."))
             } else {
                 TaskListView(rows: rows, allowsReorder: false)
             }
         }
         .navigationTitle("#" + tag)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        app.plan(toPlan, for: dayStart)
+                    } label: {
+                        Label("Plan All for Today", systemImage: "sun.max.fill")
+                    }
+                    .disabled(toPlan.isEmpty)
+                    Button {
+                        saveAsView()
+                    } label: {
+                        Label("Save as View", systemImage: "square.and.arrow.down")
+                    }
+                    #if os(iOS)
+                    Button {
+                        app.isSelecting = true
+                    } label: {
+                        Label("Select Tasks", systemImage: "checklist")
+                    }
+                    .disabled(rows.isEmpty)
+                    #endif
+                } label: {
+                    Label("More", systemImage: "ellipsis")
+                }
+            }
+        }
+    }
+
+    /// A saved view of this tag's open tasks, opened right away (it stays in the sidebar).
+    private func saveAsView() {
+        var query = TaskQuery.standard
+        query.tags = [tag]
+        let view = app.store.addView(name: "#" + tag, query: query)
+        app.go(.view(view.uuid))
+        app.show("Saved “\(view.displayName)” · it's in the sidebar", symbol: "square.and.arrow.down.fill")
     }
 }
 
