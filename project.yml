@@ -50,7 +50,9 @@ targets:
     dependencies:
       - package: TheoCore
       - target: TheoWatch
-      - target: TheoWidgets
+      # The widgets wait for their App Group in the Apple Developer portal (docs/setup.md,
+      # "Widgets: only if a TestFlight upload stops at signing"); put this line back after it.
+      # - target: TheoWidgets
     settings:
       base:
         PRODUCT_NAME: Theo
@@ -74,7 +76,9 @@ targets:
       - path: Widgets/Sources/Views
     dependencies:
       - package: TheoCore
-      - target: TheoMacWidgets
+      # The widgets wait for their App Group in the Apple Developer portal (docs/setup.md,
+      # "Widgets: only if a TestFlight upload stops at signing"); put this line back after it.
+      # - target: TheoMacWidgets
     settings:
       base:
         PRODUCT_NAME: Theo
@@ -98,7 +102,9 @@ targets:
       - path: Shared
     dependencies:
       - package: TheoCore
-      - target: TheoWatchWidgets
+      # The widgets wait for their App Group in the Apple Developer portal (docs/setup.md,
+      # "Widgets: only if a TestFlight upload stops at signing"); put this line back after it.
+      # - target: TheoWatchWidgets
     settings:
       base:
         PRODUCT_NAME: TheoWatch
