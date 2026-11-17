@@ -216,6 +216,13 @@ jobs:
           open "$APP" --args -TheoDemo -TheoScreen today -TheoInsertDemo
           sleep 3
           screencapture -x -V 9 shots/mac-insert-motion.mov || true
+          pkill -x Theo || true
+          sleep 2
+          # The window's size on every page, panel and sheet, and the fitter putting it back on
+          # the screen (WindowCheck in WindowFitter.swift); lines start with "WINDOW".
+          open --stderr "$PWD/shots/mac-window-check.txt" "$APP" --args -TheoDemo -TheoScreen today -TheoWindowCheck
+          sleep 85
+          screencapture -x shots/mac-window-check.png || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
       # A self-hosted Mac keeps running after the job: don't leave simulators or the app open.

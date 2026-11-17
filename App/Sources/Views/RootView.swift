@@ -31,6 +31,11 @@ struct RootView: View {
         }
         #else
         splitView
+            // Keeps the window on its screen, never hanging off its bottom (see `WindowFitter`).
+            .background {
+                WindowFitter()
+                    .frame(width: 0, height: 0)
+            }
         #endif
     }
 
