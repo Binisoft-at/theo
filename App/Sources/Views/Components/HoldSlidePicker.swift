@@ -223,18 +223,25 @@ struct RadialPickerOverlay: View {
             .animation(stagger, value: fanned)
     }
 
+    /// The unit under the value, singular for exactly one: "1 Power Hour", "2 Power Hours".
+    private static func unit(_ title: String, for value: String) -> String {
+        guard value == "1", title.hasSuffix("s") else { return title }
+        return String(title.dropLast())
+    }
+
     /// What it will be, in the middle of the arc: the value (a word in full) over what's picked.
     private func readout(_ layout: RadialLayout, offset: CGPoint) -> some View {
         let middle: Double = (layout.startAngle + layout.endAngle) / 2 * Double.pi / 180
         let x: CGFloat = layout.origin.x + layout.radius * 0.45 * CGFloat(cos(middle)) - offset.x
         let y: CGFloat = layout.origin.y - layout.radius * 0.5 - offset.y
+        let value: String = pick.selection.map { pick.options[$0] } ?? "–"
         return VStack(spacing: 2) {
-            Text(pick.selection.map { pick.options[$0] } ?? "–")
+            Text(value)
                 .theoFont(.title2, weight: .bold, design: .rounded)
                 .monospacedDigit()
                 .contentTransition(.numericText())
             if !pick.title.isEmpty {
-                Text(pick.title)
+                Text(Self.unit(pick.title, for: value))
                     .theoFont(.caption2, weight: .medium)
                     .foregroundStyle(.secondary)
             }
