@@ -2,6 +2,33 @@ import SwiftUI
 import Combine
 import TheoCore
 
+/// Not started, running or paused: what the timer's start and stop haptics follow.
+private enum FocusRunState {
+    case idle, running, paused
+}
+
+/// The timer starting and stopping can be felt: SwiftUI plays its start and stop taps on the
+/// watch only, so the iPhone gets a light tap for both. A finished round is a success. A
+/// modifier of its own with typed conditions, so the timer's body stays quick to type-check.
+private struct FocusHaptics: ViewModifier {
+    let state: FocusRunState
+    let rounds: Int
+
+    func body(content: Content) -> some View {
+        content
+            .sensoryFeedback(.start, trigger: state, condition: Self.started)
+            .sensoryFeedback(.stop, trigger: state, condition: Self.stopped)
+            #if os(iOS)
+            .sensoryFeedback(.impact(weight: .light), trigger: state)
+            #endif
+            .sensoryFeedback(.success, trigger: rounds, condition: Self.roundDone)
+    }
+
+    private static func started(_ old: FocusRunState, _ new: FocusRunState) -> Bool { new == .running }
+    private static func stopped(_ old: FocusRunState, _ new: FocusRunState) -> Bool { old == .running }
+    private static func roundDone(_ old: Int, _ new: Int) -> Bool { new > old }
+}
+
 /// The focus timer: one Power Hour of focus (50 minutes by default), then a break. Focused
 /// time is booked on the task and counts toward today's total.
 struct FocusView: View {
@@ -11,12 +38,7 @@ struct FocusView: View {
     private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var now = Date()
 
-    /// Not started, running or paused: what the start and stop haptics follow.
-    private enum RunState {
-        case idle, running, paused
-    }
-
-    private var runState: RunState {
+    private var runState: FocusRunState {
         guard let focus = app.focus else { return .idle }
         return focus.isPaused ? .paused : .running
     }
@@ -48,23 +70,19 @@ struct FocusView: View {
                 }
             }
         }
-        .onReceive(clock) { date in
-            now = date
-            app.tickFocus(now: date)
-        }
-        // The timer starting and stopping can be felt: SwiftUI plays its start and stop taps on
-        // the watch only, so the iPhone gets a light tap for both. A finished round is a success.
-        .sensoryFeedback(.start, trigger: runState) { _, new in new == .running }
-        .sensoryFeedback(.stop, trigger: runState) { old, _ in old == .running }
-        #if os(iOS)
-        .sensoryFeedback(.impact(weight: .light), trigger: runState)
-        #endif
-        .sensoryFeedback(.success, trigger: app.focus?.rounds ?? 0) { old, new in new > old }
+        .onReceive(clock) { tick($0) }
+        .modifier(FocusHaptics(state: runState, rounds: app.focus?.rounds ?? 0))
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 560)
         #else
         .presentationDetents([.large])
         #endif
+    }
+
+    /// Every second: the clock the ring reads, and the session's own bookkeeping.
+    private func tick(_ date: Date) {
+        now = date
+        app.tickFocus(now: date)
     }
 
     private func running(_ session: FocusSession) -> some View {
