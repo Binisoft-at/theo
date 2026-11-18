@@ -11,8 +11,8 @@ import TheoCore
 /// something it shows. macOS leaves it that way. This puts the window back inside the part of
 /// the screen windows may use (below the menu bar, above the Dock) whenever it ends up outside it
 /// without the person putting it there: when it opens, when the displays or the Space change,
-/// and after any resize not made with the mouse. A window the person drags or resizes themselves
-/// is left alone, and so is full screen.
+/// and after any resize or move not made with the mouse. A window the person drags or resizes
+/// themselves is left alone, and so is full screen.
 struct WindowFitter: NSViewRepresentable {
     func makeNSView(context: Context) -> WindowFitterView {
         WindowFitterView()
@@ -25,8 +25,14 @@ final class WindowFitterView: NSView {
     private weak var watched: NSWindow?
     private var observers: [NSObjectProtocol] = []
     private var workspaceObservers: [NSObjectProtocol] = []
-    /// Bumped on every resize, so a burst of them (an animated resize) gets one check at its end.
-    private var resizeGeneration = 0
+    /// Bumped on every resize or move, so a burst of them (an animated resize) gets one check at
+    /// its end.
+    private var changeGeneration = 0
+    /// When the person last moved the window with the mouse. A window they drag partly off the
+    /// screen stays where they put it.
+    private var lastMouseMove: Date?
+    /// Set when the person starts dragging the window by its title bar, until the move ends.
+    private var draggedByPerson = false
     /// Recent corrections. If something keeps pushing the window back out, it's left to win
     /// after a few, rather than the window jumping back and forth.
     private var corrections: [Date] = []
@@ -54,6 +60,18 @@ final class WindowFitterView: NSView {
         observers = [
             center.addObserver(forName: NSWindow.didResizeNotification, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.windowResized() }
+            },
+            // Moved without being resized: a sheet, the system or a restored position can put the
+            // window's bottom below the Dock just the same.
+            center.addObserver(forName: NSWindow.didMoveNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.windowMoved() }
+            },
+            // Posted when the person starts dragging the window.
+            center.addObserver(forName: NSWindow.willMoveNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    WindowCheck.log("will move")
+                    self?.draggedByPerson = true
+                }
             },
             center.addObserver(forName: NSWindow.didChangeScreenNotification, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.check(after: .milliseconds(400), reason: "screen") }
@@ -93,12 +111,32 @@ final class WindowFitterView: NSView {
         WindowCheck.log("resized to \(WindowCheck.describe(window.frame))")
         // A size the person drags is theirs.
         guard !window.inLiveResize else { return }
-        resizeGeneration += 1
-        let generation = resizeGeneration
+        checkWhenSettled(reason: "resize")
+    }
+
+    private func windowMoved() {
+        guard let window = watched else { return }
+        WindowCheck.log("moved to \(WindowCheck.describe(window.frame))")
+        // A place the person drags the window to is theirs.
+        let buttonDown = NSEvent.pressedMouseButtons != 0
+        if draggedByPerson || buttonDown {
+            lastMouseMove = Date()
+            if !buttonDown { draggedByPerson = false }
+            return
+        }
+        checkWhenSettled(reason: "move")
+    }
+
+    /// One check once a burst of resizes or moves is over, unless the person just moved the
+    /// window with the mouse.
+    private func checkWhenSettled(reason: String) {
+        changeGeneration += 1
+        let generation = changeGeneration
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
-            guard let self, self.resizeGeneration == generation else { return }
-            self.fit(reason: "resize")
+            guard let self, self.changeGeneration == generation else { return }
+            if let moved = self.lastMouseMove, Date().timeIntervalSince(moved) < 1.5 { return }
+            self.fit(reason: reason)
         }
     }
 
@@ -228,10 +266,12 @@ enum WindowCheck {
         logSheet("new group", window)
         app.groupEditor = nil
         await pause(1000)
+        log("sheets closed: \(describe(window.frame))")
 
         let size = UserDefaults.standard.string(forKey: Prefs.textSize)
         UserDefaults.standard.set(TextSizeChoice.huge.rawValue, forKey: Prefs.textSize)
         await pause(1200)
+        log("huge text set: \(describe(window.frame))")
         await measure("today, huge text", window)
         app.go(.plan)
         await pause(1200)
@@ -253,6 +293,12 @@ enum WindowCheck {
         window.zoom(nil)
         await pause(2000)
         log("zoomed back: \(describe(window.frame)), inside the screen: \(WindowFit.fits(window.frame, in: visible))")
+
+        // Moved down without a resize, its bottom below the Dock.
+        window.setFrameOrigin(NSPoint(x: window.frame.minX, y: visible.minY - 200))
+        log("moved down: \(describe(window.frame))")
+        await pause(1500)
+        log("after a move: \(describe(window.frame)), inside the screen: \(WindowFit.fits(window.frame, in: visible))")
         log("check done")
     }
 

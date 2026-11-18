@@ -221,7 +221,7 @@ jobs:
           # The window's size on every page, panel and sheet, and the fitter putting it back on
           # the screen (WindowCheck in WindowFitter.swift); lines start with "WINDOW".
           open --stderr "$PWD/shots/mac-window-check.txt" "$APP" --args -TheoDemo -TheoScreen today -TheoWindowCheck
-          sleep 85
+          sleep 130
           screencapture -x shots/mac-window-check.png || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
 
