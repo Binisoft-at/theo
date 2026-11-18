@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Where a Mac window belongs on its screen. `visible` is the part of the screen windows may use
