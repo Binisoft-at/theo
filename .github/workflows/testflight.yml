@@ -48,6 +48,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # How far the run has got, published to ci-testflight every two minutes, so a run whose
+      # Mac dies before the last step still shows where (scripts/ci/progress-reports.sh).
+      - name: Start progress reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          nohup scripts/ci/progress-reports.sh "build ${BUILD_NUMBER} ${{ github.sha }}" > "$RUNNER_TEMP/progress.out" 2>&1 &
+          echo $! > "$RUNNER_TEMP/progress.pid"
+
       - name: Check secrets
         run: |
           missing=""
@@ -129,6 +138,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The progress reports stop first, so this result is the one left on the branch.
+          touch "$RUNNER_TEMP/progress.stop"
+          pid=$(cat "$RUNNER_TEMP/progress.pid" 2>/dev/null || true)
+          for _ in $(seq 1 60); do
+            [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
           mkdir -p "$RUNNER_TEMP/out"
           for f in *.log; do
             [ -f "$f" ] || continue
