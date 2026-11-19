@@ -114,6 +114,13 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      # What Apple answers about the account's certificates and profiles (counts and Apple's own
+      # error messages only), so a signing failure shows whether the key, an agreement or the
+      # number of certificates is the problem.
+      - name: Signing account check
+        continue-on-error: true
+        run: scripts/ci/ci-certificates.py check - 2>&1 | tee signing-check.log
+
       # Automatic signing creates a throwaway development certificate on every fresh GitHub
       # runner; remember what's in the keychain so the run can revoke only its own afterwards.
       # A self-hosted Mac keeps its keychain, so it reuses one certificate and revokes nothing.

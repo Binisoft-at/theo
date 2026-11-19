@@ -8,7 +8,10 @@ created, through the App Store Connect API. Nothing else on the account is touch
 
 usage: ci-certificates.py snapshot <file>       record the identities in the keychain
        ci-certificates.py revoke-new <file>     revoke identities added since the snapshot
-env:   ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH    (revoke-new only)
+       ci-certificates.py check -               what Apple answers about the account's
+                                                certificates and profiles (counts and Apple's
+                                                error messages only, never names: the log is public)
+env:   ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH    (revoke-new and check)
 
 Standard library plus the `security` and `openssl` tools that ship with macOS.
 """
@@ -79,6 +82,42 @@ def api(method, path, auth):
         return json.loads(body) if body else None
 
 
+def check():
+    """Asks Apple for the account's certificates and profiles and prints how it answered."""
+    import collections
+    import urllib.error
+    auth = token()
+    for label, path in (
+        ("certificates", "/certificates?limit=200&fields[certificates]=name,certificateType,expirationDate"),
+        ("profiles", "/profiles?limit=200&fields[profiles]=profileType,profileState"),
+        ("bundle IDs", "/bundleIds?limit=200&fields[bundleIds]=identifier"),
+    ):
+        try:
+            data = api("GET", path, auth)["data"]
+        except urllib.error.HTTPError as error:
+            print("%s: HTTP %d" % (label, error.code))
+            try:
+                for item in json.loads(error.read()).get("errors", []):
+                    print("  %s: %s: %s" % (item.get("code"), item.get("title"), item.get("detail")))
+            except Exception:
+                print("  (no readable error body)")
+            continue
+        except Exception as error:
+            print("%s: %s" % (label, type(error).__name__))
+            continue
+        if label == "certificates":
+            kinds = collections.Counter(item["attributes"].get("certificateType") for item in data)
+            by_api = sum(1 for item in data if "Created via API" in (item["attributes"].get("name") or ""))
+            print("certificates: %d (%s), %d of them created by CI runs" % (
+                len(data), ", ".join("%s %d" % pair for pair in sorted(kinds.items())), by_api))
+        elif label == "profiles":
+            states = collections.Counter("%s/%s" % (item["attributes"].get("profileType"), item["attributes"].get("profileState")) for item in data)
+            print("profiles: %d (%s)" % (len(data), ", ".join("%s %d" % pair for pair in sorted(states.items()))))
+        else:
+            theo = sorted(item["attributes"].get("identifier") for item in data if "theo" in (item["attributes"].get("identifier") or ""))
+            print("bundle IDs: %d, Theo's: %s" % (len(data), ", ".join(theo)))
+
+
 def revoke_new(snapshot_file):
     with open(snapshot_file) as handle:
         before = {line.strip() for line in handle if line.strip()}
@@ -99,9 +138,11 @@ def revoke_new(snapshot_file):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("snapshot", "revoke-new"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("snapshot", "revoke-new", "check"):
         sys.exit(__doc__)
-    if sys.argv[1] == "snapshot":
+    if sys.argv[1] == "check":
+        check()
+    elif sys.argv[1] == "snapshot":
         with open(sys.argv[2], "w") as handle:
             handle.write("\n".join(sorted(keychain_serials())) + "\n")
     else:
