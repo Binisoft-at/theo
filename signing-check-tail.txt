@@ -1,0 +1,5 @@
+certificates: 17 (DEVELOPER_ID_APPLICATION 1, DEVELOPMENT 8, DISTRIBUTION 2, IOS_DISTRIBUTION 2, MAC_INSTALLER_DISTRIBUTION 1, PASS_TYPE_ID 3), 0 of them created by CI runs
+profiles: 11 (IOS_APP_DEVELOPMENT/ACTIVE 3, IOS_APP_DEVELOPMENT/INVALID 1, IOS_APP_STORE/ACTIVE 5, MAC_APP_DIRECT/ACTIVE 1, MAC_APP_STORE/ACTIVE 1)
+bundle IDs: 58, Theo's: at.binisoft.theo, at.binisoft.theo.watchkitapp, at.binisoft.theo.watchkitapp.widgets, at.binisoft.theo.widgets, com.erblinkastrati.theo
+creating a certificate (invalid on purpose): HTTP 409
+  ENTITY_ERROR.ATTRIBUTE.INVALID: An attribute in the provided entity has invalid value: The attribute 'csrContent' is invalid: 'not-a-certificate-request'
