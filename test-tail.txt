@@ -1,0 +1,150 @@
+✔ Test betweenAveragesNeighbours() passed after 0.045 seconds.
+✔ Test insertionAtTheEdgesAndOverdue() passed after 0.045 seconds.
+✔ Test tenImportanceLevels() passed after 0.045 seconds.
+✔ Test importanceOutranksUrgency() passed after 0.045 seconds.
+✔ Test insertionRanksBetweenWithoutInventingADeadline() passed after 0.045 seconds.
+✔ Test urgencyFollowsTheDeadline() passed after 0.045 seconds.
+✔ Test quotesOnlyWhenNeeded() passed after 0.045 seconds.
+✔ Test documentHasHeaderAndCRLF() passed after 0.045 seconds.
+✔ Test openSiblingsFollowTheirRankAndKeepSubtasks() passed after 0.045 seconds.
+✔ Test numbersFollowTheFormat() passed after 0.045 seconds.
+✔ Test aRepeatWithoutADateStartsToday() passed after 0.045 seconds.
+✔ Test inlineMarksRankAsImportant() passed after 0.045 seconds.
+✔ Test aMonthlyRepeatDoneEarlyMovesOneMonth() passed after 0.045 seconds.
+✔ Test aGivenDateOrNoRepeatStaysAsItIs() passed after 0.045 seconds.
+✔ Test everythingShownMatchesTheStoredDepths() passed after 0.045 seconds.
+✔ Test shownParentKeepsTheSubtaskNested() passed after 0.045 seconds.
+✔ Test weeklyIsNotWeekday() passed after 0.045 seconds.
+✔ Test parentsFollowTheDepths() passed after 0.045 seconds.
+✔ Test anOverdueDailyRepeatComesBackTomorrow() passed after 0.045 seconds.
+✔ Test hiddenParentPutsTheSubtaskAtTheTop() passed after 0.045 seconds.
+✔ Test weekdaysSkipTheWeekend() passed after 0.045 seconds.
+✔ Test nothingShownGivesNoDepths() passed after 0.045 seconds.
+✔ Test aWeeklyRepeatDoneLateKeepsItsWeekday() passed after 0.045 seconds.
+✔ Test yearlyComesBackToTheLeapDay() passed after 0.045 seconds.
+✔ Test otherRepeatsIgnoreTheAnchor() passed after 0.045 seconds.
+✔ Test rawRoundTrips() passed after 0.045 seconds.
+✔ Test reindentedLinesNoLongerNestUnderAStranger() passed after 0.045 seconds.
+✔ Test siblingAfterAHiddenBlockKeepsItsLevel() passed after 0.045 seconds.
+✔ Test grandchildUnderAHiddenMiddleSitsUnderTheTop() passed after 0.045 seconds.
+✔ Test parserTakesTheRepeatOutOfTheTitle() passed after 0.045 seconds.
+✔ Test monthlyKeepsItsDayOfTheMonth() passed after 0.045 seconds.
+✔ Test clean() passed after 0.045 seconds.
+✔ Test normalizeKeepsOrder() passed after 0.045 seconds.
+✔ Test usualDayLeavesOutDaysWithoutAnythingDone() passed after 0.045 seconds.
+✔ Test findsRecurrence(text:expected:) with 6 test cases passed after 0.045 seconds.
+✔ Test inlineDueWordsAreLowerCase() passed after 0.045 seconds.
+✔ Test shareOfTasksDone() passed after 0.045 seconds.
+✔ Test usualDayNeedsEnoughDays() passed after 0.044 seconds.
+✔ Test signedDeltas() passed after 0.045 seconds.
+✔ Test overplannedComparesWithAUsualDay() passed after 0.044 seconds.
+✔ Test comparesWithTheAverage() passed after 0.045 seconds.
+✔ Test exactThenPrefixThenContains() passed after 0.044 seconds.
+✔ Test caseAndAccentsDontMatter() passed after 0.045 seconds.
+✔ Test averageCountsDaysOff() passed after 0.044 seconds.
+✔ Test noMatchIsEmpty() passed after 0.044 seconds.
+✔ Test completeReplacesTheWordAndAddsASpace() passed after 0.044 seconds.
+✔ Test spacesAreIgnored() passed after 0.044 seconds.
+✔ Test groupWordAtTheEnd() passed after 0.044 seconds.
+✔ Test sigilAloneOffersEverything() passed after 0.044 seconds.
+✔ Test lastLineOfSeveral() passed after 0.044 seconds.
+✔ Test noActiveToken(text:) with 10 test cases passed after 0.044 seconds.
+✔ Test pathIsOneWord() passed after 0.044 seconds.
+✔ Test pathQueries() passed after 0.045 seconds.
+✔ Test tagWordAtTheEnd() passed after 0.044 seconds.
+✔ Test typedInFull() passed after 0.044 seconds.
+✔ Test equalMatchesKeepTheirOrder() passed after 0.044 seconds.
+✔ Test nothingTypedKeepsEverythingInOrder() passed after 0.044 seconds.
+✔ Test startOfAWordBeatsInsideAWord() passed after 0.044 seconds.
+✔ Test dateOnlyTextIsKeptAsTitle() passed after 0.044 seconds.
+✔ Test plainTextStaysUntouched() passed after 0.044 seconds.
+✔ Test disabledOptionsKeepRawText() passed after 0.044 seconds.
+✔ Test groupMatchesByPrefixIgnoringSpaces() passed after 0.044 seconds.
+✔ Test priorityMarks(mark:expected:) with 5 test cases passed after 0.044 seconds.
+✔ Test numericHashtagIsNotATag() passed after 0.044 seconds.
+✔ Test tagsAreCleanedAndDeduplicated() passed after 0.044 seconds.
+✔ Test unknownGroupStaysInTitle() passed after 0.044 seconds.
+✔ Test dateWithTimeBecomesDeadline() passed after 0.044 seconds.
+✔ Test planAgeTextNamesTheDay() passed after 0.044 seconds.
+✔ Test midnightTodayBecomesTheNextFullHour() passed after 0.044 seconds.
+✔ Test afterMidnightTodayIsStillTheLogicalDay() passed after 0.044 seconds.
+✔ Test dateWithoutTimeIsStartOfDay() passed after 0.044 seconds.
+✔ Test otherDaysGetNineInTheMorning() passed after 0.044 seconds.
+✔ Test aTimeThatCanStillRemindIsKept() passed after 0.044 seconds.
+✔ Test planAgeCountsWholeDaysSinceTheRunBegan() passed after 0.044 seconds.
+✔ Test keepsTheNewestFiles() passed after 0.044 seconds.
+✔ Test theLatestVersionHasSteps() passed after 0.044 seconds.
+✔ Test stepIDsAreUnique() passed after 0.044 seconds.
+✔ Test whatsNewInVersion9() passed after 0.044 seconds.
+✔ Test deleteThenUndo() passed after 0.044 seconds.
+✔ Test undoWithoutDeleteDoesNotCount() passed after 0.044 seconds.
+✔ Test upToDateGetsNothing() passed after 0.044 seconds.
+✔ Test whatsNewInVersion10() passed after 0.044 seconds.
+✔ Test roundTrips() passed after 0.044 seconds.
+✔ Test tourStartsWithWelcomeAndEndsWithFinish() passed after 0.044 seconds.
+✔ Test shortcutsNeedDeadlineAndPriority() passed after 0.044 seconds.
+✔ Test earlierTourGetsWhatsNew() passed after 0.044 seconds.
+✔ Test restartForgetsThePreviousStep() passed after 0.044 seconds.
+✔ Test firstRunGetsEverything() passed after 0.044 seconds.
+✔ Test everyStepIsReleasedAndWritten() passed after 0.044 seconds.
+✔ Test addingATask() passed after 0.044 seconds.
+✔ Test reorderIgnoresAddingAndRemoving() passed after 0.044 seconds.
+✔ Test nestingNeverSkipsALevel() passed after 0.044 seconds.
+✔ Test pastedListKeepsNesting() passed after 0.044 seconds.
+✔ Test priorityCycles() passed after 0.044 seconds.
+✔ Test markerAloneIsAnEmptySubtask() passed after 0.044 seconds.
+✔ Test blankLinesAndBareMarkersAreDropped() passed after 0.044 seconds.
+✔ Test plainTextIsNotASubtask() passed after 0.044 seconds.
+✔ Test subtaskMarkers(text:) with 4 test cases passed after 0.044 seconds.
+✔ Test ongoingTaskCheckedOffNeedsNoMoreReminders() passed after 0.044 seconds.
+✔ Test macQuickAddDescribesThePanel() passed after 0.044 seconds.
+✔ Test recognisesSnoozes() passed after 0.044 seconds.
+✔ Test rebuildDropsEverySnoozeOfAFinishedTask() passed after 0.044 seconds.
+✔ Test identifiersNameTheirTask() passed after 0.044 seconds.
+✔ Test deliveredBannersOfFinishedTasksGo() passed after 0.044 seconds.
+✔ Test tomorrowNeverPullsADeadlineCloser() passed after 0.044 seconds.
+✔ Test hidingCompletedDropsTheirSubtasks() passed after 0.044 seconds.
+✔ Test depthsAreClampedToOneLevelBelowThePreviousLine() passed after 0.044 seconds.
+✔ Test manualOrderWinsOverInputOrder() passed after 0.044 seconds.
+✔ Test completedLinesSinkWithTheirSubtasks() passed after 0.044 seconds.
+✔ Test blockEndCoversSubtasks() passed after 0.044 seconds.
+✔ Test nothingTypedShowsMostUsedFirst() passed after 0.044 seconds.
+✔ Test tagsRankedThenMostUsed() passed after 0.044 seconds.
+✔ Test pathTyped() passed after 0.044 seconds.
+✔ Test nameWithoutLettersIsNotOffered() passed after 0.044 seconds.
+✔ Test deepPathsUseJustEnough() passed after 0.044 seconds.
+✔ Test tagCountsCountEachTaskOnce() passed after 0.044 seconds.
+✔ Test tourUsesTheAppsWords() passed after 0.045 seconds.
+✔ Test everyGroupWithTheWordThatFindsIt() passed after 0.044 seconds.
+✔ Test limitAndRanking() passed after 0.044 seconds.
+✔ Suite "Exact dates and nested import" passed after 0.048 seconds.
+✔ Suite "Group traits" passed after 0.048 seconds.
+✔ Suite "Task queries" passed after 0.048 seconds.
+✔ Suite "Ongoing tasks and import notes" passed after 0.048 seconds.
+✔ Suite "DayBoundary" passed after 0.048 seconds.
+✔ Suite "NotesImport" passed after 0.048 seconds.
+✔ Suite "Mac window stays on its screen" passed after 0.048 seconds.
+✔ Suite "Capture parsing" passed after 0.049 seconds.
+✔ Suite "Reminders" passed after 0.048 seconds.
+✔ Suite "Power Hours" passed after 0.048 seconds.
+✔ Suite "CSV" passed after 0.048 seconds.
+✔ Suite "Group paths in quick entry" passed after 0.048 seconds.
+✔ Suite "Matrix" passed after 0.048 seconds.
+✔ Suite "Ranked order" passed after 0.048 seconds.
+✔ Suite "Recurrence" passed after 0.048 seconds.
+✔ Suite "Repeat rules" passed after 0.048 seconds.
+✔ Suite "Checklist nesting on a page that shows only some lines" passed after 0.048 seconds.
+✔ Suite "Tags" passed after 0.048 seconds.
+✔ Suite "Day review" passed after 0.048 seconds.
+✔ Suite "Token completion: ranking" passed after 0.048 seconds.
+✔ Suite "Token completion: the word being typed" passed after 0.048 seconds.
+✔ Suite "Deadline time and plan age" passed after 0.048 seconds.
+✔ Suite "Backups" passed after 0.048 seconds.
+✔ Suite "QuickParser" passed after 0.048 seconds.
+✔ Suite "Composer" passed after 0.048 seconds.
+✔ Suite "Tutorial" passed after 0.048 seconds.
+✔ Suite "Reminder hygiene" passed after 0.048 seconds.
+✔ Suite "Checklist" passed after 0.048 seconds.
+✔ Test insertionsReadBackAsTheSameGroup() passed after 0.045 seconds.
+✔ Suite "Token completion: groups and tags" passed after 0.048 seconds.
+✔ Test run with 199 tests in 29 suites passed after 0.049 seconds.
