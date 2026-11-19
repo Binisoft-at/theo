@@ -208,6 +208,41 @@ final class WindowFitterView: NSView {
     }
 }
 
+/// A column of the Mac window (sidebar, page, details) that is never taller than the window
+/// offers it. Each column of a split view sets its own smallest size, and a window can't be
+/// smaller than its tallest column's: one column whose content wouldn't shrink (on a real Mac,
+/// one asked for 1834 points on a 1084-point screen) held the whole window taller than the
+/// screen, whatever `WindowFitter` did. Such content now runs past the column's bottom edge
+/// instead, and `-TheoWindowLog` names the column and the height it asked for.
+struct ShrinkableColumn: Layout {
+    let name: String
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        var size = content.sizeThatFits(proposal)
+        if let offered = proposal.height, offered.isFinite {
+            if size.height > offered + 1 {
+                let name = self.name
+                let needed = size.height
+                MainActor.assumeIsolated { WindowCheck.noteColumn(name, needs: needed, offered: offered) }
+            }
+            size.height = min(size.height, max(offered, 0))
+        }
+        return size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
+extension View {
+    /// See `ShrinkableColumn`.
+    func shrinkableColumn(_ name: String) -> some View {
+        ShrinkableColumn(name: name) { self }
+    }
+}
+
 /// `-TheoWindowCheck` (CI): goes through the pages, the details column, the sheets and the
 /// largest text size, and prints the window's frame and the smallest size it allows at each
 /// step, so whatever pushes the window bigger shows up. Then it hangs the window off the bottom
@@ -217,10 +252,22 @@ final class WindowFitterView: NSView {
 enum WindowCheck {
     private static var started = false
 
-    private static let isLogging: Bool = {
+    static let isLogging: Bool = {
         let args = ProcessInfo.processInfo.arguments
         return args.contains("-TheoWindowLog") || args.contains("-TheoWindowCheck")
     }()
+
+    private static var columnNeeds: [String: Int] = [:]
+
+    /// A column whose content asked for more height than it was offered; logged when that
+    /// height changes.
+    static func noteColumn(_ name: String, needs height: CGFloat, offered: CGFloat) {
+        guard isLogging else { return }
+        let rounded = Int(height.rounded())
+        guard columnNeeds[name] != rounded else { return }
+        columnNeeds[name] = rounded
+        log("column \(name) asks for \(rounded) points of height, offered \(Int(offered.rounded()))")
+    }
 
     static func log(_ line: @autoclosure () -> String) {
         guard isLogging else { return }

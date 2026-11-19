@@ -108,6 +108,9 @@ struct RootView: View {
         @Bindable var app = app
         return NavigationSplitView(preferredCompactColumn: $app.compactColumn) {
             SidebarView(usesSelection: true)
+                #if os(macOS)
+                .shrinkableColumn("sidebar")
+                #endif
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         } detail: {
             NavigationStack(path: $app.detailPath) {
@@ -115,6 +118,9 @@ struct RootView: View {
                     .navigationDestination(for: DayRef.self) { day in
                         DayPageView(day: day)
                     }
+                    #if os(macOS)
+                    .shrinkableColumn("page")
+                    #endif
             }
             // One search over every task, from any page (Find…, ⌘F). Esc or a page change clears it.
             .searchable(text: $app.searchText, placement: .toolbar, prompt: "Search all tasks")
@@ -123,6 +129,7 @@ struct RootView: View {
             // The space a wide window has to spare goes to the selected task's details.
             .inspector(isPresented: $app.showInspector) {
                 TaskInspector()
+                    .shrinkableColumn("details")
                     .inspectorColumnWidth(min: 280, ideal: 340, max: 480)
             }
             .toolbar {
