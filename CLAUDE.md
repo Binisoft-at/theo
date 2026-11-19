@@ -75,6 +75,17 @@ schema there (CloudKit Console, signed in). So:
   notes. Never point it at a self-hosted runner.
 - The owner's own tasks are imported in the app (Today → ⋯ → Import from Notes, "Replace
   everything"). Prepare that file in the scratchpad and send it to the owner; never commit it.
+- Mac window: `WindowFitter` keeps it on its screen and each split view column is wrapped in
+  `ShrinkableColumn` (both in `Platform/macOS/WindowFitter.swift`). Without the wrapper,
+  SwiftUI once demanded a 1834-point-tall window on a 1084-point screen. On the owner's Mac,
+  `open -b at.binisoft.theo --stderr ~/Desktop/theo-fenster.txt --args -TheoWindowLog` (Theo
+  quit first) logs every size, limit and correction; CI runs the full walk-through
+  (`-TheoWindowCheck`, `shots/mac-window-check.txt`) and keeps Mac crash reports.
+- TestFlight signing: the run creates its own development certificate through the API
+  (`scripts/ci/ci-certificates.py create-identity`) because Xcode's own step started failing
+  ("The data couldn't be read because it isn't in the correct format"); it is revoked at the
+  end. The run reports progress to `ci-testflight` every two minutes and prints Apple's
+  answers about the account (`signing-check-tail.txt`).
 - No model names or identifiers in commits or code. Commits end with the attribution lines
   the session gives.
 - Write for the owner in plain words: exact links and clicks, no jargon.
