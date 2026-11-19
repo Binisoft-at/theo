@@ -116,6 +116,25 @@ def check():
         else:
             theo = sorted(item["attributes"].get("identifier") for item in data if "theo" in (item["attributes"].get("identifier") or ""))
             print("bundle IDs: %d, Theo's: %s" % (len(data), ", ".join(theo)))
+    # May the key create anything? A deliberately invalid request creates nothing: Apple answers
+    # that the request is invalid when creating is allowed, and why not when it isn't (such as an
+    # agreement waiting to be accepted).
+    body = json.dumps({"data": {"type": "certificates", "attributes": {
+        "certificateType": "DEVELOPMENT", "csrContent": "not-a-certificate-request"}}}).encode()
+    request = urllib.request.Request(API + "/certificates", data=body, method="POST", headers={
+        "Authorization": "Bearer " + auth, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            print("creating a certificate: HTTP %d (unexpected)" % response.status)
+    except urllib.error.HTTPError as error:
+        print("creating a certificate (invalid on purpose): HTTP %d" % error.code)
+        try:
+            for item in json.loads(error.read()).get("errors", []):
+                print("  %s: %s: %s" % (item.get("code"), item.get("title"), item.get("detail")))
+        except Exception:
+            print("  (no readable error body)")
+    except Exception as error:
+        print("creating a certificate: %s" % type(error).__name__)
 
 
 def revoke_new(snapshot_file):
