@@ -49,7 +49,12 @@ final class WindowFitterView: NSView {
         guard let window else { return }
         watched = window
         startWatching(window)
-        WindowCheck.logState("attached", window)
+        // Not right here: asking for the content's size in the middle of SwiftUI's layout makes
+        // it lay itself out inside its own layout.
+        Task { @MainActor [weak window] in
+            try? await Task.sleep(for: .milliseconds(100))
+            if let window { WindowCheck.logState("attached", window) }
+        }
         // SwiftUI applies the restored frame (or the default size) around the first layout.
         check(after: .milliseconds(300), reason: "open")
         check(after: .milliseconds(1500), reason: "open")
@@ -231,7 +236,8 @@ enum WindowCheck {
     }
 
     /// The window's frame, its screen and every size limit on it, including the one its content
-    /// asks for (`fittingSize`), which `contentMinSize` doesn't show.
+    /// asks for (`fittingSize`), which `contentMinSize` doesn't show. Never call it from inside a
+    /// layout pass (such as `viewDidMoveToWindow`): `fittingSize` lays the content out.
     static func logState(_ label: String, _ window: NSWindow) {
         guard isLogging else { return }
         let screen = window.screen
