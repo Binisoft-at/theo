@@ -224,6 +224,10 @@ jobs:
           sleep 130
           screencapture -x shots/mac-window-check.png || true
           log show --last 3m --predicate 'process == "Theo"' --style compact > shots/mac-log.txt 2>&1 || true
+          # Crash reports from any of the Mac runs above (the crashed thread is near the top).
+          for report in ~/Library/Logs/DiagnosticReports/Theo*.ips; do
+            [ -f "$report" ] && head -c 60000 "$report" > "shots/mac-crash-$(basename "$report" .ips).txt"
+          done
 
       # A self-hosted Mac keeps running after the job: don't leave simulators or the app open.
       - name: Clean up (self-hosted)
