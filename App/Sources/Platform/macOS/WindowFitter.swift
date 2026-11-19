@@ -49,9 +49,11 @@ final class WindowFitterView: NSView {
         guard let window else { return }
         watched = window
         startWatching(window)
+        WindowCheck.logState("attached", window)
         // SwiftUI applies the restored frame (or the default size) around the first layout.
         check(after: .milliseconds(300), reason: "open")
         check(after: .milliseconds(1500), reason: "open")
+        check(after: .seconds(5), reason: "open")
         WindowCheck.startIfAsked(window: window)
     }
 
@@ -81,6 +83,20 @@ final class WindowFitterView: NSView {
             },
             center.addObserver(forName: NSWindow.didDeminiaturizeNotification, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.check(after: .milliseconds(400), reason: "Dock") }
+            },
+            // Back to Theo, or the window comes into view: a window that was out of sight when
+            // Theo opened (on another Space, or Theo started in the background) gets checked then.
+            center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.check(after: .milliseconds(300), reason: "key") }
+            },
+            center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let window = self.watched, window.occlusionState.contains(.visible) else { return }
+                    self.check(after: .milliseconds(300), reason: "in view")
+                }
+            },
+            center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.check(after: .milliseconds(300), reason: "active") }
             },
             // A display plugged in or out, another resolution, the Dock bigger or moved.
             center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -148,14 +164,21 @@ final class WindowFitterView: NSView {
     }
 
     private func fit(reason: String) {
-        guard let window = watched, window.isVisible, !window.isMiniaturized,
-              !window.styleMask.contains(.fullScreen), !window.inLiveResize,
+        guard let window = watched else { return }
+        guard window.isVisible, !window.isMiniaturized, !window.styleMask.contains(.fullScreen),
+              !window.inLiveResize,
               // A window being dragged: wait for the next check.
               NSEvent.pressedMouseButtons == 0,
-              let screen = window.screen ?? NSScreen.main else { return }
+              let screen = window.screen ?? NSScreen.main else {
+            WindowCheck.log("check (\(reason)) not now: visible \(window.isVisible), in Dock \(window.isMiniaturized), full screen \(window.styleMask.contains(.fullScreen)), resizing \(window.inLiveResize), mouse \(NSEvent.pressedMouseButtons)")
+            return
+        }
         let visible = screen.visibleFrame
         let frame = window.frame
-        guard !WindowFit.fits(frame, in: visible) else { return }
+        guard !WindowFit.fits(frame, in: visible) else {
+            if reason == "open" { WindowCheck.logState("fits (open)", window) }
+            return
+        }
         let now = Date()
         corrections.removeAll { now.timeIntervalSince($0) > 5 }
         guard corrections.count < 3 else {
@@ -172,6 +195,11 @@ final class WindowFitterView: NSView {
         let target = WindowFit.fitted(frame, in: visible)
         WindowCheck.log("fit (\(reason)): \(WindowCheck.describe(frame)) to \(WindowCheck.describe(target)), screen \(WindowCheck.describe(visible))")
         window.setFrame(target, display: true, animate: false)
+        // Whatever pushes the window back out shows up here.
+        Task { @MainActor [weak window] in
+            try? await Task.sleep(for: .milliseconds(700))
+            if let window { WindowCheck.logState("after fit (\(reason))", window) }
+        }
     }
 }
 
@@ -200,6 +228,16 @@ enum WindowCheck {
 
     static func describe(_ size: CGSize) -> String {
         "\(Int(size.width))x\(Int(size.height))"
+    }
+
+    /// The window's frame, its screen and every size limit on it, including the one its content
+    /// asks for (`fittingSize`), which `contentMinSize` doesn't show.
+    static func logState(_ label: String, _ window: NSWindow) {
+        guard isLogging else { return }
+        let screen = window.screen
+        let screens = NSScreen.screens.map { describe($0.visibleFrame) }.joined(separator: " | ")
+        let fitting = window.contentView.map { describe($0.fittingSize) } ?? "none"
+        log("\(label): frame \(describe(window.frame)), screen \(screen.map { describe($0.visibleFrame) } ?? "none") of [\(screens)], content min \(describe(window.contentMinSize)), min \(describe(window.minSize)), max \(describe(window.maxSize)), content needs \(fitting), zoomed \(window.isZoomed), visible \(window.isVisible), on this Space \(window.isOnActiveSpace), autosave \"\(window.frameAutosaveName)\"")
     }
 
     static func startIfAsked(window: NSWindow) {
