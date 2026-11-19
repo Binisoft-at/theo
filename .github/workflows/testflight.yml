@@ -127,6 +127,13 @@ jobs:
       - name: Snapshot signing identities
         run: scripts/ci/ci-certificates.py snapshot "$RUNNER_TEMP/identities-before.txt"
 
+      # Xcode's own step for this has failed since 19 November 2026 (see create_identity in the
+      # script); with a certificate ready, Xcode only fetches the profiles.
+      - name: Create this run's development certificate
+        if: runner.environment == 'github-hosted'
+        continue-on-error: true
+        run: scripts/ci/ci-certificates.py create-identity "$RUNNER_TEMP/signing" 2>&1 | tee create-identity.log
+
       - name: Archive & upload iOS (with the watch app)
         if: env.PLATFORMS != 'macos'
         run: scripts/ci/archive-upload.sh Theo 'generic/platform=iOS' ios

@@ -8,10 +8,13 @@ created, through the App Store Connect API. Nothing else on the account is touch
 
 usage: ci-certificates.py snapshot <file>       record the identities in the keychain
        ci-certificates.py revoke-new <file>     revoke identities added since the snapshot
+       ci-certificates.py create-identity <dir> creates this run's development certificate
+                                                through the API and puts it, with its key, in a
+                                                keychain of its own (revoke-new removes it later)
        ci-certificates.py check -               what Apple answers about the account's
                                                 certificates and profiles (counts and Apple's
                                                 error messages only, never names: the log is public)
-env:   ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH    (revoke-new and check)
+env:   ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH    (all but snapshot)
 
 Standard library plus the `security` and `openssl` tools that ship with macOS.
 """
@@ -80,6 +83,73 @@ def api(method, path, auth):
     with urllib.request.urlopen(request, timeout=30) as response:
         body = response.read()
         return json.loads(body) if body else None
+
+
+def create_identity(workdir):
+    """Creates an Apple Development certificate through the API and makes it a signing identity.
+
+    `xcodebuild -allowProvisioningUpdates` normally creates this certificate itself. Since
+    19 November 2026 that step fails on GitHub's Macs ("The data couldn't be read because it
+    isn't in the correct format") while the API itself creates certificates fine, so the run
+    creates it here and Xcode finds it ready.
+    """
+    import secrets
+    import urllib.error
+    os.makedirs(workdir, exist_ok=True)
+    key, csr = os.path.join(workdir, "ci-key.pem"), os.path.join(workdir, "ci.csr")
+    der, pem, p12 = (os.path.join(workdir, name) for name in ("ci-cert.der", "ci-cert.pem", "ci.p12"))
+    keychain = os.path.join(workdir, "theo-ci.keychain-db")
+    password = secrets.token_hex(16)
+    ssl = "/usr/bin/openssl"  # macOS's own: its PKCS#12 files are ones the keychain can read
+    subprocess.run([ssl, "req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", csr,
+                    "-subj", "/CN=Theo CI/O=Theo CI"], check=True, capture_output=True)
+    body = json.dumps({"data": {"type": "certificates", "attributes": {
+        "certificateType": "DEVELOPMENT", "csrContent": open(csr).read()}}}).encode()
+    request = urllib.request.Request(API + "/certificates", data=body, method="POST", headers={
+        "Authorization": "Bearer " + token(), "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            created = json.loads(response.read())["data"]
+    except urllib.error.HTTPError as error:
+        print("Apple refused the certificate: HTTP %d" % error.code)
+        try:
+            for item in json.loads(error.read()).get("errors", []):
+                print("  %s: %s: %s" % (item.get("code"), item.get("title"), item.get("detail")))
+        except Exception:
+            print("  (no readable error body)")
+        sys.exit(1)
+    with open(der, "wb") as handle:
+        handle.write(base64.b64decode(created["attributes"]["certificateContent"]))
+    subprocess.run([ssl, "x509", "-inform", "DER", "-in", der, "-out", pem], check=True, capture_output=True)
+    subprocess.run([ssl, "pkcs12", "-export", "-inkey", key, "-in", pem, "-out", p12, "-passout", "pass:" + password],
+                   check=True, capture_output=True)
+
+    def security(*args):
+        subprocess.run(["security", *args], check=True, capture_output=True)
+
+    security("create-keychain", "-p", password, keychain)
+    security("set-keychain-settings", "-lut", "21600", keychain)
+    security("unlock-keychain", "-p", password, keychain)
+    security("import", p12, "-k", keychain, "-P", password, "-T", "/usr/bin/codesign", "-T", "/usr/bin/security")
+    security("set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-s", "-k", password, keychain)
+    # Apple's intermediate certificate, so the identity's chain is complete (skipped if offline).
+    intermediate = os.path.join(workdir, "AppleWWDRCAG3.cer")
+    try:
+        with urllib.request.urlopen("https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer", timeout=30) as response:
+            with open(intermediate, "wb") as handle:
+                handle.write(response.read())
+        subprocess.run(["security", "import", intermediate, "-k", keychain], capture_output=True)
+    except Exception as error:
+        print("Apple's intermediate certificate wasn't downloaded (%s)" % type(error).__name__)
+    searched = subprocess.run(["security", "list-keychains", "-d", "user"], capture_output=True, text=True).stdout
+    current = [line.strip().strip('"') for line in searched.splitlines() if line.strip()]
+    security("list-keychains", "-d", "user", "-s", keychain, *[path for path in current if path != keychain])
+    for path in (key, p12):
+        os.remove(path)
+    serial = created["attributes"].get("serialNumber", "?")
+    print("Created this run's development certificate (%s); signing identities now:" % serial)
+    print(subprocess.run(["security", "find-identity", "-v", "-p", "codesigning"], capture_output=True, text=True).stdout
+          .replace(created["attributes"].get("name") or "\0", "<this run's certificate>"))
 
 
 def check():
@@ -157,10 +227,12 @@ def revoke_new(snapshot_file):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("snapshot", "revoke-new", "check"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("snapshot", "revoke-new", "check", "create-identity"):
         sys.exit(__doc__)
     if sys.argv[1] == "check":
         check()
+    elif sys.argv[1] == "create-identity":
+        create_identity(sys.argv[2])
     elif sys.argv[1] == "snapshot":
         with open(sys.argv[2], "w") as handle:
             handle.write("\n".join(sorted(keychain_serials())) + "\n")
