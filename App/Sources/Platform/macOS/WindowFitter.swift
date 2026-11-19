@@ -259,12 +259,12 @@ enum WindowCheck {
 
     private static var columnNeeds: [String: Int] = [:]
 
-    /// A column whose content asked for more height than it was offered; logged when that
-    /// height changes.
+    /// A column whose content asked for more height than it was offered; logged each time a
+    /// column asks for more than it has before.
     static func noteColumn(_ name: String, needs height: CGFloat, offered: CGFloat) {
         guard isLogging else { return }
         let rounded = Int(height.rounded())
-        guard columnNeeds[name] != rounded else { return }
+        guard rounded > columnNeeds[name, default: 0] else { return }
         columnNeeds[name] = rounded
         log("column \(name) asks for \(rounded) points of height, offered \(Int(offered.rounded()))")
     }
