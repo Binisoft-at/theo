@@ -126,7 +126,23 @@ public enum QuickParser {
         public static let ongoingWords: Set<String> = ["∞", "laufend", "ongoing", "andauernd"]
     }
 
+    #if canImport(Darwin)
     private static let detector: NSDataDetector? = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
+    #endif
+
+    /// The first date Apple's date detector finds in `text`. Linux's Foundation has no detector:
+    /// there only Theo's own reading (`RelativeDate`) understands dates.
+    private static func detectedDate(in text: String) -> (date: Date, range: Range<String.Index>)? {
+        #if canImport(Darwin)
+        guard let detector else { return nil }
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = detector.matches(in: text, options: [], range: range).first, let date = match.date,
+              let found = Range(match.range, in: text) else { return nil }
+        return (date, found)
+        #else
+        return nil
+        #endif
+    }
 
     /// - Parameters:
     ///   - now: the logical day the words are measured from: "morgen" is the day after it.
@@ -211,11 +227,10 @@ public enum QuickParser {
                     entry.dueText = String(title[match.range])
                     title = remaining
                 }
-            } else if let detector {
-                let range = NSRange(title.startIndex..., in: title)
-                if let match = detector.matches(in: title, options: [], range: range).first,
-                   let date = match.date,
-                   let swiftRange = Range(match.range, in: title) {
+            } else if let detected = detectedDate(in: title) {
+                let date = detected.date
+                let swiftRange = detected.range
+                do {
                     let matched = String(title[swiftRange])
                     var remaining = title
                     remaining.removeSubrange(swiftRange)
