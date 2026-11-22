@@ -8,7 +8,8 @@ import Foundation
 ///   (`PowerHours.total`): when a subtask finished the same day has its own estimate, the line above
 ///   it doesn't count again.
 /// - Each fact names its group (`ref` "grp-<uuid>", `refTitle` "Work/Clients") and, when the group
-///   (or a group it sits in) is mapped to a Thalia category, carries `thalia`.
+///   (or, unless it chose "Keine", a group it sits in) is mapped to a Thalia category, carries `thalia`.
+/// - Finished tasks of switched-off groups count too, as in the day review.
 ///
 /// Built from plain values, so the rules run and are tested anywhere (also on Linux); the app turns
 /// its synced store into these values. Never in demo or in-memory stores, never on the watch.
@@ -22,6 +23,8 @@ public enum TheoExchange {
     /// Where a group keeps its Thalia category (its synced extras).
     public static let categoryKey = "thalia.category"
     public static let categoryTitleKey = "thalia.categoryTitle"
+    /// A subgroup's explicit "Keine": no category, and none taken from the groups it sits in.
+    public static let noCategory = "-"
 
     /// A group as the exchange needs it.
     public struct GroupRecord: Equatable, Sendable {
@@ -29,25 +32,26 @@ public enum TheoExchange {
         public var id: String
         public var name: String
         public var parentID: String?
-        /// Switched off in Theo: its tasks (and those of its subgroups) aren't delivered.
-        public var isActive: Bool
-        /// The Thalia category chosen for this group ("3.2"), nil or empty for none.
+        /// The Thalia category chosen for this group ("3.2"); nil or empty: none of its own (a
+        /// subgroup then takes its group's); `TheoExchange.noCategory`: none at all.
         public var category: String?
         public var categoryTitle: String?
 
-        public init(id: String, name: String, parentID: String? = nil, isActive: Bool = true,
+        public init(id: String, name: String, parentID: String? = nil,
                     category: String? = nil, categoryTitle: String? = nil) {
             self.id = id
             self.name = name
             self.parentID = parentID
-            self.isActive = isActive
             self.category = category
             self.categoryTitle = categoryTitle
         }
 
+        /// "Keine" chosen explicitly: no category, not even its group's.
+        public var choseNone: Bool { category?.trimmingCharacters(in: .whitespaces) == noCategory }
+
         /// Its own Thalia category, if one is chosen.
         public var hint: ExchangeThaliaHint? {
-            guard let key = category?.trimmingCharacters(in: .whitespaces), !key.isEmpty else { return nil }
+            guard let key = category?.trimmingCharacters(in: .whitespaces), !key.isEmpty, key != noCategory else { return nil }
             let title = categoryTitle?.trimmingCharacters(in: .whitespaces)
             return ExchangeThaliaHint(category: key, categoryTitle: (title?.isEmpty ?? true) ? nil : title)
         }
@@ -96,30 +100,13 @@ public enum TheoExchange {
         return names.joined(separator: "/")
     }
 
-    /// Groups that are switched off, themselves or through a group they sit in.
-    public static func switchedOff(_ groups: [GroupRecord]) -> Set<String> {
-        let byID = Dictionary(groups.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        var off: Set<String> = []
-        for group in groups {
-            var current: GroupRecord? = group
-            var seen: Set<String> = []
-            while let check = current, !seen.contains(check.id) {
-                if !check.isActive {
-                    off.insert(group.id)
-                    break
-                }
-                seen.insert(check.id)
-                current = check.parentID.flatMap { byID[$0] }
-            }
-        }
-        return off
-    }
-
-    /// The Thalia category a group's facts carry: its own, else that of the nearest group it sits in.
+    /// The Thalia category a group's facts carry: its own, else that of the nearest group it sits
+    /// in, unless "Keine" was chosen on the way.
     public static func hint(for id: String, in groups: [String: GroupRecord]) -> ExchangeThaliaHint? {
         var seen: Set<String> = []
         var current = groups[id]
         while let group = current, !seen.contains(group.id) {
+            if group.choseNone { return nil }
             if let hint = group.hint { return hint }
             seen.insert(group.id)
             current = group.parentID.flatMap { groups[$0] }
@@ -133,7 +120,6 @@ public enum TheoExchange {
                              timeZone: TimeZone = .current) -> [String: [ExchangeFact]] {
         guard let oldest = BinisoftExchange.day(today, adding: -BinisoftExchange.keepDays) else { return [:] }
         let byID = Dictionary(groups.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let off = switchedOff(groups)
         // Finished tasks by day and by group ("" = no group, or a group that's gone).
         var finished: [String: [String: [TaskRecord]]] = [:]
         for task in tasks where task.isDone {
@@ -142,7 +128,6 @@ public enum TheoExchange {
             guard day >= oldest, day <= today else { continue }
             var key = ""
             if let groupID = task.groupID, byID[groupID] != nil {
-                if off.contains(groupID) { continue }
                 key = groupID
             }
             finished[day, default: [:]][key, default: []].append(task)
@@ -244,7 +229,7 @@ extension TheoExchange {
     }
 
     public static func state(category: String?, categoryTitle: String?, catalog: ExchangeCatalog?) -> MappingState {
-        guard let key = category?.trimmingCharacters(in: .whitespaces), !key.isEmpty else { return .none }
+        guard let key = category?.trimmingCharacters(in: .whitespaces), !key.isEmpty, key != noCategory else { return .none }
         guard let catalog else { return .catalogMissing }
         guard let found = choices(catalog).flatMap(\.categories).first(where: { $0.key == key }) else { return .check }
         if let title = categoryTitle?.trimmingCharacters(in: .whitespaces), !title.isEmpty, title != found.title {

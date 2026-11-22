@@ -17,9 +17,11 @@ Theo liest von Thalia nur den Katalog (Ziele und Kategorien). Kein Netz, kein Se
      `id` `ph-<UUID der Aufgabe>`. Gezählt wird genau wie im Tagesrückblick: Hat eine Unteraufgabe
      am selben Tag eigene PH, zählt die übergeordnete Aufgabe nicht noch einmal.
    - `thalia` `{category, categoryTitle}` aus der Gruppe; eine Untergruppe ohne eigene Wahl übernimmt
-     die ihrer übergeordneten Gruppe.
-   - Nicht geliefert: gelöschte Aufgaben (Papierkorb), Aufgaben in ausgeschalteten Gruppen, Tage in
-     der Zukunft, Tage älter als 62 Tage. Keine Werte aus Apple Health (Theo hat keine).
+     die ihrer übergeordneten Gruppe, außer sie wählt ausdrücklich „Keine“.
+   - Erledigte Aufgaben ausgeschalteter (pausierter) Gruppen zählen mit, wie im Tagesrückblick.
+   - Nicht geliefert: gelöschte Aufgaben (Papierkorb), Tage in der Zukunft (Tagesdateien nach
+     „heute“, etwa nach einem Wechsel der Zeitzone, werden leer geschrieben), Tage älter als 62 Tage.
+     Keine Werte aus Apple Health (Theo hat keine).
 3. **Schreiben** (`ThaliaExchangeWriter.swift`, Core): je Tag eine vollständige Datei, nur bei
    geänderten Tatsachen, atomar; ein Tag, der eine Datei hatte und nun nichts mehr hat, bekommt
    `"facts":[]`; Dateien älter als 62 Tage werden gelöscht. `source.json` sofort bei geänderten
@@ -29,9 +31,14 @@ Theo liest von Thalia nur den Katalog (Ziele und Kategorien). Kein Netz, kein Se
    Main-Threads, nicht beim Start). Anstoß entprellt (2 s) nach jedem Speichern, nach dem
    CloudKit-Import, beim Wechsel in den Vordergrund, beim Tageswechsel und wenn der Schalter oder
    eine Zuordnung sich ändert. Danach die Darwin-Benachrichtigung `at.binisoft.exchange.changed`.
-   Nie im Demo-, Screenshot-, Übungs- oder In-Memory-Speicher.
+   Nur aus dem über iCloud synchronisierten Speicher, also nie im Demo-, Screenshot-, Übungs-,
+   lokalen Ersatz- oder In-Memory-Speicher. Auf dem iPhone hält Theo sich beim Wechsel in den
+   Hintergrund kurz wach, bis geschrieben ist; der Mac schreibt beim Beenden noch einmal. Kann ein
+   Tag nicht geschrieben werden, laufen die anderen weiter und Thalia wird trotzdem benachrichtigt.
 5. **Zuordnung „Thalia-Kategorie“** im Gruppen-Editor (iPhone, iPad, Mac gleich): „Keine“ und
    darunter die Kategorien aus Thalias Katalog, nach Ziel gruppiert („3 Arbeit“ → „3.2 Kunden“).
+   Untergruppen einer zugeordneten Gruppe haben zusätzlich „Wie die übergeordnete Gruppe (…)“.
+   Erneutes Wählen einer Kategorie übernimmt ihren aktuellen Namen aus Thalia.
    Gespeichert in der Gruppe selbst (ihr synchronisiertes Zusatzfeld `extrasRaw`, Schlüssel
    `thalia.category` und `thalia.categoryTitle`): auf allen Geräten gleich, Teil der Sicherungen,
    keine CloudKit-Schemaänderung. Hinweise „Thalias Katalog fehlt auf diesem Gerät – Thalia hier
@@ -43,7 +50,7 @@ Theo liest von Thalia nur den Katalog (Ziele und Kategorien). Kein Netz, kein Se
    Werte, sobald Thalia auf diesem Gerät geöffnet wird.“
 7. **Tests** im Core (Swift Testing) mit Thalias Testdateien; ein Linux-Job in CI führt sie unter
    Ubuntu aus (Ergebnis auf dem Branch `ci-linux`), der Mac-Job wie bisher.
-8. **Version** 1.1.0.
+8. **Version** 1.1.0, mit einem „What's new“-Schritt in der Tour.
 
 ## Entscheidungen (mit Bini abgestimmt)
 

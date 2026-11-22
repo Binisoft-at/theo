@@ -105,7 +105,7 @@ struct TutorialTests {
         let steps = TutorialCatalog.steps(newerThan: 9)
         #expect(steps.first?.id == "whats-new")
         #expect(steps.last?.id == "finish")
-        #expect(steps.dropFirst().dropLast().map(\.id) == ["plan-panes", "widgets", "bar-and-mac"])
+        #expect(steps.filter { $0.since == 10 }.map(\.id) == ["plan-panes", "widgets", "bar-and-mac"])
         // Right after the other Plan steps, so the tour keeps Plan open for it.
         let ids = TutorialCatalog.steps.map(\.id)
         let plan = ids.firstIndex(of: "plan-panes")
@@ -115,6 +115,14 @@ struct TutorialTests {
         if let plan, let tools {
             #expect(plan == tools + 1)
         }
+    }
+
+    /// Theo tells Thalia: one step about the group's Thalia category.
+    @Test func whatsNewInVersion11() {
+        let steps = TutorialCatalog.steps(newerThan: 10)
+        #expect(steps.first?.id == "whats-new")
+        #expect(steps.last?.id == "finish")
+        #expect(steps.dropFirst().dropLast().map(\.id) == ["thalia"])
     }
 
     /// The Mac's shortcut opens the floating panel now, not the main window's bottom bar.

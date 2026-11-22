@@ -139,7 +139,7 @@ public struct TutorialTracker: Sendable {
 /// The interactive tour. Add new steps at the end of their topic with `since` set to a new
 /// `version`; people who already took the tour then get just those steps as "What's new".
 public enum TutorialCatalog {
-    public static let version = 10
+    public static let version = 11
 
     public static let welcome = TutorialStep(
         id: "welcome", since: 1, symbol: "hand.wave",
@@ -340,6 +340,13 @@ public enum TutorialCatalog {
             title: "Groups pass things on",
             body: "Edit a group to give its tasks an importance, Power Hours, tags or a deadline. New tasks there take them. A task you move in keeps its own values and shows \u{201C}Suggested\u{201D} instead. On a group's page, tap a subgroup to switch it off: its tasks stay out of Today until you switch it back on.",
             macBody: "Edit a group to give its tasks an importance, Power Hours, tags or a deadline. New tasks there take them. A task you move in keeps its own values and shows \u{201C}Suggested\u{201D} instead. Right-click a group in the sidebar → Switch Off to keep its tasks out of Today.",
+            goal: .none
+        ),
+        TutorialStep(
+            id: "thalia", since: 11, symbol: "arrow.up.forward.app",
+            title: "Finished work counts in Thalia",
+            body: "Edit a group and pick its \u{201C}Thalia-Kategorie\u{201D}: every task you finish there, with its Power Hours, then counts for that category in Thalia on this iPhone or iPad. Subgroups without their own choice take their group's. Settings → Thalia → \u{201C}An Thalia liefern\u{201D} switches it off on every device.",
+            macBody: "Edit a group and pick its \u{201C}Thalia-Kategorie\u{201D}: every task you finish there, with its Power Hours, then counts for that category in Thalia on this Mac. Subgroups without their own choice take their group's. Settings → Thalia → \u{201C}An Thalia liefern\u{201D} switches it off on every device.",
             goal: .none
         ),
         TutorialStep(

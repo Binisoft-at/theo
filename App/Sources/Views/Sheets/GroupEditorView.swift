@@ -252,16 +252,38 @@ struct GroupEditorView: View {
         return TheoExchange.hint(for: parentID.uuidString, in: records)
     }
 
-    private var thaliaNoneLabel: String {
-        guard let inherited = inheritedThalia, let key = inherited.category else { return "Keine" }
+    /// "Wie die übergeordnete Gruppe (3.2 Kunden)", when the group it sits in has a category.
+    private var thaliaInheritLabel: String? {
+        guard let inherited = inheritedThalia, let key = inherited.category else { return nil }
         let title = inherited.categoryTitle.map { key + " " + $0 } ?? key
         return "Wie die übergeordnete Gruppe (\(title))"
     }
 
+    /// Every pick (also of the row already chosen) takes the category's name from Thalia's catalog
+    /// on this device, so a category Thalia renamed is confirmed by picking it again.
+    private var thaliaSelection: Binding<String?> {
+        Binding(get: { thaliaCategory }, set: { key in
+            thaliaCategory = key
+            guard let key, key != TheoExchange.noCategory else {
+                thaliaCategoryTitle = nil
+                return
+            }
+            if let found = thaliaChoices.flatMap(\.categories).first(where: { $0.key == key }) {
+                thaliaCategoryTitle = found.title
+            }
+        })
+    }
+
     private var thaliaSection: some View {
         Section {
-            Picker(selection: $thaliaCategory.animation(Motion.resolved(Motion.list))) {
-                Text(thaliaNoneLabel).tag(String?.none)
+            Picker(selection: thaliaSelection.animation(Motion.resolved(Motion.list))) {
+                if let inherit = thaliaInheritLabel {
+                    // Nothing of its own takes the group's category; "Keine" stops that.
+                    Text("Keine").tag(String?.some(TheoExchange.noCategory))
+                    Text(inherit).tag(String?.none)
+                } else {
+                    Text("Keine").tag(String?.none)
+                }
                 ForEach(thaliaChoices, id: \.goal.key) { choice in
                     Section(TheoExchange.label(choice.goal)) {
                         ForEach(choice.categories, id: \.key) { category in
@@ -270,7 +292,8 @@ struct GroupEditorView: View {
                     }
                 }
                 // The saved choice, also when this device has no catalog or the catalog lost it.
-                if let key = thaliaCategory, !thaliaChoices.contains(where: { $0.categories.contains { $0.key == key } }) {
+                if let key = thaliaCategory, key != TheoExchange.noCategory,
+                   !thaliaChoices.contains(where: { $0.categories.contains { $0.key == key } }) {
                     Text(thaliaCategoryTitle.map { key + " " + $0 } ?? key).tag(String?.some(key))
                 }
             } label: {
@@ -290,15 +313,6 @@ struct GroupEditorView: View {
                     Text("Zuordnung prüfen: Thalia hat diese Kategorie nicht mehr oder nennt sie anders.")
                         .foregroundStyle(.orange)
                 }
-            }
-        }
-        .onChange(of: thaliaCategory) { _, key in
-            guard let key else {
-                thaliaCategoryTitle = nil
-                return
-            }
-            if let found = thaliaChoices.flatMap(\.categories).first(where: { $0.key == key }) {
-                thaliaCategoryTitle = found.title
             }
         }
     }
@@ -466,6 +480,8 @@ struct GroupEditorView: View {
             let category = existing.extras[TheoExchange.categoryKey]?.trimmingCharacters(in: .whitespaces)
             thaliaCategory = (category?.isEmpty ?? true) ? nil : category
             thaliaCategoryTitle = existing.extras[TheoExchange.categoryTitleKey]
+            // "Keine" kept from when the group above had a category: now just nothing.
+            if thaliaCategory == TheoExchange.noCategory && inheritedThalia == nil { thaliaCategory = nil }
         } else {
             if case .subgroup(let parent) = target { parentID = parent.uuid }
             color = TheoColor.allCases.randomElement() ?? .blue
@@ -490,8 +506,10 @@ struct GroupEditorView: View {
         group.notes = notes
         group.isActive = isActive
         group.ownTraits = currentTraits
-        group.setExtra(TheoExchange.categoryKey, thaliaCategory)
-        group.setExtra(TheoExchange.categoryTitleKey, thaliaCategory == nil ? nil : thaliaCategoryTitle)
+        // "Keine" (`noCategory`) on a top-level group or under an unmapped one means just nothing.
+        let category = thaliaCategory == TheoExchange.noCategory && inheritedThalia == nil ? nil : thaliaCategory
+        group.setExtra(TheoExchange.categoryKey, category)
+        group.setExtra(TheoExchange.categoryTitleKey, category == nil || category == TheoExchange.noCategory ? nil : thaliaCategoryTitle)
         group.touch()
         app.store.save()
         if dismissing { dismiss() }

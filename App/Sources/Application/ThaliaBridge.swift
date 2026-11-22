@@ -127,14 +127,15 @@ final class ThaliaSettings {
     }
 }
 
-/// Starts the exchange once (from `TheoApp`), never for the demo, the tour's practice store or a
-/// store that couldn't be opened, and never in previews.
+/// Starts the exchange once (from `TheoApp`): only with the store that syncs through iCloud (so every
+/// device writes the same), never for the demo, the tour's practice store, the local or in-memory
+/// fallback store, and never in previews.
 @MainActor
 enum ThaliaBridge {
     private static var exchange: ThaliaExchange?
 
     static func start(app: AppModel) {
-        guard exchange == nil, !app.isSandbox, !Persistence.isDemo, Persistence.storeKind != .memory,
+        guard exchange == nil, !app.isSandbox, !Persistence.isDemo, Persistence.storeKind == .cloud,
               ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
         _ = ThaliaSettings.shared
         exchange = ThaliaExchange(container: app.container)
@@ -156,7 +157,14 @@ final class ThaliaExchange {
     private var pending: Task<Void, Never>?
     private var writing = false
     private var writeAgain = false
+    /// No App Group on this device (or, on a Mac, not in the signed app): nothing is built anymore.
+    private var unavailable = false
+    private let startedAt = Date()
     private var observers: [NSObjectProtocol] = []
+    #if os(iOS)
+    /// Keeps Theo running while it writes as it goes to the background.
+    private var backgroundWork: UIBackgroundTaskIdentifier = .invalid
+    #endif
 
     init(container: ModelContainer) {
         self.container = container
@@ -183,23 +191,40 @@ final class ThaliaExchange {
         observers.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.scheduleSoon() }
         })
-        // iOS may suspend Theo next: the last change shouldn't wait for the next launch.
+        // iOS may suspend Theo next (often right after a task is ticked off, on the way to Thalia):
+        // the last change shouldn't wait for the next launch.
         observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.writeNow() }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.backgroundWork == .invalid {
+                    self.backgroundWork = UIApplication.shared.beginBackgroundTask(withName: "Theo for Thalia") { [weak self] in
+                        MainActor.assumeIsolated { self?.endBackgroundWork() }
+                    }
+                }
+                self.writeNow()
+            }
         })
         #elseif os(macOS)
         observers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.scheduleSoon() }
         })
+        // A task ticked off just before ⌘Q still reaches Thalia.
+        observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.writeBeforeQuitting() }
+        })
         #endif
-        // Not during launch.
-        scheduleSoon(after: 5)
+        scheduleSoon(after: Self.launchDelay)
     }
 
+    /// Nothing is built in the first seconds after launch.
+    private static let launchDelay = 5.0
+
     func scheduleSoon(after seconds: Double = 2) {
+        guard !unavailable else { return }
+        let wait = max(seconds, Self.launchDelay - Date().timeIntervalSince(startedAt))
         pending?.cancel()
         pending = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(seconds))
+            try? await Task.sleep(for: .seconds(wait))
             guard !Task.isCancelled else { return }
             self?.writeNow()
         }
@@ -208,6 +233,10 @@ final class ThaliaExchange {
     func writeNow() {
         pending?.cancel()
         pending = nil
+        guard !unavailable else {
+            finishBackgroundWork()
+            return
+        }
         // One write at a time; a change meanwhile writes once more afterwards.
         guard !writing else {
             writeAgain = true
@@ -227,6 +256,7 @@ final class ThaliaExchange {
         writing = false
         switch outcome {
         case .unavailable:
+            unavailable = true
             ThaliaSettings.shared.unavailable = "Auf diesem Gerät nicht verfügbar."
         case .written(let date):
             ThaliaSettings.shared.unavailable = nil
@@ -236,9 +266,44 @@ final class ThaliaExchange {
         }
         if writeAgain {
             writeAgain = false
+            #if os(iOS)
+            // On the way to the background: right away, while iOS still lets Theo run.
+            if backgroundWork != .invalid {
+                writeNow()
+                return
+            }
+            #endif
             scheduleSoon(after: 0.5)
         }
+        finishBackgroundWork()
     }
+
+    private func finishBackgroundWork() {
+        #if os(iOS)
+        endBackgroundWork()
+        #endif
+    }
+
+    #if os(iOS)
+    private func endBackgroundWork() {
+        guard backgroundWork != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundWork)
+        backgroundWork = .invalid
+    }
+    #endif
+
+    #if os(macOS)
+    /// Right away and on the main thread: the app is about to quit, and the files are small.
+    private func writeBeforeQuitting() {
+        pending?.cancel()
+        pending = nil
+        guard !unavailable else { return }
+        let deliver = ThaliaSettings.shared.deliver
+        let (tasks, groups) = records(including: deliver)
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        _ = Self.write(tasks: tasks, groups: groups, deliver: deliver, appVersion: version, now: Date())
+    }
+    #endif
 
     /// Theo's synced store as plain values: every group, and the finished tasks of about the last
     /// 62 days (none while the switch is off, so every day Thalia has is written empty).
@@ -246,12 +311,16 @@ final class ThaliaExchange {
         let store = TaskStore(context: container.mainContext)
         let groups = store.liveGroups().map { group in
             TheoExchange.GroupRecord(id: group.uuid.uuidString, name: group.name, parentID: group.parentUUID?.uuidString,
-                                     isActive: group.isActive, category: group.extras[TheoExchange.categoryKey],
+                                     category: group.extras[TheoExchange.categoryKey],
                                      categoryTitle: group.extras[TheoExchange.categoryTitleKey])
         }
         guard tasks else { return ([], groups) }
+        // Only what the last 62 days (and a margin for time zones) can hold; History keeps the rest.
         let since = Date().addingTimeInterval(-Double(BinisoftExchange.keepDays + 2) * 86_400)
-        let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate<TaskItem> { $0.deletedAt == nil && $0.isDone })
+        let past = Date.distantPast
+        let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate<TaskItem> {
+            $0.deletedAt == nil && $0.isDone && ($0.completedAt ?? past) >= since
+        })
         let finished = ((try? container.mainContext.fetch(descriptor)) ?? []).compactMap { task -> TheoExchange.TaskRecord? in
             guard let completed = task.completedAt, completed >= since else { return nil }
             return TheoExchange.TaskRecord(id: task.uuid.uuidString, title: task.title, groupID: task.group?.uuid.uuidString,
@@ -274,20 +343,33 @@ final class ThaliaExchange {
         guard let folder = ThaliaFolder.appFolder() else { return .unavailable }
         let today = ExchangeDate.day(now)
         let facts = deliver ? TheoExchange.facts(tasks: tasks, groups: groups, today: today) : [:]
+        var changed = false
+        var failed = false
         do {
-            var changed = try ThaliaExchangeWriter.sync(facts, source: TheoExchange.source, appFolder: folder, today: today, now: now)
-            if deliver {
+            changed = try ThaliaExchangeWriter.sync(facts, source: TheoExchange.source, appFolder: folder, today: today, now: now)
+        } catch let error as ThaliaExchangeWriter.WriteError {
+            // Some days were written all the same: Thalia is still told below.
+            changed = error.changed
+            failed = true
+            print("Theo: exchange files for Thalia: \(error)")
+        } catch {
+            failed = true
+            print("Theo: exchange files for Thalia not written: \(error)")
+        }
+        if deliver {
+            do {
                 let refs = TheoExchange.refs(groups: groups)
                 if try ThaliaExchangeWriter.writeSource(refs: refs, appVersion: appVersion, source: TheoExchange.source,
                                                         app: TheoExchange.appName, appFolder: folder, now: now) {
                     changed = true
                 }
+            } catch {
+                failed = true
+                print("Theo: source.json for Thalia not written: \(error)")
             }
-            if changed { ThaliaFolder.postChanged() }
-            return .written(changed ? now : nil)
-        } catch {
-            print("Theo: exchange files for Thalia not written: \(error)")
-            return .failed
         }
+        if changed { ThaliaFolder.postChanged() }
+        if failed && !changed { return .failed }
+        return .written(changed ? now : nil)
     }
 }

@@ -320,19 +320,54 @@ struct ThaliaExchangeTests {
         #expect(facts.filter { $0.kind == "task.done" }.count == 4)
     }
 
-    @Test func switchedOffGroupsAndTheirSubgroupsDeliverNothing() {
+    @Test func switchedOffGroupsStillDeliverLikeTheDayReview() {
         let local = [
-            TheoExchange.GroupRecord(id: "O", name: "Pausiert", isActive: false),
+            TheoExchange.GroupRecord(id: "O", name: "Pausiert"),
             TheoExchange.GroupRecord(id: "OS", name: "Darunter", parentID: "O"),
-            TheoExchange.GroupRecord(id: "H", name: "Haushalt"),
         ]
         let tasks = [
             done("1", "a", group: "O", at: "2026-11-22T09:00:00+01:00"),
             done("2", "b", group: "OS", at: "2026-11-22T09:00:00+01:00"),
-            done("3", "c", group: "H", at: "2026-11-22T09:00:00+01:00"),
         ]
         let facts = TheoExchange.facts(tasks: tasks, groups: local, today: "2026-11-22", timeZone: vienna)
-        #expect(facts["2026-11-22"]?.map(\.id) == ["task-3"])
+        #expect(facts["2026-11-22"]?.map(\.ref) == ["grp-O", "grp-OS"])
+    }
+
+    @Test func aSubgroupCanSayKeineUnderAMappedGroup() throws {
+        let local = [
+            TheoExchange.GroupRecord(id: "W", name: "Arbeit", category: "3.2", categoryTitle: "Kunden"),
+            TheoExchange.GroupRecord(id: "WP", name: "Privat", parentID: "W", category: TheoExchange.noCategory),
+            TheoExchange.GroupRecord(id: "WPX", name: "Darunter", parentID: "WP"),
+        ]
+        let tasks = [
+            done("1", "a", group: "WP", at: "2026-11-22T09:00:00+01:00", estimate: 0.5),
+            done("2", "b", group: "WPX", at: "2026-11-22T09:01:00+01:00"),
+            done("3", "c", group: "W", at: "2026-11-22T09:02:00+01:00"),
+        ]
+        let facts = try #require(TheoExchange.facts(tasks: tasks, groups: local, today: "2026-11-22", timeZone: vienna)["2026-11-22"])
+        #expect(facts.filter { $0.ref != "grp-W" }.allSatisfy { $0.thalia == nil })
+        #expect(facts.first { $0.id == "task-3" }?.thalia?.category == "3.2")
+        #expect(TheoExchange.state(category: TheoExchange.noCategory, categoryTitle: nil, catalog: nil) == .none)
+    }
+
+    @Test func dayFilesAfterTodayAreEmptied() throws {
+        // Finished at 00:30 in Vienna, then the device moved west: the task belongs to the day before.
+        let folder = temporaryFolder()
+        let task = done("T7", "Spät", group: "22CD", at: "2026-11-23T00:30:00+01:00")
+        try ThaliaExchangeWriter.sync(TheoExchange.facts(tasks: [task], groups: groups, today: "2026-11-23", timeZone: vienna),
+                                      source: "theo", appFolder: folder, today: "2026-11-23",
+                                      now: date("2026-11-23T00:31:00+01:00"), timeZone: vienna)
+        let newYork = TimeZone(identifier: "America/New_York")!
+        try ThaliaExchangeWriter.sync(TheoExchange.facts(tasks: [task], groups: groups, today: "2026-11-22", timeZone: newYork),
+                                      source: "theo", appFolder: folder, today: "2026-11-22",
+                                      now: date("2026-11-22T19:00:00-05:00"), timeZone: newYork)
+        func ids(_ day: String) throws -> [String] {
+            let data = try Data(contentsOf: BinisoftExchange.dayFileURL(appFolder: folder, day: day))
+            guard case .success(let read) = ExchangeReader.dayFile(data) else { return ["unreadable"] }
+            return read.file.facts.map(\.id)
+        }
+        #expect(try ids("2026-11-23") == [])
+        #expect(try ids("2026-11-22") == ["task-T7"])
     }
 
     @Test func factsAreInAFixedOrder() throws {
