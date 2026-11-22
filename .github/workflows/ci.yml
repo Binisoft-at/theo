@@ -272,6 +272,8 @@ jobs:
       - name: swift test
         id: tests
         continue-on-error: true
+        # bash: the container's default sh has no pipefail.
+        shell: bash
         run: set -o pipefail && swift test --package-path Packages/TheoCore 2>&1 | tee linux-test.log
 
       - name: Publish status to ci-linux branch
