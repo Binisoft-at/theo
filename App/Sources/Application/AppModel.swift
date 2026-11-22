@@ -449,6 +449,18 @@ final class AppModel {
                 selection = nil
                 compactColumn = .sidebar
                 phoneTab = .lists
+            case "settings-thalia":
+                #if os(iOS)
+                showSettings = true
+                #endif
+            case "group-thalia":
+                // The Work group with a Thalia category, its editor opened at the Thalia section.
+                if let work = store.liveGroups().first(where: { $0.name == "Work" }) {
+                    work.setExtra(TheoExchange.categoryKey, "3.2")
+                    work.setExtra(TheoExchange.categoryTitleKey, "Kunden")
+                    selection = .group(work.uuid)
+                    groupEditor = .edit(work)
+                }
             default: selection = .today
             }
         }

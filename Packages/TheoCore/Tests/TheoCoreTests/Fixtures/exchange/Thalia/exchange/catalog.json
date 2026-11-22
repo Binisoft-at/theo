@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "source": "thalia",
+  "generatedAt": "2026-11-22T06:00:00+01:00",
+  "week": "2026-W47",
+  "segment": { "id": "seg-2", "title": "Abschnitt 2" },
+  "goals": [
+    { "key": "1", "title": "Gesundheit" },
+    { "key": "3", "title": "Arbeit" },
+    { "key": "5", "title": "Lesen" }
+  ],
+  "categories": [
+    { "key": "1.2", "goal": "1", "title": "Sport / Verein", "segment": "seg-2" },
+    { "key": "3.2", "goal": "3", "title": "Kunden", "segment": "seg-2" },
+    { "key": "5", "goal": "5", "title": "Lesen", "segment": "seg-2" }
+  ],
+  "measures": [
+    { "code": "workouts", "title": "Workouts", "unit": "Stück", "link": "app:george:workout=tpl-1", "category": "1.2" },
+    { "code": "kunden_aufgaben", "title": "Aufgaben Kunden", "unit": "Stück", "link": "app:theo:task", "category": "3.2" },
+    { "code": "seiten", "title": "Seiten", "unit": "Seiten", "link": "list:buch", "category": "5" }
+  ],
+  "results": [
+    { "id": "res-books", "title": "Bücher gelesen", "kind": "count", "goal": "5" },
+    { "id": "res-web", "title": "Website online", "kind": "check", "goal": "3" }
+  ]
+}

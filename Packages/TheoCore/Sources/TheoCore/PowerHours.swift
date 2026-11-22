@@ -46,13 +46,22 @@ public enum PowerHours {
     /// aren't counted twice.
     public static func total<Item: ChecklistItem & Estimated>(_ items: [Item], where include: (Item) -> Bool = { _ in true }) -> Double {
         let sorted = items.sorted { $0.sortOrder < $1.sortOrder }
-        let depths = Checklist.depths(of: sorted)
+        let counts = countsOwnEstimate(sorted)
         var sum = 0.0
-        for index in sorted.indices where sorted[index].estimate > 0 && include(sorted[index]) {
-            let end = Checklist.blockEnd(after: index, depths: depths)
-            let subtaskHasEstimate = (index + 1 ..< end).contains { sorted[$0].estimate > 0 }
-            if !subtaskHasEstimate { sum += sorted[index].estimate }
+        for index in sorted.indices where counts[index] && include(sorted[index]) {
+            sum += sorted[index].estimate
         }
         return sum
+    }
+
+    /// For each line of `sorted` (one section, in manual order): whether its own estimate counts
+    /// towards a total, by the rule of `total` (it has one, and none of its subtasks has one).
+    public static func countsOwnEstimate<Item: ChecklistItem & Estimated>(_ sorted: [Item]) -> [Bool] {
+        let depths = Checklist.depths(of: sorted)
+        return sorted.indices.map { index in
+            guard sorted[index].estimate > 0 else { return false }
+            let end = Checklist.blockEnd(after: index, depths: depths)
+            return !(index + 1 ..< end).contains { sorted[$0].estimate > 0 }
+        }
     }
 }

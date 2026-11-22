@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "source": "theo",
+  "app": "Theo",
+  "appVersion": "2.4.0",
+  "generatedAt": "2026-11-22T18:04:05+01:00",
+  "refs": [
+    { "id": "grp-91AB", "title": "Arbeit/Kunden", "kind": "group" },
+    { "id": "grp-22CD", "title": "Haushalt", "kind": "group" }
+  ]
+}

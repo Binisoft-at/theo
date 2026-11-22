@@ -26,6 +26,13 @@ struct GroupEditorView: View {
     @State private var traitEstimate = -1.0
     @State private var traitTags = ""
     @State private var traitDueDays = -1
+    /// Thalia: the category this group's finished tasks and Power Hours count for there (kept in
+    /// the group's synced extras, so every device delivers the same), and Thalia's catalog on this
+    /// device to pick from.
+    @State private var thaliaCategory: String?
+    @State private var thaliaCategoryTitle: String?
+    @State private var thaliaCatalog: ExchangeCatalog?
+    @State private var thaliaCatalogLoaded = false
     @State private var loaded = false
     /// Counts colour and icon picks, for the iPhone's selection tick.
     @State private var pickTick = 0
@@ -49,15 +56,26 @@ struct GroupEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                headerSection
-                colorSection
-                iconSection
-                parentSection
-                activeSection
-                traitsSection
-                projectSection
-                deleteSection
+            ScrollViewReader { proxy in
+                Form {
+                    headerSection
+                    colorSection
+                    iconSection
+                    parentSection
+                    thaliaSection
+                    activeSection
+                    traitsSection
+                    projectSection
+                    deleteSection
+                }
+                .task {
+                    thaliaCatalog = await ThaliaFolder.loadCatalog()
+                    thaliaCatalogLoaded = true
+                    if Self.opensAtThalia {
+                        try? await Task.sleep(for: .milliseconds(800))
+                        proxy.scrollTo(Self.thaliaRowID, anchor: .center)
+                    }
+                }
             }
             .formStyle(.grouped)
             .theoBodyFont()
@@ -205,6 +223,83 @@ struct GroupEditorView: View {
             }
         } footer: {
             Text("Put a group inside another one to make it a subgroup.")
+        }
+    }
+
+    // MARK: - Thalia
+
+    private static let thaliaRowID = "group.thalia"
+    /// `-TheoScreen group-thalia` (screenshots): the editor opened at the Thalia section.
+    private static var opensAtThalia: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "-TheoScreen"), index + 1 < args.count else { return false }
+        return args[index + 1] == "group-thalia"
+    }
+
+    private var thaliaChoices: [TheoExchange.CategoryChoices] {
+        thaliaCatalog.map(TheoExchange.choices) ?? []
+    }
+
+    /// What a subgroup without a category of its own counts for: that of the group it sits in.
+    private var inheritedThalia: ExchangeThaliaHint? {
+        guard let parentID else { return nil }
+        let records = Dictionary(groups.map { group in
+            (group.uuid.uuidString,
+             TheoExchange.GroupRecord(id: group.uuid.uuidString, name: group.name, parentID: group.parentUUID?.uuidString,
+                                      category: group.extras[TheoExchange.categoryKey],
+                                      categoryTitle: group.extras[TheoExchange.categoryTitleKey]))
+        }, uniquingKeysWith: { first, _ in first })
+        return TheoExchange.hint(for: parentID.uuidString, in: records)
+    }
+
+    private var thaliaNoneLabel: String {
+        guard let inherited = inheritedThalia, let key = inherited.category else { return "Keine" }
+        let title = inherited.categoryTitle.map { key + " " + $0 } ?? key
+        return "Wie die übergeordnete Gruppe (\(title))"
+    }
+
+    private var thaliaSection: some View {
+        Section {
+            Picker(selection: $thaliaCategory.animation(Motion.resolved(Motion.list))) {
+                Text(thaliaNoneLabel).tag(String?.none)
+                ForEach(thaliaChoices, id: \.goal.key) { choice in
+                    Section(TheoExchange.label(choice.goal)) {
+                        ForEach(choice.categories, id: \.key) { category in
+                            Text(TheoExchange.label(category)).tag(String?.some(category.key))
+                        }
+                    }
+                }
+                // The saved choice, also when this device has no catalog or the catalog lost it.
+                if let key = thaliaCategory, !thaliaChoices.contains(where: { $0.categories.contains { $0.key == key } }) {
+                    Text(thaliaCategoryTitle.map { key + " " + $0 } ?? key).tag(String?.some(key))
+                }
+            } label: {
+                SheetRowLabel("Thalia-Kategorie", symbol: "target", color: .indigo)
+            }
+            .id(Self.thaliaRowID)
+        } header: {
+            Text("Thalia")
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Erledigte Aufgaben und Power-Hours dieser Gruppe zählen in Thalia für diese Kategorie. Untergruppen ohne eigene Wahl übernehmen sie.")
+                if thaliaCatalogLoaded && thaliaCatalog == nil {
+                    Text("Thalias Katalog fehlt auf diesem Gerät – Thalia hier einmal öffnen.")
+                        .foregroundStyle(.orange)
+                } else if TheoExchange.state(category: thaliaCategory, categoryTitle: thaliaCategoryTitle,
+                                             catalog: thaliaCatalog) == .check {
+                    Text("Zuordnung prüfen: Thalia hat diese Kategorie nicht mehr oder nennt sie anders.")
+                        .foregroundStyle(.orange)
+                }
+            }
+        }
+        .onChange(of: thaliaCategory) { _, key in
+            guard let key else {
+                thaliaCategoryTitle = nil
+                return
+            }
+            if let found = thaliaChoices.flatMap(\.categories).first(where: { $0.key == key }) {
+                thaliaCategoryTitle = found.title
+            }
         }
     }
 
@@ -368,6 +463,9 @@ struct GroupEditorView: View {
                 due = date
             }
             parentID = existing.parentUUID
+            let category = existing.extras[TheoExchange.categoryKey]?.trimmingCharacters(in: .whitespaces)
+            thaliaCategory = (category?.isEmpty ?? true) ? nil : category
+            thaliaCategoryTitle = existing.extras[TheoExchange.categoryTitleKey]
         } else {
             if case .subgroup(let parent) = target { parentID = parent.uuid }
             color = TheoColor.allCases.randomElement() ?? .blue
@@ -392,6 +490,8 @@ struct GroupEditorView: View {
         group.notes = notes
         group.isActive = isActive
         group.ownTraits = currentTraits
+        group.setExtra(TheoExchange.categoryKey, thaliaCategory)
+        group.setExtra(TheoExchange.categoryTitleKey, thaliaCategory == nil ? nil : thaliaCategoryTitle)
         group.touch()
         app.store.save()
         if dismissing { dismiss() }

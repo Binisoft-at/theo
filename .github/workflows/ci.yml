@@ -124,6 +124,9 @@ jobs:
           shoot tour-light -TheoTour
           shoot tour-subtask-light -TheoTour -TheoTourStep subtask
           shoot widgets-light -TheoWidgetGallery
+          # Thalia: the group editor's "Thalia-Kategorie" (with a sample catalog) and Settings → Thalia.
+          shoot group-thalia-light -TheoScreen group-thalia -TheoThaliaCatalogDemo
+          shoot settings-thalia-light -TheoScreen settings-thalia
           # The insert motion, recorded: -TheoInsertDemo adds a blank line between two tasks four
           # seconds after the page shows (TaskListView), as dragging the + there would.
           xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
@@ -254,3 +257,40 @@ jobs:
           for log in mac-build.log ios-build.log; do [ -f "$log" ] && gzip -c "$log" > "$out/$log.gz"; done
           cp -R shots "$out/" 2>/dev/null || true
           scripts/ci/publish-ci-output.sh "$out" "ci ${{ github.run_id }}: ${{ job.status }}"
+
+  # TheoCore's logic (the Thalia exchange among it) builds and passes its tests on Linux too:
+  # Foundation only, no Apple frameworks. The result goes to the `ci-linux` branch
+  # (status.txt names the commit, test-tail.txt the last lines).
+  core-linux:
+    name: TheoCore tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container: swift:6.2
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: swift test
+        id: tests
+        continue-on-error: true
+        run: set -o pipefail && swift test --package-path Packages/TheoCore 2>&1 | tee linux-test.log
+
+      - name: Publish status to ci-linux branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
+          {
+            echo "linux run ${{ github.run_number }} (${{ github.event_name }}) ${{ github.sha }}"
+            echo "tests=${{ steps.tests.outcome }} swift=$(swift --version 2>&1 | head -1)"
+          } > "$out/status.txt"
+          cat "$out/status.txt"
+          grep -h -E "error:" linux-test.log 2>/dev/null | sort -u | head -200 > "$out/errors.txt" || true
+          [ -f linux-test.log ] && tail -200 linux-test.log > "$out/test-tail.txt"
+          scripts/ci/publish-ci-output.sh "$out" "linux ${{ github.run_id }}: ${{ steps.tests.outcome }}" ci-linux
+
+      - name: Fail when the tests failed
+        if: steps.tests.outcome != 'success'
+        run: exit 1

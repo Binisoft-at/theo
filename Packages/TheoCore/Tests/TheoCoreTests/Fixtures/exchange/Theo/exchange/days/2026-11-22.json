@@ -1,0 +1,7 @@
+{"v":1,"source":"theo","day":"2026-11-22","generatedAt":"2026-11-22T18:04:05+01:00","facts":[
+  {"id":"task-6F1A2C","kind":"task.done","ref":"grp-91AB","refTitle":"Arbeit/Kunden","title":"Rechnung schreiben",
+   "at":"2026-11-22T18:04:00+01:00","origin":"app","thalia":{"category":"3.2","categoryTitle":"Kunden"}},
+  {"id":"ph-77C0","kind":"ph","ref":"grp-91AB","refTitle":"Arbeit/Kunden","value":1.5,"unit":"PH","origin":"app"},
+  {"id":"task-0B3E11","kind":"task.done","ref":"grp-22CD","refTitle":"Haushalt","title":"Keller aufräumen",
+   "at":"2026-11-22T10:30:00+01:00","origin":"app"},
+  {"id":"ph-81D2","kind":"ph","ref":"grp-22CD","refTitle":"Haushalt","title":"Ablage","value":0.5,"unit":"PH","origin":"app"}]}

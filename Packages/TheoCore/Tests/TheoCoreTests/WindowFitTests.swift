@@ -1,4 +1,6 @@
-import CoreGraphics
+#if canImport(CoreGraphics)
+import CoreGraphics // CGRect's members (Foundation has them on Linux)
+#endif
 import Foundation
 import Testing
 @testable import TheoCore

@@ -25,6 +25,8 @@ struct TheoApp: App {
         // Home Screen, Lock Screen, Mac desktop widgets and the Control Center button (the
         // demo data never reaches the widgets).
         WidgetBridge.start(app: model)
+        // Finished tasks and their Power Hours for Thalia (never the demo data, never on the watch).
+        ThaliaBridge.start(app: model)
     }
 
     var body: some Scene {

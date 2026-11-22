@@ -9,7 +9,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "TheoCore"),
-        .testTarget(name: "TheoCoreTests", dependencies: ["TheoCore"])
+        .testTarget(name: "TheoCoreTests", dependencies: ["TheoCore"], resources: [.copy("Fixtures")])
     ],
     swiftLanguageModes: [.v5]
 )

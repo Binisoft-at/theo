@@ -39,6 +39,17 @@ struct SettingsView: View {
     @State private var badgeBlocked = false
 
     var body: some View {
+        ScrollViewReader { proxy in
+            settingsForm
+                .task {
+                    guard Self.scrollsToThalia else { return }
+                    try? await Task.sleep(for: .milliseconds(800))
+                    proxy.scrollTo(Self.thaliaSectionID, anchor: .top)
+                }
+        }
+    }
+
+    private var settingsForm: some View {
         Form {
             appearanceSection
             dailyPageSection
@@ -50,6 +61,7 @@ struct SettingsView: View {
             reviewSection
             focusSection
             syncSection
+            thaliaSection
             helpSection
             backupSection
             dataSection
@@ -376,6 +388,40 @@ struct SettingsView: View {
             Text("Theo syncs through your private iCloud database, just like Notes. Nothing leaves your Apple account.")
                 .theoFont(.footnote)
         }
+    }
+
+    /// Theo → Thalia: the switch (the same on every device) and what this device last wrote.
+    private var thaliaSection: some View {
+        let thalia = ThaliaSettings.shared
+        return Section {
+            Toggle(isOn: Binding(get: { thalia.deliver }, set: { thalia.setDeliver($0) })) {
+                SettingLabel("An Thalia liefern", symbol: "arrow.up.forward.app", color: .indigo)
+            }
+            .id(Self.thaliaSectionID)
+            LabeledContent {
+                Text(thalia.lastWritten.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Noch nichts")
+            } label: {
+                SettingLabel("Zuletzt geschrieben", symbol: "clock.arrow.circlepath", color: .gray)
+            }
+            if let unavailable = thalia.unavailable {
+                Text(unavailable)
+                    .theoFont(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Thalia")
+        } footer: {
+            Text("Erledigte Aufgaben und ihre Power-Hours gehen an Thalia, je Gruppe in die Thalia-Kategorie aus dem Gruppen-Editor. Der Schalter gilt auf allen Geräten. Thalia übernimmt die Werte, sobald Thalia auf diesem Gerät geöffnet wird.")
+                .theoFont(.footnote)
+        }
+    }
+
+    static let thaliaSectionID = "settings.thalia"
+    /// `-TheoScreen settings-thalia` (screenshots): Settings opened at the Thalia section.
+    static var scrollsToThalia: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "-TheoScreen"), index + 1 < args.count else { return false }
+        return args[index + 1] == "settings-thalia"
     }
 
     private var helpSection: some View {

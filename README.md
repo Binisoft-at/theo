@@ -15,6 +15,17 @@
 | Checked items move down | Checked tasks sink to the bottom after a short beat, like Notes |
 | Duplicate the note, delete what's done | **One tap.** At the start of a new day (4:00 by default) finished tasks move to **History**, and whatever is still open waits at the top of Today with **Bring Over** |
 
+## New in 1.1: Theo tells Thalia what got done
+
+- Every finished task and its Power Hours go to Thalia (Binisoft's planner for weekly plans and
+  yearly goals) on the same device, through the shared App Group: iPhone, iPad and Mac, never the
+  watch, never the demo data. Tasks finished on another device count too (the files are built
+  from the synced store).
+- Each group picks its **Thalia-Kategorie** in the group editor (subgroups without their own take
+  their group's); everything from that group counts there in Thalia.
+- Settings → **Thalia**: "An Thalia liefern" (on by default, the same on every device) and when
+  this device last wrote. Format and rules: `docs/thalia-exchange.md`.
+
 ## New in v9
 
 ### Smoother
