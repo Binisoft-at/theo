@@ -35,6 +35,9 @@ Theo liest von Thalia nur den Katalog (Ziele und Kategorien). Kein Netz, kein Se
    lokalen Ersatz- oder In-Memory-Speicher. Auf dem iPhone hält Theo sich beim Wechsel in den
    Hintergrund kurz wach, bis geschrieben ist; der Mac schreibt beim Beenden noch einmal. Kann ein
    Tag nicht geschrieben werden, laufen die anderen weiter und Thalia wird trotzdem benachrichtigt.
+   Ein neues oder frisch installiertes Gerät (oder ein anderes iCloud-Konto) liefert erst, wenn
+   iCloud die Daten einmal geladen hat und der Schalter von iCloud bekannt ist. Ein leerer Speicher
+   leert nie Tage, die Thalia schon hat; das tut nur der ausgeschaltete Schalter.
 5. **Zuordnung „Thalia-Kategorie“** im Gruppen-Editor (iPhone, iPad, Mac gleich): „Keine“ und
    darunter die Kategorien aus Thalias Katalog, nach Ziel gruppiert („3 Arbeit“ → „3.2 Kunden“).
    Untergruppen einer zugeordneten Gruppe haben zusätzlich „Wie die übergeordnete Gruppe (…)“.

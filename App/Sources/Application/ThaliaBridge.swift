@@ -78,12 +78,18 @@ final class ThaliaSettings {
     /// This device's copy of the switch, for when iCloud isn't there yet.
     private static let localKey = "thalia.deliver.local"
     private static let lastWrittenKey = "thalia.lastWritten"
+    /// Set once iCloud has delivered this store's data at least once (see `ThaliaExchange`).
+    static let importSeenKey = "thalia.importSeen"
 
     private(set) var deliver: Bool
     /// When this device last changed a file for Thalia.
     private(set) var lastWritten: Date?
     /// Why nothing reaches Thalia from this device, nil when it does (or nothing was tried yet).
     var unavailable: String?
+    /// Whether the switch's value is known here: iCloud had one, this device set it before, or
+    /// iCloud had half a minute to deliver it. Until then a new device delivers nothing, so it
+    /// can't send what another device switched off.
+    private(set) var isKnown: Bool
 
     @ObservationIgnored private var observer: NSObjectProtocol?
 
@@ -92,8 +98,11 @@ final class ThaliaSettings {
         let local = UserDefaults.standard
         if let value = cloud.object(forKey: Self.deliverKey) as? Bool {
             deliver = value
+            isKnown = true
         } else {
-            deliver = local.object(forKey: Self.localKey) as? Bool ?? true
+            let mine = local.object(forKey: Self.localKey) as? Bool
+            deliver = mine ?? true
+            isKnown = mine != nil
         }
         lastWritten = local.object(forKey: Self.lastWrittenKey) as? Date
         observer = NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
@@ -101,10 +110,17 @@ final class ThaliaSettings {
             MainActor.assumeIsolated { ThaliaSettings.shared.cloudChanged() }
         }
         cloud.synchronize()
+        if !isKnown {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(30))
+                ThaliaSettings.shared.isKnown = true
+            }
+        }
     }
 
     /// Switched on this device: every device follows through iCloud.
     func setDeliver(_ value: Bool) {
+        isKnown = true
         guard value != deliver else { return }
         deliver = value
         UserDefaults.standard.set(value, forKey: Self.localKey)
@@ -115,6 +131,7 @@ final class ThaliaSettings {
 
     /// Switched on another device.
     private func cloudChanged() {
+        isKnown = true
         guard let value = NSUbiquitousKeyValueStore.default.object(forKey: Self.deliverKey) as? Bool, value != deliver else { return }
         deliver = value
         UserDefaults.standard.set(value, forKey: Self.localKey)
@@ -135,8 +152,12 @@ enum ThaliaBridge {
     private static var exchange: ThaliaExchange?
 
     static func start(app: AppModel) {
-        guard exchange == nil, !app.isSandbox, !Persistence.isDemo, Persistence.storeKind == .cloud,
+        guard exchange == nil, !app.isSandbox, !Persistence.isDemo,
               ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
+        guard Persistence.storeKind == .cloud else {
+            ThaliaSettings.shared.unavailable = "Nur mit iCloud: Theo synchronisiert auf diesem Gerät gerade nicht, darum geht nichts an Thalia."
+            return
+        }
         _ = ThaliaSettings.shared
         exchange = ThaliaExchange(container: app.container)
     }
@@ -176,13 +197,22 @@ final class ThaliaExchange {
                 self.scheduleSoon()
             }
         })
-        // Tasks finished on another device arrive through iCloud: right after each import.
+        // Tasks finished on another device arrive through iCloud: right after each import. The
+        // first one that succeeds also opens the gate (see `importSeen`).
         observers.append(center.addObserver(forName: NSPersistentCloudKitContainer.eventChangedNotification, object: nil,
                                             queue: .main) { [weak self] note in
             guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                     as? NSPersistentCloudKitContainer.Event,
                   event.type == .import, event.endDate != nil else { return }
-            MainActor.assumeIsolated { self?.scheduleSoon() }
+            let succeeded = event.succeeded
+            MainActor.assumeIsolated {
+                if succeeded { UserDefaults.standard.set(true, forKey: ThaliaSettings.importSeenKey) }
+                self?.scheduleSoon()
+            }
+        })
+        // Another iCloud account: wait for its data before telling Thalia anything.
+        observers.append(center.addObserver(forName: .NSUbiquityIdentityDidChange, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { UserDefaults.standard.set(false, forKey: ThaliaSettings.importSeenKey) }
         })
         observers.append(center.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.scheduleSoon() }
@@ -234,6 +264,20 @@ final class ThaliaExchange {
         pending?.cancel()
         pending = nil
         guard !unavailable else {
+            finishBackgroundWork()
+            return
+        }
+        // A new or reinstalled device (or another iCloud account) before iCloud has delivered
+        // this store's data: what's here isn't the whole picture yet. The import starts the
+        // next write.
+        guard UserDefaults.standard.bool(forKey: ThaliaSettings.importSeenKey) else {
+            ThaliaSettings.shared.unavailable = "Wartet auf den ersten iCloud-Abgleich auf diesem Gerät."
+            finishBackgroundWork()
+            return
+        }
+        // The switch may still be on its way from iCloud on a new device.
+        guard ThaliaSettings.shared.isKnown else {
+            scheduleSoon(after: 5)
             finishBackgroundWork()
             return
         }
@@ -297,7 +341,8 @@ final class ThaliaExchange {
     private func writeBeforeQuitting() {
         pending?.cancel()
         pending = nil
-        guard !unavailable else { return }
+        guard !unavailable, UserDefaults.standard.bool(forKey: ThaliaSettings.importSeenKey),
+              ThaliaSettings.shared.isKnown else { return }
         let deliver = ThaliaSettings.shared.deliver
         let (tasks, groups) = records(including: deliver)
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
@@ -346,7 +391,8 @@ final class ThaliaExchange {
         var changed = false
         var failed = false
         do {
-            changed = try ThaliaExchangeWriter.sync(facts, source: TheoExchange.source, appFolder: folder, today: today, now: now)
+            changed = try ThaliaExchangeWriter.sync(facts, source: TheoExchange.source, appFolder: folder, today: today, now: now,
+                                                    mayEmptyAll: !deliver)
         } catch let error as ThaliaExchangeWriter.WriteError {
             // Some days were written all the same: Thalia is still told below.
             changed = error.changed
@@ -356,7 +402,8 @@ final class ThaliaExchange {
             failed = true
             print("Theo: exchange files for Thalia not written: \(error)")
         }
-        if deliver {
+        // No groups at all is a store that isn't filled yet: Thalia keeps the groups it knows.
+        if deliver && !groups.isEmpty {
             do {
                 let refs = TheoExchange.refs(groups: groups)
                 if try ThaliaExchangeWriter.writeSource(refs: refs, appVersion: appVersion, source: TheoExchange.source,

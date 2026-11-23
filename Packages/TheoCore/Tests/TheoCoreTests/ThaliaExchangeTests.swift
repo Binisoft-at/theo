@@ -150,8 +150,10 @@ struct ThaliaExchangeTests {
             return
         }
         #expect(read.file.facts.map(\.id) == ["task-T5"])
-        // Nothing left on that day: the file stays, with no facts.
-        try ThaliaExchangeWriter.sync([:], source: "theo", appFolder: folder, today: "2026-11-22",
+        // Nothing left on that day (another day still has something): the file stays, with no facts.
+        let elsewhere = done("T9", "Anderswo", group: "22CD", at: "2026-11-22T07:00:00+01:00")
+        try ThaliaExchangeWriter.sync(TheoExchange.facts(tasks: [elsewhere], groups: groups, today: "2026-11-22", timeZone: vienna),
+                                      source: "theo", appFolder: folder, today: "2026-11-22",
                                       now: date("2026-11-22T10:00:00+01:00"), timeZone: vienna)
         let afterEmpty = try Data(contentsOf: url)
         guard case .success(let empty) = ExchangeReader.dayFile(afterEmpty) else {
@@ -181,6 +183,29 @@ struct ThaliaExchangeTests {
         }
         #expect(try facts("2026-11-20") == [])
         #expect(try facts("2026-11-21") == ["task-T6"])
+    }
+
+    @Test func anEmptyStoreNeverEmptiesThaliasDays() throws {
+        // A new or reinstalled device before iCloud delivered anything: the days stay as they are.
+        let folder = temporaryFolder()
+        let task = done("T8", "Ablage", group: "22CD", at: "2026-11-21T09:00:00+01:00")
+        try ThaliaExchangeWriter.sync(TheoExchange.facts(tasks: [task], groups: groups, today: "2026-11-22", timeZone: vienna),
+                                      source: "theo", appFolder: folder, today: "2026-11-22",
+                                      now: date("2026-11-22T08:00:00+01:00"), timeZone: vienna)
+        let url = BinisoftExchange.dayFileURL(appFolder: folder, day: "2026-11-21")
+        let before = try Data(contentsOf: url)
+        #expect(try !ThaliaExchangeWriter.sync([:], source: "theo", appFolder: folder, today: "2026-11-22",
+                                               now: date("2026-11-22T09:00:00+01:00"), timeZone: vienna))
+        #expect(try Data(contentsOf: url) == before)
+        // Switched off ("An Thalia liefern"): now every day is emptied.
+        #expect(try ThaliaExchangeWriter.sync([:], source: "theo", appFolder: folder, today: "2026-11-22",
+                                              now: date("2026-11-22T10:00:00+01:00"), timeZone: vienna, mayEmptyAll: true))
+        let emptied = try Data(contentsOf: url)
+        guard case .success(let read) = ExchangeReader.dayFile(emptied) else {
+            Issue.record("day file not readable")
+            return
+        }
+        #expect(read.file.facts.isEmpty)
     }
 
     @Test func dayFilesOlderThan62DaysAreRemoved() throws {

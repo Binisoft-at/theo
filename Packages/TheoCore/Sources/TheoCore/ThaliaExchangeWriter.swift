@@ -10,11 +10,16 @@ public enum ThaliaExchangeWriter {
     /// dated after today (the clock or the time zone went back) and removes day files older than
     /// `keepDays`. Returns whether anything changed. A day that can't be written doesn't stop the
     /// others: the error at the end (`WriteError`) still says whether anything changed.
+    ///
+    /// `mayEmptyAll`: whether an empty `facts` may empty days that have facts. Only when delivering
+    /// was switched off: an empty store (a new or reinstalled device before iCloud has delivered
+    /// anything, another iCloud account) must never tell Thalia that two months of work are gone.
     @discardableResult
     public static func sync(_ facts: [String: [ExchangeFact]], source: String, appFolder: URL, today: String,
-                            now: Date = Date(), timeZone: TimeZone = .current) throws -> Bool {
+                            now: Date = Date(), timeZone: TimeZone = .current, mayEmptyAll: Bool = false) throws -> Bool {
         let manager = FileManager.default
         var changed = false
+        let nothingAtAll = facts.values.allSatisfy(\.isEmpty)
         var failures: [String] = []
         func write(_ file: ExchangeDayFile, to url: URL) {
             do {
@@ -31,6 +36,8 @@ public enum ThaliaExchangeWriter {
             let old = try? Data(contentsOf: url)
             // Never a file for a day without anything.
             if old == nil && sorted.isEmpty { continue }
+            // Nothing at all from the store: leave what Thalia has (see `mayEmptyAll`).
+            if nothingAtAll && !mayEmptyAll { continue }
             // Unchanged: the file (and its generatedAt) stays as it is.
             if let old, case .success(let read) = ExchangeReader.dayFile(old),
                let same = try? ExchangeDayFile(source: source, day: day, generatedAt: read.file.generatedAt,
@@ -43,7 +50,7 @@ public enum ThaliaExchangeWriter {
         let names = (try? manager.contentsOfDirectory(atPath: days.path)) ?? []
         // Days after today hold facts that belong to another day now: empty them (a missing file
         // would leave Thalia's copy as it is).
-        for name in names {
+        for name in names where !nothingAtAll || mayEmptyAll {
             guard let day = BinisoftExchange.day(fromFileName: name), day > today else { continue }
             let url = days.appendingPathComponent(name)
             if let old = try? Data(contentsOf: url), case .success(let read) = ExchangeReader.dayFile(old),
