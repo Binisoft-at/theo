@@ -1,0 +1,4 @@
+Created this run's development certificate (6A42C38283A24B6D91A0B492018B10BC); signing identities now:
+  1) A10B1D86A024A213B870E0232C6D0CCDAADE33E7 "<this run's certificate> (8683MQKCTN)"
+     1 valid identities found
+
